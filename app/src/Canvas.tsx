@@ -12,6 +12,11 @@ export const MIN_ZOOM = 0.04;
 export const MAX_ZOOM = 4;
 /** Below this zoom, show an empty frame instead of the iframe (PLAN.md section 9) */
 export const IFRAME_MIN_ZOOM = 0.25;
+/** ...unless the board itself is this big on screen (CSS px, long side): then only a few boards fit and a thumbnail would look soft */
+export const LIVE_MIN_SCREEN_PX = 640;
+/** Thumbnail resolutions the server renders (long side, device px). A board asks for the smallest one that covers it on screen */
+export const THUMB_SIZES = [600, 1200, 2400];
+export const thumbSize = (screenPx: number) => THUMB_SIZES.find((s) => s >= screenPx) ?? THUMB_SIZES[THUMB_SIZES.length - 1];
 const SNAP_PX = 6;
 
 export type Rect = { x: number; y: number; w: number; h: number };
@@ -56,6 +61,7 @@ type Props = {
 
 export function Canvas(p: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const worldRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 1200, h: 800 });
   const [space, setSpace] = useState(false);
   const [guides, setGuides] = useState<Guide[]>([]);
@@ -73,6 +79,20 @@ export function Canvas(p: Props) {
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  // will-change only while the view moves: kept on, Chromium holds the old raster scale and boards stay blurry after a zoom
+  const moved = useRef(false);
+  useEffect(() => {
+    const el = worldRef.current;
+    if (!el) return;
+    if (!moved.current) {
+      moved.current = true;
+      return;
+    }
+    el.style.willChange = "transform";
+    const t = setTimeout(() => (el.style.willChange = ""), 200);
+    return () => clearTimeout(t);
+  }, [p.view.x, p.view.y, p.view.zoom]);
 
   // Wheel: with ⌘/Ctrl (including trackpad pinch) zoom around the cursor, otherwise pan
   useEffect(() => {
@@ -263,7 +283,7 @@ export function Canvas(p: Props) {
       role="application"
       aria-label={strings.canvas.aria}
     >
-      <div className="world" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }}>
+      <div ref={worldRef} className="world" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }}>
         {p.visibleNotes.map((id) => (
           <NoteView
             key={id}
@@ -279,7 +299,7 @@ export function Canvas(p: Props) {
         ))}
         {p.visibleBoards.map((f) => {
           const b = p.board.boards[f];
-          const live = inView(b) && (view.zoom >= IFRAME_MIN_ZOOM || p.editFile === f);
+          const live = inView(b) && (view.zoom >= IFRAME_MIN_ZOOM || Math.max(b.w, b.h) * view.zoom >= LIVE_MIN_SCREEN_PX || p.editFile === f);
           const selected = p.selected.includes(f);
           return (
             <BoardView
@@ -433,7 +453,7 @@ function BoardView(props: {
           <LiveFrame reloadKey={props.reloadKey} iframeRef={props.iframeRef} src={`/screens/${props.file}`} title={title} editing={props.editing || !!props.playing} />
         ) : (
           <div className={`board-placeholder ${props.near ? "loading" : "far"}`} style={{ fontSize: Math.min(64, 14 / zoom) }}>
-            {props.near && <Thumb file={props.file} v={props.reloadKey} />}
+            {props.near && <Thumb file={props.file} v={props.reloadKey} px={thumbSize(Math.max(b.w, b.h) * zoom * (window.devicePixelRatio || 1))} />}
             <span className="ph-title" data-hint={props.near ? "" : strings.canvas.notLoaded}>{title}</span>
             {props.near && <span className="ph-bar" style={{ height: 3 / Math.max(zoom, 0.05) }} aria-hidden="true" />}
           </div>
@@ -462,19 +482,34 @@ function BoardView(props: {
 }
 
 /** When the file changes, reload the same iframe and restore the scroll position (PLAN.md section 5, live updates) */
-/** Zoomed-out preview: a thumbnail made by the server (may take a few seconds at first) */
-function Thumb({ file, v }: { file: string; v: number }) {
-  const [ok, setOk] = useState(true);
-  if (!ok) return null;
+/** Zoomed-out preview: a thumbnail made by the server (may take a few seconds at first). A sharper one replaces it only once loaded */
+function Thumb({ file, v, px }: { file: string; v: number; px: number }) {
+  const [failed, setFailed] = useState(false);
+  // Never step down: zooming out keeps the sharper image already loaded
+  const [want, setWant] = useState(px);
+  useEffect(() => setWant((w) => Math.max(w, px)), [px]);
+  const src = `/api/thumb?f=${encodeURIComponent(file)}&v=${v}&px=${want}`;
+  const [shown, setShown] = useState<string | null>(null);
+  const shownRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (src === shownRef.current) return;
+    const img = new Image();
+    img.onload = () => setShown((shownRef.current = src));
+    // A failed upgrade keeps the image already shown
+    img.onerror = () => !shownRef.current && setFailed(true);
+    img.src = src;
+    return () => {
+      img.onload = img.onerror = null;
+    };
+  }, [src]);
+  if (failed || !shown) return null;
   return (
     <img
       className="board-thumb"
-      src={`/api/thumb?f=${encodeURIComponent(file)}&v=${v}`}
+      src={shown}
       alt=""
-      loading="lazy"
       decoding="async"
       draggable={false}
-      onError={() => setOk(false)}
       onLoad={(e) => {
         e.currentTarget.classList.add("loaded");
         e.currentTarget.parentElement?.classList.remove("loading");
