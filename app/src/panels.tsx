@@ -33,7 +33,7 @@ export const LeftPanel = forwardRef<HTMLInputElement, {
   const firstPage = p.pages[0]?.id;
   const list = useMemo(() => {
     const k = q.trim().toLowerCase();
-    return p.board.order.filter((f) => {
+    return [...new Set(p.board.order)].filter((f) => {
       const b = p.board.boards[f];
       if (!b) return false;
       if (k) return f.toLowerCase().includes(k) || (b.title ?? "").toLowerCase().includes(k);
@@ -331,7 +331,7 @@ export function FocusView({ board, file, onClose, onNav }: { board: Board; file:
   const b = board.boards[file];
   const ref = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
-  const list = board.order.filter((f) => board.boards[f]);
+  const list = [...new Set(board.order)].filter((f) => board.boards[f]);
   const i = list.indexOf(file);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
