@@ -6,7 +6,7 @@ import { api, clientId, connectEvents, type ServerEvent } from "./api";
 import { Canvas, clamp, fitView, isTyping, MAX_ZOOM, MIN_ZOOM, type ContextTarget, type Rect } from "./Canvas";
 import { AssetGrid, AssetPicker, uploadAssets, type Asset } from "./assets";
 import { ChatPanel, type Attach, type ChatEvent } from "./chat";
-import { CheckList, checkA11y, readTweaks, TokenPanel, TweaksPanel, useTokens, type A11yItem, type LintItem, type Tokens } from "./ds";
+import { CheckList, checkA11y, readTweaks, TokenCheckOff, TokenPanel, TweaksPanel, useTokens, type A11yItem, type LintItem, type Tokens } from "./ds";
 import { GuidesEditor, GuidesOverlay, MAX_NOTES, NoteOptions, ShapeDrawer, ShapeOptions, ShapesLayer } from "./drawing";
 import { alignOps, EditHandles, type DropPlan } from "./elementDrag";
 import { elementAt, inlineStyles, pathOf, rectOf } from "./editor";
@@ -174,6 +174,10 @@ export function App() {
     void loadHistory();
     void loadErrors();
   }, [load, loadComments, loadHistory, loadErrors]);
+  // Tab title: the canvas (project) name first, so several canvases are told apart
+  useEffect(() => {
+    document.title = board?.title ? strings.app.docTitle(board.title) : strings.app.title;
+  }, [board?.title]);
 
   // Collect errors inside boards: sent by the script the server injects into screen HTML (start → errors → loaded; later errors arrive immediately)
   useEffect(() => {
@@ -1392,7 +1396,7 @@ export function App() {
               </button>
             </span>
           ) : (
-            <strong className="app-title" title={board.title}>{board.title}</strong>
+            <strong className="app-title" title={data?.dir ?? board.title}>{board.title}</strong>
           )}
         {erroredFiles.length > 0 && (
           <button
@@ -1705,6 +1709,7 @@ export function App() {
               subscribe={chatSubscribe}
               onLocate={setLocate}
               inputRef={chatInputRef}
+              open={rightTab === "chat" && rightOpen}
             />
           </div>
           {rightTab === "inspect" && (
@@ -1784,9 +1789,15 @@ export function App() {
           )}
           {lintTarget && board.boards[lintTarget] && (
             <>
-              <Collapsible id="token-check" title={strings.sections.tokenCheck} count={lint?.length ?? 0}>
-                <CheckList title={strings.checks.tokenCheck(tokens?.active ?? "")} items={lint} empty={strings.checks.noOffToken} onPick={(p) => pickPath(lintTarget, p)} onAskAI={() => openChat(strings.prompts.fixTokens((lint ?? []).slice(0, 12).map((x) => `- ${x.path ?? strings.prompts.line + x.line}: ${x.message}`).join("\n")), [lintTarget])} />
-              </Collapsible>
+              {tokens && !tokens.registered ? (
+                <Collapsible id="token-check" title={strings.sections.tokenCheck} count={strings.checks.off}>
+                  <TokenCheckOff onSetUp={() => { setLeftTab("tokens"); setLeftOpen(true); }} />
+                </Collapsible>
+              ) : (
+                <Collapsible id="token-check" title={strings.sections.tokenCheck} count={lint?.length ?? 0}>
+                  <CheckList title={strings.checks.tokenCheck(tokens?.active ?? "")} items={lint} empty={strings.checks.noOffToken} onPick={(p) => pickPath(lintTarget, p)} onAskAI={() => openChat(strings.prompts.fixTokens((lint ?? []).slice(0, 12).map((x) => `- ${x.path ?? strings.prompts.line + x.line}: ${x.message}`).join("\n")), [lintTarget])} />
+                </Collapsible>
+              )}
               <Collapsible id="a11y" title={strings.sections.a11y} count={a11y?.length ?? 0}>
                 <CheckList title={strings.checks.a11y} items={a11y} empty={strings.checks.a11yOk} onPick={(p) => pickPath(lintTarget, p)} onAskAI={() => openChat(strings.prompts.fixA11y((a11y ?? []).slice(0, 12).map((x) => `- ${x.path}: ${x.message}`).join("\n")), [lintTarget])} />
               </Collapsible>

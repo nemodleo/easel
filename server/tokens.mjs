@@ -31,6 +31,12 @@ export const DEFAULT_TOKENS = {
   minTarget: 48,
 };
 
+/** Said to agents (prompt, check_tokens, get_tokens) when the design folder has no tokens.json */
+export const NO_TOKENS_NOTE = "No design tokens are registered; keep to the styles already in the file.";
+
+/** What agents get from get_tokens: the tokens when registered, otherwise only that there are none (no default palette) */
+export const tokensForAgent = (tk) => (tk.registered ? tk : { registered: false, note: NO_TOKENS_NOTE });
+
 export async function readTokens(dir) {
   try {
     const t = JSON.parse(await fs.readFile(path.join(dir, "tokens.json"), "utf8"));
@@ -119,7 +125,8 @@ export function lintHtml(html, tokens) {
 
 export function tokenRoutes() {
   return [
-    ["GET", "/api/tokens", async (req, res, url, ctx) => sendJson(res, 200, await readTokens(ctx.dir))],
+    // The app's Tokens tab gets the defaults as a starter; agents (?agent=1, MCP get_tokens) get no palette until tokens.json exists
+    ["GET", "/api/tokens", async (req, res, url, ctx) => sendJson(res, 200, url.searchParams.get("agent") ? tokensForAgent(await readTokens(ctx.dir)) : await readTokens(ctx.dir))],
     [
       "PUT",
       "/api/tokens",
@@ -145,13 +152,15 @@ export function tokenRoutes() {
       "/api/lint",
       async (req, res, url, ctx) => {
         const tokens = await readTokens(ctx.dir);
+        // No tokens.json: nothing to check against (the defaults are only a starter for the Tokens tab)
+        if (!tokens.registered) return sendJson(res, 200, { registered: false, note: NO_TOKENS_NOTE, files: {} });
         const files = url.searchParams.get("f") ? [url.searchParams.get("f")] : await ctx.store.listScreenFiles();
         const result = {};
         for (const f of files) {
           const html = await fs.readFile(path.join(ctx.store.screensDir, f), "utf8").catch(() => null);
           if (html != null) result[f] = lintHtml(html, tokens);
         }
-        sendJson(res, 200, { theme: tokens.active, files: result });
+        sendJson(res, 200, { registered: true, theme: tokens.active, files: result });
       },
     ],
   ];

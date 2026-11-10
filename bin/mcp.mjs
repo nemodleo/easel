@@ -217,14 +217,19 @@ server.registerTool(
 
 server.registerTool(
   "get_tokens",
-  { description: "Get the design tokens (colors per theme, font sizes, weights, radii, spacing, fonts, minimum tap target). Use only these values when creating or editing screens.", inputSchema: {} },
-  async () => ok(await callJson("GET", "/api/tokens")),
+  {
+    description:
+      "Get the design tokens (colors per theme, font sizes, weights, radii, spacing, fonts, minimum tap target) from tokens.json. Use only these values when creating or editing screens. If the project has no tokens.json it returns registered: false and no values; then keep to the styles already in the file.",
+    inputSchema: {},
+  },
+  async () => ok(await callJson("GET", "/api/tokens?agent=1")),
 );
 
 server.registerTool(
   "check_tokens",
   {
-    description: "Find off-token values in screen HTML (colors, font sizes, weights, radii, spacing not a multiple of 4). Use it to verify your edits. Omit file to check all screens.",
+    description:
+      "Find off-token values in screen HTML (colors, font sizes, weights, radii, spacing not a multiple of 4). Use it to verify your edits. Omit file to check all screens. If the project has no tokens.json it returns registered: false and no violations (nothing to check against).",
     inputSchema: { file: z.string().optional() },
   },
   async ({ file }) => ok(await callJson("GET", `/api/lint${file ? `?f=${encodeURIComponent(file)}` : ""}`)),

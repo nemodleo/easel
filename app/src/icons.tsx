@@ -34,6 +34,7 @@ const P: Record<string, string> = {
   panel: "M4 5h16v14H4zM15 5v14",
   check: "M5 12l5 5 9-10",
   warn: "M12 4l9 16H3zM12 10v4M12 17h.01",
+  info: "M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18zM12 11v5M12 8h.01",
   rect: "M4 6h16v12H4z",
   oval: "M12 19c4.4 0 8-3.1 8-7s-3.6-7-8-7-8 3.1-8 7 3.6 7 8 7z",
   line: "M5 19L19 5",

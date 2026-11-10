@@ -65,7 +65,7 @@ export const toHex = (c: string) => {
 
 /** Whether a single property value is off tokens (⚠ in the Properties panel) */
 export function offToken(prop: string, value: string, t: Tokens | null): string | null {
-  if (!t || !value) return null;
+  if (!t?.registered || !value) return null; // no tokens.json: checks are off
   const colors = new Set(themeColors(t).map((c) => toHex(c.value)));
   if (/^(color|background|background-color|border-color)$/.test(prop)) {
     const hex = toHex(value);
@@ -299,6 +299,22 @@ export function CheckList({ title, items, empty, onPick, onAskAI }: { title: str
           {items.length > 30 && <li className="muted small">{strings.checks.more(items.length - 30)}</li>}
         </ul>
       )}
+    </section>
+  );
+}
+
+/** Token check when no tokens.json exists: says the checks are off and leads to the Tokens tab */
+export function TokenCheckOff({ onSetUp }: { onSetUp: () => void }) {
+  return (
+    <section className="board-opts" aria-label={strings.checks.tokensOffTitle}>
+      <div className="tc-off">
+        <Icon name="info" size={14} />
+        <div>
+          <strong>{strings.checks.tokensOffTitle}</strong>
+          <p className="muted small">{strings.checks.tokensOffBody}</p>
+        </div>
+      </div>
+      <button onClick={onSetUp}>{strings.checks.setUpTokens}</button>
     </section>
   );
 }
