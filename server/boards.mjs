@@ -10,8 +10,8 @@ import { readBody, safeJoin, sendJson } from "./index.mjs";
 const read = (p) => fs.readFile(p, "utf8").catch(() => null);
 const FILE_RE = /^[a-z0-9][a-z0-9._-]*\.html$/i;
 
-const FONT = `@font-face{font-family:"Pretendard Variable";font-weight:45 920;font-style:normal;font-display:swap;src:url(https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/woff2/PretendardVariable.woff2) format("woff2-variations")}
-body{margin:0;color-scheme:light;font-family:"Pretendard Variable",Pretendard,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;color:#111111;background:#FFFFFF;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}`;
+// System font stack only: no web font download, nothing language- or brand-specific
+const BASE_CSS = `body{margin:0;color-scheme:light;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;color:#111111;background:#FFFFFF;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}`;
 
 /** New board templates. The size is written both in the board-size meta and on the outermost div */
 export const TEMPLATES = {
@@ -21,9 +21,10 @@ export const TEMPLATES = {
   doc: { label: "Document", w: 800, h: 1000 },
 };
 
-export function newBoardHtml({ title, w, h, template = "blank" }) {
+export function newBoardHtml({ title, w, h, template = "blank", brand = "" }) {
   const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
   const t = esc(title);
+  const name = esc(brand || "Title");
   const bodies = {
     blank: `<div style="width:${w}px;min-height:${h}px;box-sizing:border-box;padding:20px;display:flex;flex-direction:column;gap:16px">
 </div>`,
@@ -41,7 +42,7 @@ export function newBoardHtml({ title, w, h, template = "blank" }) {
 </div>`,
     desktop: `<div style="width:${w}px;min-height:${h}px;box-sizing:border-box;background:#FFFFFF;display:flex;flex-direction:column">
   <header style="height:64px;display:flex;align-items:center;gap:24px;padding:0 40px;border-bottom:1px solid #E8E8E6;flex:none">
-    <strong style="font-size:20px">farmclub</strong>
+    <strong style="font-size:20px">${name}</strong>
   </header>
   <main style="flex:1;max-width:1120px;width:100%;margin:0 auto;padding:40px;box-sizing:border-box;display:flex;flex-direction:column;gap:24px">
     <h1 style="margin:0;font-size:40px;font-weight:700;letter-spacing:-0.02em">${t}</h1>
@@ -53,14 +54,14 @@ export function newBoardHtml({ title, w, h, template = "blank" }) {
 </div>`,
   };
   return `<!doctype html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="board-size" content="${w}x${h}">
 <title>${t}</title>
 <style>
-${FONT}
+${BASE_CSS}
 </style>
 </head>
 <body>
@@ -177,7 +178,7 @@ export function boardRoutes() {
         const h = Math.max(40, Math.min(8000, Math.round(b.h ?? TEMPLATES[tpl].h)));
         const wanted = b.file && FILE_RE.test(b.file) ? b.file : `${tpl === "blank" ? "board" : tpl}.html`;
         const title = b.title || (tpl === "blank" ? wanted.replace(/\.html$/, "") : TEMPLATES[tpl].label);
-        const html = b.html ?? newBoardHtml({ title, w, h, template: tpl });
+        const html = b.html ?? newBoardHtml({ title, w, h, template: tpl, brand: (await ctx.store.readBoard()).title });
         const [file] = await createBoards(ctx, [{ file: wanted, html, x: b.x, y: b.y, w, h, title, page: b.page }], `Create board ${wanted}`);
         sendJson(res, 200, { file });
       },

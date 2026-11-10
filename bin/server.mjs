@@ -47,8 +47,9 @@ if (args.demo) {
 } else if (args.init) {
   if (!existsSync(path.join(dir, "screens"))) {
     const { newBoardHtml } = await import("../server/boards.mjs");
+    const { projectName } = await import("../server/fsutil.mjs");
     mkdirSync(path.join(dir, "screens"), { recursive: true });
-    writeFileSync(path.join(dir, "screens/home.html"), newBoardHtml({ title: "Home", w: 390, h: 844, template: "mobile" }));
+    writeFileSync(path.join(dir, "screens/home.html"), newBoardHtml({ title: "Home", w: 390, h: 844, template: "mobile", brand: projectName(dir) }));
     console.log(`Created ${path.join(dir, "screens/home.html")}`);
   }
   open = true;

@@ -31,5 +31,22 @@ async function renameRetry(from, to, tries = 6) {
   }
 }
 
+/** Repo root: two levels up for docs/design, otherwise (temp folders in tests) the folder itself */
+export const rootOf = (dir) => (dir.endsWith(path.join("docs", "design")) ? path.resolve(dir, "../..") : dir);
+
+/** Canvas name: the project folder (relay for /x/relay/docs/design), else the design folder's own name */
+export const projectName = (dir) => path.basename(rootOf(dir));
+
+/** <title> of an HTML file, trimmed and unescaped; null when missing or empty */
+export function htmlTitle(html) {
+  const m = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(String(html ?? ""));
+  const t = m?.[1]
+    .replace(/<[^>]*>/g, "")
+    .replace(/&(amp|lt|gt|quot|#39|apos|nbsp);/g, (_, e) => ({ amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'", apos: "'", nbsp: " " })[e])
+    .replace(/\s+/g, " ")
+    .trim();
+  return t ? t.slice(0, 120) : null;
+}
+
 /** OS path (\\ or /) → / path for URLs and board.json */
 export const toPosix = (rel, sep = path.sep) => rel.split(sep).join("/");

@@ -73,11 +73,20 @@ export const LeftPanel = forwardRef<HTMLInputElement, {
     });
   const row = (f: string) => {
     const b = p.board.boards[f];
+    // Title first; the file name is the second line when it says something the title does not
+    const twoLine = !!b.title && b.title !== f.replace(/\.html$/, "");
     return (
       <li key={f}>
-        <button className={`row ${p.selected.includes(f) ? "on" : ""}`} onClick={(e) => p.onPick(f, e.shiftKey || e.metaKey)} onContextMenu={(e) => { e.preventDefault(); p.onBoardMenu(f, e); }} title={f}>
+        <button className={`row ${twoLine ? "two-line" : ""} ${p.selected.includes(f) ? "on" : ""}`} onClick={(e) => p.onPick(f, e.shiftKey || e.metaKey)} onContextMenu={(e) => { e.preventDefault(); p.onBoardMenu(f, e); }} title={f}>
           <Icon name="board" size={14} />
-          <span className="row-text">{b.title ?? f}</span>
+          {twoLine ? (
+            <span className="row-text">
+              <span className="row-title">{b.title}</span>
+              <span className="row-file">{f}</span>
+            </span>
+          ) : (
+            <span className="row-text">{b.title ?? f}</span>
+          )}
           {p.missing.includes(f) && <Icon name="warn" size={14} className="warn-icon" aria-label={strings.boardList.fileMissing} />}
         </button>
       </li>

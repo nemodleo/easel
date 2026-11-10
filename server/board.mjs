@@ -4,7 +4,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { formatBoard } from "./boardFormat.mjs";
-import { writeAtomic } from "./fsutil.mjs";
+import { htmlTitle, projectName, writeAtomic } from "./fsutil.mjs";
 
 const DEFAULT_SIZE = { w: 390, h: 844 };
 const GAP_X = 80;
@@ -14,6 +14,10 @@ export function createBoardStore(dir) {
   const boardPath = path.join(dir, "board.json");
   const screensDir = path.join(dir, "screens");
 
+  // Canvas name: the project folder. Older versions stored the design folder's name ("design") as the title, so that counts as unset
+  const name = projectName(dir);
+  const titleOf = (t) => (!t || (t === path.basename(dir) && t !== name) ? name : t);
+
   async function readBoard() {
     try {
       const raw = await fs.readFile(boardPath, "utf8");
@@ -21,14 +25,14 @@ export function createBoardStore(dir) {
       return {
         ...b,
         version: 1,
-        title: b.title ?? path.basename(dir),
+        title: titleOf(b.title),
         pages: b.pages ?? [],
         boards: b.boards ?? {},
         order: b.order ?? Object.keys(b.boards ?? {}),
         notes: b.notes ?? {},
       };
     } catch (e) {
-      if (e.code === "ENOENT") return { version: 1, title: path.basename(dir), pages: [], boards: {}, order: [], notes: {} };
+      if (e.code === "ENOENT") return { version: 1, title: name, pages: [], boards: {}, order: [], notes: {} };
       throw e;
     }
   }
@@ -65,17 +69,13 @@ export function createBoardStore(dir) {
     return out.sort();
   }
 
-  /** <meta name="board-size" content="390x844"> → {w,h} */
-  async function readBoardSize(file) {
-    try {
-      const html = await fs.readFile(path.join(screensDir, file), "utf8");
-      const m = html.match(/<meta\s+name=["']board-size["']\s+content=["'](\d+)\s*[x×]\s*(\d+)["']/i);
-      if (m) return { w: Number(m[1]), h: Number(m[2]) };
-    } catch {
-      /* unreadable: use the default size */
-    }
-    return { ...DEFAULT_SIZE };
+  /** <meta name="board-size" content="390x844"> → {w,h}, plus the file's <title> (null when missing) */
+  async function readBoardInfo(file) {
+    const html = await fs.readFile(path.join(screensDir, file), "utf8").catch(() => ""); // unreadable: default size, no title
+    const m = html.match(/<meta\s+name=["']board-size["']\s+content=["'](\d+)\s*[x×]\s*(\d+)["']/i);
+    return { size: m ? { w: Number(m[1]), h: Number(m[2]) } : { ...DEFAULT_SIZE }, title: htmlTitle(html) };
   }
+  const readBoardSize = async (file) => (await readBoardInfo(file)).size;
 
   /** Row for new screens: right of the last auto-placed board, otherwise below everything + 120 */
   function placeNew(board, size) {
@@ -109,8 +109,8 @@ export function createBoardStore(dir) {
     let changed = false;
     for (const f of files) {
       if (board.boards[f]) continue;
-      const size = await readBoardSize(f);
-      board.boards[f] = { ...placeNew(board, size), title: f.replace(/\.html$/, ""), autoPlaced: true };
+      const { size, title } = await readBoardInfo(f);
+      board.boards[f] = { ...placeNew(board, size), title: title ?? f.replace(/\.html$/, ""), autoPlaced: true };
       board.order.push(f);
       changed = true;
     }
