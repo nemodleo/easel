@@ -1,6 +1,6 @@
 {
   "name": "easel-canvas",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Easel: an HTML design canvas for AI agents. Shows screens/*.html as boards and edits the source directly, with Claude Code / Codex via MCP",
   "license": "MIT",
   "author": "Hyun Park",
