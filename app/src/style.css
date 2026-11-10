@@ -130,7 +130,7 @@ kbd {
 .canvas.tool-board { cursor: crosshair; }
 .canvas.tool-title, .canvas.tool-sticky { cursor: copy; }
 .pan-capture { position: absolute; inset: 0; z-index: 50; }
-.world { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+.world { position: absolute; left: 0; top: 0; transform-origin: 0 0; } /* will-change is set from Canvas only while the view moves */
 .guide { position: absolute; background: var(--select); pointer-events: none; z-index: 5; }
 .marquee { position: absolute; border: solid var(--select); background: color-mix(in srgb, var(--select) 8%, transparent); pointer-events: none; }
 .draft-board { position: absolute; border: dashed var(--select); background: color-mix(in srgb, var(--panel) 70%, transparent); pointer-events: none; }

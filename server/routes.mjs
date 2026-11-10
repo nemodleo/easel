@@ -56,18 +56,46 @@ export async function closeBrowser() {
 }
 
 async function getBrowser() {
+  // A browser that exited behind our back (crash, killed, sleep) must not stay cached, or every thumbnail fails until a restart
+  const pending = browserPromise;
+  const cached = pending && (await pending.catch(() => null));
+  if (cached && !cached.isConnected() && browserPromise === pending) browserPromise = null;
   if (!browserPromise) {
-    browserPromise = (async () => {
+    const p = (browserPromise = (async () => {
       const { chromium } = await import("playwright").catch(() => {
         throw Object.assign(new Error("Screenshots are unavailable because playwright is not installed (npm run design:install)"), { status: 501 });
       });
       // Fall back to the installed Chrome if no downloaded Chromium exists
-      return chromium.launch().catch(() => chromium.launch({ channel: "chrome" }));
-    })();
-    browserPromise.catch(() => (browserPromise = null));
+      const b = await chromium.launch().catch(() => chromium.launch({ channel: "chrome" }));
+      b.on("disconnected", () => {
+        if (browserPromise === p) browserPromise = null;
+      });
+      return b;
+    })());
+    p.catch(() => {
+      if (browserPromise === p) browserPromise = null;
+    });
   }
   return browserPromise;
 }
+
+/** New page on the shared browser; if the browser died since it was cached, launch a fresh one and try once more */
+export async function newPage(opts) {
+  const browser = await getBrowser();
+  try {
+    return await browser.newPage(opts);
+  } catch (e) {
+    if (browser.isConnected()) throw e;
+    return (await getBrowser()).newPage(opts); // getBrowser drops the dead one and launches again
+  }
+}
+
+/** For tests: the browser currently cached for screenshots, if any */
+export const cachedBrowser = () => browserPromise?.catch(() => null) ?? Promise.resolve(null);
+
+/** Thumbnail sizes (long side, device px) the client may ask for; anything else snaps to the next one up. Matches THUMB_SIZES in Canvas.tsx */
+const THUMB_PX = [600, 1200, 2400];
+export const thumbPx = (v) => THUMB_PX.find((s) => s >= Number(v)) ?? (Number(v) > 0 ? THUMB_PX[THUMB_PX.length - 1] : THUMB_PX[0]);
 
 /** Generate at most two thumbnails at a time */
 let running = 0;
@@ -92,8 +120,7 @@ function thumbQueue(job) {
 
 export async function screenshot(ctx, port, file, elPath) {
   const board = (await ctx.store.readBoard()).boards[file];
-  const browser = await getBrowser();
-  const page = await browser.newPage({ viewport: { width: board?.w ?? 390, height: board?.h ?? 844 }, deviceScaleFactor: 2 });
+  const page = await newPage({ viewport: { width: board?.w ?? 390, height: board?.h ?? 844 }, deviceScaleFactor: 2 });
   try {
     await page.goto(`http://127.0.0.1:${port}/screens/${encodeURI(file)}`, { waitUntil: "networkidle" });
     const outDir = path.join(TOOL_ROOT, ".out");
@@ -161,8 +188,11 @@ export const extraRoutes = [
       const src = safeJoin(ctx.store.screensDir, f);
       const st = src && (await fs.stat(src).catch(() => null));
       if (!st) return sendJson(res, 404, { error: "File not found" });
+      const px = thumbPx(url.searchParams.get("px"));
       const dir = path.join(ctx.dir, ".thumbs");
-      const out = path.join(dir, `${f.replace(/[\\/]/g, "_")}.${Math.round(st.mtimeMs)}.jpg`);
+      const base = f.replace(/[\\/]/g, "_");
+      const stamp = `${base}.${Math.round(st.mtimeMs)}.`;
+      const out = path.join(dir, `${stamp}${px}.jpg`);
       let buf = await fs.readFile(out).catch(() => null);
       if (!buf) {
         buf = await thumbQueue(async () => {
@@ -171,14 +201,14 @@ export const extraRoutes = [
           const board = (await ctx.store.readBoard()).boards[f];
           const w = board?.w ?? 390;
           const h = board?.h ?? 844;
-          const browser = await getBrowser();
-          const page = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: Math.min(0.5, 600 / Math.max(w, h)) });
+          // Long side ≈ px device pixels, so large boards stay sharp when zoomed out on a 2× display
+          const page = await newPage({ viewport: { width: w, height: h }, deviceScaleFactor: Math.min(2, px / Math.max(w, h)) });
           try {
             await page.goto(`http://127.0.0.1:${req.socket.localPort}/screens/${encodeURI(f)}`, { waitUntil: "load", timeout: 15000 });
             await page.waitForTimeout(150);
-            const b = await page.screenshot({ type: "jpeg", quality: 70 });
-            // Remove old thumbnails
-            for (const n of await fs.readdir(dir)) if (n.startsWith(f.replace(/[\\/]/g, "_") + ".") && path.join(dir, n) !== out) await fs.rm(path.join(dir, n), { force: true });
+            const b = await page.screenshot({ type: "jpeg", quality: 80 });
+            // Remove thumbnails of older versions (other sizes of this version stay)
+            for (const n of await fs.readdir(dir)) if (n.startsWith(base + ".") && !n.startsWith(stamp)) await fs.rm(path.join(dir, n), { force: true });
             await fs.writeFile(out, b);
             return b;
           } finally {
@@ -384,7 +414,7 @@ export async function attach(app) {
   const close = app.close;
   app.close = async () => {
     await stop();
-    if (browserPromise) (await browserPromise.catch(() => null))?.close();
+    await closeBrowser();
     await close();
   };
 }

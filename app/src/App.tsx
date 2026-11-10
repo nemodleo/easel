@@ -405,7 +405,8 @@ export function App() {
   const pages = board?.pages ?? [];
   const currentPage = pages.find((p) => p.id === page)?.id ?? pages[0]?.id ?? null;
   const onPage = useCallback((item: { page?: string }) => !pages.length || (item.page ?? pages[0].id) === currentPage, [pages, currentPage]);
-  const visibleBoards = useMemo(() => (board ? board.order.filter((f) => board.boards[f] && onPage(board.boards[f])) : []), [board, onPage]);
+  // Set: a file listed twice in board.json order must not render two boards with one key (React #185 loop)
+  const visibleBoards = useMemo(() => (board ? [...new Set(board.order)].filter((f) => board.boards[f] && onPage(board.boards[f])) : []), [board, onPage]);
   const visibleNotes = useMemo(() => (board ? Object.keys(board.notes).filter((id) => onPage(board.notes[id])) : []), [board, onPage]);
   const size = canvasSize ?? { w: window.innerWidth, h: window.innerHeight - 48 };
 

@@ -172,7 +172,7 @@ default_tools_approval_mode = "approve"  # without this, MCP calls are blocked i
 
 ## 9. Risks to check
 
-- **98 iframes:** render only boards visible on screen and leave the rest as thumbnails or empty frames (IntersectionObserver). Below 25% zoom, use thumbnails instead of iframes.
+- **98 iframes:** render only boards visible on screen and leave the rest as thumbnails or empty frames (IntersectionObserver). Below 25% zoom, use thumbnails instead of iframes, unless a board is still at least 640 px on screen (long side). Thumbnails are rendered at 600 / 1200 / 2400 px on the long side, whichever covers the board on screen at the display's pixel ratio.
 - **Path mismatch:** whitespace text or `<template>` in the source can throw paths off. Validate the path and hash together.
 - **Concurrent edits:** an AI and a person may edit the same file at the same time. If the hash differs, reject and make the client reload.
 - **iCloud:** the design folder is inside iCloud. Enable `awaitWriteFinish` in chokidar and ignore `.icloud` placeholder files.

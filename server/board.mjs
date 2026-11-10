@@ -10,6 +10,18 @@ const DEFAULT_SIZE = { w: 390, h: 844 };
 const GAP_X = 80;
 const GAP_Y = 120;
 
+/**
+ * order lists each board exactly once: duplicates and names missing from boards are dropped, boards missing from order
+ * are appended. Hand edits and agents writing board.json can leave a file twice, which renders two boards with one key.
+ * The next save writes the cleaned list back.
+ */
+export function normalizeOrder(order, boards) {
+  const out = [...new Set((Array.isArray(order) ? order : []).filter((f) => typeof f === "string" && Object.hasOwn(boards, f)))];
+  const seen = new Set(out);
+  for (const f of Object.keys(boards)) if (!seen.has(f)) out.push(f);
+  return out;
+}
+
 export function createBoardStore(dir) {
   const boardPath = path.join(dir, "board.json");
   const screensDir = path.join(dir, "screens");
@@ -28,7 +40,7 @@ export function createBoardStore(dir) {
         title: titleOf(b.title),
         pages: b.pages ?? [],
         boards: b.boards ?? {},
-        order: b.order ?? Object.keys(b.boards ?? {}),
+        order: normalizeOrder(b.order, b.boards ?? {}),
         notes: b.notes ?? {},
       };
     } catch (e) {
@@ -111,7 +123,7 @@ export function createBoardStore(dir) {
       if (board.boards[f]) continue;
       const { size, title } = await readBoardInfo(f);
       board.boards[f] = { ...placeNew(board, size), title: title ?? f.replace(/\.html$/, ""), autoPlaced: true };
-      board.order.push(f);
+      if (!board.order.includes(f)) board.order.push(f);
       changed = true;
     }
     if (changed) await writeBoard(board);

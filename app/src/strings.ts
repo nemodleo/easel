@@ -14,6 +14,8 @@ export const strings = {
     docTitle: (canvas: string) => `${canvas} — Easel`,
     loadFailed: "Couldn't load:",
     retry: "Try again",
+    crashed: "The canvas hit an error and stopped:",
+    reload: "Reload",
     loadingBoards: "Loading boards…",
     loading: "Loading…",
     emptyPage: "This page is empty",
