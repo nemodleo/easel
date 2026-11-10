@@ -2,15 +2,27 @@
   "version": 1,
   "title": "Easel UI",
   "pages": [],
+  "launch": {"view":"canvas"},
   "boards": {
-    "canvas-light.html": {"x": 0, "y": 0, "w": 1440, "h": 900, "title": "Canvas · light"},
-    "canvas-dark.html": {"x": 1520, "y": 0, "w": 1440, "h": 900, "title": "Canvas · dark"},
-    "edit-mode.html": {"x": 0, "y": 1000, "w": 1440, "h": 900, "title": "Edit mode"},
-    "ai-chat.html": {"x": 1520, "y": 1000, "w": 1440, "h": 900, "title": "AI chat"},
-    "first-run.html": {"x": 0, "y": 2000, "w": 1440, "h": 900, "title": "First run"},
-    "board-groups.html": {"x": 1520, "y": 2000, "w": 1440, "h": 900, "title": "Board list · groups"},
-    "narrow-600.html": {"x": 3040, "y": 0, "w": 600, "h": 700, "title": "Narrow window · 600"},
-    "narrow-440.html": {"x": 3720, "y": 0, "w": 440, "h": 700, "title": "Phone width · 440"}
+    "ai-chat.html": {"x":1520,"y":1000,"w":1440,"h":900,"title":"AI chat"},
+
+    "ai-not-ready.html": {"x":0,"y":3000,"w":1440,"h":900,"title":"AI · not ready"},
+
+    "ai-run-failed.html": {"x":1520,"y":3000,"w":1440,"h":900,"title":"AI · run failed"},
+
+    "board-groups.html": {"x":1520,"y":2000,"w":1440,"h":900,"title":"Board list · groups"},
+
+    "canvas-dark.html": {"x":1520,"y":0,"w":1440,"h":900,"title":"Canvas · dark"},
+
+    "canvas-light.html": {"x":0,"y":0,"w":1440,"h":900,"title":"Canvas · light"},
+
+    "edit-mode.html": {"x":0,"y":1000,"w":1440,"h":900,"title":"Edit mode"},
+
+    "first-run.html": {"x":0,"y":2000,"w":1440,"h":900,"title":"First run"},
+
+    "narrow-440.html": {"x":3720,"y":0,"w":440,"h":700,"title":"Phone width · 440"},
+
+    "narrow-600.html": {"x":3040,"y":0,"w":600,"h":700,"title":"Narrow window · 600"}
   },
   "order": [
     "canvas-light.html",
@@ -20,14 +32,18 @@
     "first-run.html",
     "board-groups.html",
     "narrow-600.html",
-    "narrow-440.html"
+    "narrow-440.html",
+    "ai-not-ready.html",
+    "ai-run-failed.html"
   ],
   "notes": {
-    "n1": {"kind": "title", "x": 0, "y": -200, "maxW": 1400, "text": "Easel UI"},
-    "n3": {"kind": "sticky", "x": 3040, "y": 1000, "w": 360, "text": "Easel drawn in Easel. Edit these boards to redesign the app.\nassets/easel.css holds the chrome styles; app/src/style.css mirrors it.", "color": "blue"},
-    "n4": {"kind": "sticky", "x": 3040, "y": 1300, "w": 360, "text": "Shipped 2026-10-11 (2nd report P0–P2), shown on these boards:\n· Board title in the toolbar is quiet (muted, 500)\n· File names show only on hover/selection\n· Minimap tiles fade past 30 boards\n· Boards not yet loaded are hatched + 'Scroll closer to load'\n· Board screenshot moved to the Comments row\n· Register tokens is a secondary button\n· AI tab: Agent label + New chat\n· Groups can be renamed (Screens)\n· 440px: one Tools menu", "color": "blue"},
-    "n2": {"kind": "sticky", "x": 3040, "y": 800, "w": 360, "text": "Under 1000px the panels are drawers. Under 640px the zoom readout and Fit hide so the toolbar stays on one row.", "color": "yellow"}
+    "n1": {"kind":"title","x":0,"y":-200,"maxW":1400,"text":"Easel UI"},
+
+    "n2": {"kind":"sticky","x":3040,"y":800,"w":360,"text":"Under 1000px the panels are drawers. Under 640px the zoom readout and Fit hide so the toolbar stays on one row.","color":"yellow"},
+
+    "n3": {"kind":"sticky","x":3040,"y":1000,"w":360,"text":"Easel drawn in Easel. Edit these boards to redesign the app.\nassets/easel.css holds the chrome styles; app/src/style.css mirrors it.","color":"blue"},
+
+    "n4": {"kind":"sticky","x":3040,"y":1300,"w":360,"text":"Shipped 2026-11-10 (first run, AI readiness and failure, comment write lock), shown on these boards","color":"blue"}
   },
-  "shapes": {},
-  "launch": {"view": "canvas"}
+  "shapes": {}
 }

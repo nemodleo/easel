@@ -6,7 +6,26 @@
 <meta name="board-size" content="1440x900">
 <title>First run</title>
 <link rel="stylesheet" href="/assets/easel.css">
-<style>.app{width:1440px;height:900px}</style>
+<style>
+.app{width:1440px;height:900px}
+.board-title{min-width:0;overflow:hidden;text-overflow:ellipsis}
+/* mini mobile screens inside boards (project content, not Easel chrome) */
+.scr{position:absolute;inset:0;background:#fff;display:flex;flex-direction:column;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#10213a}
+.scr .hd{height:36px;display:flex;align-items:center;padding:0 12px;font-weight:700;font-size:12px;flex:none}
+.scr .bd{flex:1;padding:8px 12px;display:flex;flex-direction:column;gap:8px}
+.scr .h{font-size:17px;font-weight:700;line-height:1.2;letter-spacing:-.01em}
+.scr .p{font-size:11px;line-height:1.4;color:#5a6577}
+.scr .ft{padding:10px 12px 18px;display:flex;flex-direction:column;gap:6px;align-items:center;flex:none}
+.scr .cta{width:100%;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;background:#2b59c3}
+.scr .lnk{font-size:11px;color:#2b59c3;font-weight:600}
+.scr .art{height:120px;border-radius:12px;background:linear-gradient(160deg,#dfe7fb,#b9cbf4);position:relative}
+.scr .art i{position:absolute;width:46px;height:46px;border-radius:23px;background:#2b59c3;left:50%;top:50%;margin:-23px 0 0 -23px;opacity:.85}
+.scr .opt{height:34px;border-radius:9px;border:1px solid #d9e0ee;display:flex;align-items:center;padding:0 10px;font-size:11px;font-weight:600;gap:8px}
+.scr .opt.on{border-color:#2b59c3;background:#eef3fd;color:#2b59c3}
+.scr .opt b{width:12px;height:12px;border-radius:3px;border:1.5px solid currentColor;flex:none}
+.scr .in{height:32px;border-radius:9px;background:#f2f4f8;display:flex;align-items:center;padding:0 10px;font-size:11px;color:#7a8597}
+.scr .dots{display:flex;gap:4px;justify-content:center;padding-top:4px}.scr .dots i{width:6px;height:6px;border-radius:3px;background:#d0d7e5}.scr .dots i.on{background:#2b59c3;width:14px}
+</style>
 </head>
 <body class="">
 <div class="app"><header class="toolbar">
@@ -17,9 +36,9 @@
     <div class="tool-group"><button class="icon-btn " title="undo"><svg class="ic" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button><button class="icon-btn " title="redo"><svg class="ic" viewBox="0 0 24 24"><path d="M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3"/></svg></button></div>
     <button class="new-board"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> New board <svg class="ic s" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
   </div>
-  <div class="tb-zone tb-center"><span class="app-title muted" style="font-weight:500">Tidy — habit tracker</span></div>
+  <div class="tb-zone tb-center"><span class="app-title muted" style="font-weight:500" title="relay/docs/design">relay</span></div>
   <div class="tb-zone tb-right">
-    <div class="tool-group"><button class="icon-btn" title="Zoom out"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button><span class="zoom">48%</span><button class="icon-btn " title="Zoom in"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button><button class="icon-btn " title="Fit all"><svg class="ic" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button></div>
+    <div class="tool-group"><button class="icon-btn" title="Zoom out"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button><span class="zoom">50%</span><button class="icon-btn " title="Zoom in"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button><button class="icon-btn " title="Fit all"><svg class="ic" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button></div>
     <button class="ask-ai "><svg class="ic" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg> <span class="ask-ai-label">Ask AI</span></button>
     <button class="icon-btn " title="View"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg></button>
   </div>
@@ -31,34 +50,86 @@
     <p class="empty">Viewing everything as one page. Use + to split it into pages.</p>
   </section>
   <section class="left-boards">
-    <div class="sec-head"><span>Boards 7</span></div>
+    <div class="sec-head"><span>Boards 5</span></div>
     <label class="search"><svg class="ic s" viewBox="0 0 24 24"><path d="M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14zM20 20l-4-4"/></svg><span>Find boards (⌘K)</span></label>
-    <ul class="board-list"><li><button class="row" title="home.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text">Today</span></button></li><li><button class="row" title="habit.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text">Habit detail</span></button></li><li><button class="row" title="new-habit.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text">New habit</span></button></li><li><button class="row" title="stats.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text">Stats</span></button></li><li><button class="row" title="settings.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text">Settings</span></button></li><li><button class="row" title="empty.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text">Empty state</span></button></li><li><button class="row" title="landing.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text">Landing (desktop)</span></button></li></ul>
+    <ul class="board-list">
+      <li><button class="row two-line" title="home.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Home</span><span class="row-file">home.html</span></span></button></li>
+      <li><button class="row two-line on" title="onboard-1-welcome.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Onboarding 1 · Welcome</span><span class="row-file">onboard-1-welcome.html</span></span></button></li>
+      <li><button class="row two-line" title="onboard-2-goals.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Onboarding 2 · Goals</span><span class="row-file">onboard-2-goals.html</span></span></button></li>
+      <li><button class="row two-line" title="onboard-3-invite.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Onboarding 3 · Invite</span><span class="row-file">onboard-3-invite.html</span></span></button></li>
+      <li><button class="row two-line" title="inbox.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Inbox</span><span class="row-file">inbox.html</span></span></button></li>
+    </ul>
   </section>
 </aside>
-<div class="canvas-wrap"><div class="first-run"><span class="first-run-line"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/></svg> Double-click a board to edit it</span><span class="first-run-line"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg> <kbd>⌘J</kbd> Ask AI to change it</span></div><div class="canvas"><div class="board" style="left:780px;top:120px;width:187px;height:405px"><div class="board-label"><span class="board-title">Stats</span></div><div class="board-frame" style="background:repeating-linear-gradient(135deg,#f7f6f3 0 14px,#efede8 14px 16px);display:flex;align-items:center;justify-content:center;text-align:center;color:#8a8982;font-size:14px;padding:24px"><span>Stats<br><span style="font-size:11px">Scroll closer to load</span></span></div></div><div class="board " style="left:60px;top:120px;width:187px;height:405px">
-  <div class="board-label"><span class="board-title">Today</span><span class="board-file" style="opacity:0">home.html</span><span class="board-btns"><button class="icon-btn sm edit-pill"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/></svg> Edit</button></span></div>
-  <div class="board-frame"><div class="ph"><div class="bar">Today</div><div class="hero"></div><div class="line w"></div><div class="line n"></div><div class="card"></div><div class="card"></div><div class="card"></div><div class="btn-k">Add habit</div></div></div>
+<div class="canvas-wrap"><div class="first-run"><span class="first-run-line"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/></svg> Double-click a board to edit it</span><span class="first-run-line"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg> <kbd>⌘J</kbd> Ask AI to change it</span></div><div class="canvas">
+<div class="board" style="left:20px;top:150px;width:195px;height:422px">
+  <div class="board-label"><span class="board-title">Home</span></div>
+  <div class="board-frame"><div class="scr" style="color:#111">
+    <div class="hd">Home</div>
+    <div class="bd"><div class="h" style="font-size:20px">Title</div><div class="p" style="color:#6b6b6b">Description</div></div>
+    <div class="ft"><div class="cta" style="background:#c94f0c">Next</div></div>
+  </div></div>
 </div>
-<div class="board " style="left:300px;top:120px;width:187px;height:405px">
-  <div class="board-label"><span class="board-title">Habit detail</span><span class="board-file" style="opacity:0">habit.html</span><span class="board-btns"><button class="icon-btn sm edit-pill"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/></svg> Edit</button></span></div>
-  <div class="board-frame"><div class="ph"><div class="bar">Habit detail</div><div class="line w"></div><div class="line"></div><div class="line n"></div><div class="card"></div><div class="line w"></div><div class="line"></div><div class="btn-k">Mark done</div></div></div>
+<div class="board selected" style="left:228px;top:150px;width:195px;height:422px">
+  <div class="board-label"><span class="board-title">Onboarding 1 · Welcome</span><span class="board-btns"><button class="icon-btn sm edit-pill" title="Edit"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/></svg></button></span></div>
+  <div class="board-frame"><div class="scr">
+    <div class="hd" style="justify-content:flex-end;color:#2b59c3;font-size:11px">Skip</div>
+    <div class="bd"><div class="art"><i></i></div><div class="h">Hand off work, not the whole thread.</div><div class="p">Relay keeps the context so the next person can just start.</div><div class="dots"><i class="on"></i><i></i><i></i></div></div>
+    <div class="ft"><div class="cta">Get started</div><div class="lnk">I have an account</div></div>
+  </div></div>
 </div>
-<div class="board " style="left:540px;top:120px;width:187px;height:405px">
-  <div class="board-label"><span class="board-title">New habit</span><span class="board-file" style="opacity:0">new-habit.html</span><span class="board-btns"><button class="icon-btn sm edit-pill"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/></svg> Edit</button></span></div>
-  <div class="board-frame"><div class="ph"><div class="bar">New habit</div><div class="line n"></div><div class="card"></div><div class="line n"></div><div class="card"></div><div class="btn-k">Save</div></div></div>
+<div class="board" style="left:436px;top:150px;width:195px;height:422px">
+  <div class="board-label"><span class="board-title">Onboarding 2 · Goals</span></div>
+  <div class="board-frame"><div class="scr">
+    <div class="hd" style="justify-content:flex-end;color:#2b59c3;font-size:11px">Skip</div>
+    <div class="bd"><div class="h">What will you relay?</div><div class="p">Pick all that apply.</div>
+      <div class="opt on"><b></b>Shift handovers</div><div class="opt"><b></b>Customer tickets</div><div class="opt on"><b></b>Design reviews</div><div class="opt"><b></b>Something else</div>
+      <div class="dots"><i></i><i class="on"></i><i></i></div></div>
+    <div class="ft"><div class="cta">Continue</div></div>
+  </div></div>
+</div>
+<div class="board" style="left:644px;top:150px;width:195px;height:422px">
+  <div class="board-label"><span class="board-title">Onboarding 3 · Invite</span></div>
+  <div class="board-frame"><div class="scr">
+    <div class="hd" style="justify-content:flex-end;color:#2b59c3;font-size:11px">Skip</div>
+    <div class="bd"><div class="h">Invite your team</div><div class="p">Relays work best with at least two people.</div>
+      <div class="in">name@company.com</div><div class="in">name@company.com</div><div class="lnk">+ Add another</div>
+      <div class="dots"><i></i><i></i><i class="on"></i></div></div>
+    <div class="ft"><div class="cta">Send invites</div><div class="lnk">Later</div></div>
+  </div></div>
 </div>
 </div><div class="minimap"><svg width="200" height="130">
-  <rect x="20" y="20" width="26" height="56" class="mm-sel"/><rect x="54" y="20" width="26" height="56" class="mm-board"/><rect x="88" y="20" width="26" height="56" class="mm-board"/><rect x="122" y="20" width="26" height="56" class="mm-board"/><rect x="156" y="20" width="26" height="56" class="mm-board"/>
-  <rect x="20" y="86" width="26" height="30" class="mm-board"/><rect x="54" y="86" width="80" height="30" class="mm-board"/>
-  <rect x="10" y="8" width="150" height="90" class="mm-view"/></svg></div></div><aside class="right">
+  <rect x="14" y="24" width="24" height="52" class="mm-board"/><rect x="44" y="24" width="24" height="52" class="mm-sel"/><rect x="74" y="24" width="24" height="52" class="mm-board"/><rect x="104" y="24" width="24" height="52" class="mm-board"/><rect x="134" y="24" width="24" height="52" class="mm-board"/>
+  <rect x="8" y="10" width="146" height="96" class="mm-view"/></svg></div>
+</div><aside class="right">
   <div class="right-tabs"><button class="on">Properties</button><button>AI <kbd>⌘J</kbd></button></div>
-  <div class="inspector"><div class="inspector-empty">
-    <p class="empty-lead">Tell the AI what to change, or edit a board yourself.</p>
-    <button class="btn primary ask-ai-cta"><svg class="ic" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg> Ask AI (⌘J)</button>
-    <p class="muted">Pick a board on the canvas to see its options.</p>
-    <ul><li><kbd>B</kbd> Draw board · <kbd>T</kbd> Title · <kbd>N</kbd> Note</li><li>Double-click or <kbd>E</kbd> Edit · <kbd>F</kbd> Focus view</li><li>Right-click for menu · <kbd>⌘K</kbd> Find boards</li></ul>
-  </div></div>
+  <div class="inspector">
+    <section>
+      <h3>Onboarding 1 · Welcome</h3>
+      <p class="muted">Viewing · double-click the board to edit it</p>
+    </section>
+    <section>
+      <div class="sec-head"><span>Board</span></div>
+      <p class="muted">onboard-1-welcome.html</p>
+      <div class="two"><div class="num"><span>X</span>420</div><div class="num"><span>Y</span>0</div></div>
+      <div class="two"><div class="num"><span>Width</span>390</div><div class="num"><span>Height</span>844</div></div>
+      <label class="check"><i class="on"></i> Interactive (Play)</label>
+      <label class="check"><i></i> Frameless</label>
+      <label class="check"><i></i> Open as launch screen</label>
+    </section>
+    <section class="collapsible "><button class="collapsible-toggle"><svg class="ic s chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg><span>Tweaks</span></button></section>
+    <section class="collapsible open"><button class="collapsible-toggle"><svg class="ic s chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg><span>Token check</span><span class="collapsible-count">off</span></button><div class="collapsible-body">
+      <div class="tc-off"><svg class="ic s" viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18zM12 11v5M12 8h.01"/></svg><div><strong>No tokens registered — checks are off</strong><p class="muted">Colours and sizes are not checked, and the AI is not given a default palette.</p></div></div>
+      <button class="btn" style="width:100%;justify-content:flex-start">Set up tokens</button>
+    </div></section>
+    <section class="collapsible "><button class="collapsible-toggle"><svg class="ic s chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg><span>Accessibility</span></button></section>
+    <section class="collapsible "><button class="collapsible-toggle"><svg class="ic s chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg><span>Layout guides</span></button></section>
+    <section>
+      <h3>Comments</h3>
+      <textarea placeholder="Comment on the board"></textarea>
+      <div class="btn-row"><button class="btn">Comment</button><button class="btn link muted" style="margin-left:auto;color:var(--muted)">Board screenshot</button></div>
+    </section>
+  </div>
 </aside>
 </div></div></body>
 </html>
