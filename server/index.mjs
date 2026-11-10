@@ -119,7 +119,7 @@ export async function createServer({ dir, port, dev = true, extraRoutes = [] }) 
   }
   if (!existsSync(path.join(distDir, "index.html"))) throw new Error("No app build found (running with npm start creates it)");
 
-  const LOCKED = /^\/api\/(board|boards\/|history\/|edit|undo|redo|place|notes|pages)/;
+  const LOCKED = /^\/api\/(board|boards\/|history\/|edit|undo|redo|place|notes|pages|comments)/;
   const routes = [
     ["GET", "/api/health", async (req, res) => sendJson(res, 200, { ok: true, dir })],
     [
@@ -146,7 +146,7 @@ export async function createServer({ dir, port, dev = true, extraRoutes = [] }) 
         }
       },
     ],
-    // Requests that change boards/files run one at a time via store.exclusive (so they never overlap auto-placement)
+    // Requests that change boards/files/comments run one at a time via store.exclusive (so they never overlap auto-placement or lose a read-modify-write)
     ...extraRoutes.map((r) => [r[0], r[1], (req, res, url) => (r[0] !== "GET" && LOCKED.test(r[1]) ? store.exclusive(() => r[2](req, res, url, ctx)) : r[2](req, res, url, ctx))]),
   ];
 
