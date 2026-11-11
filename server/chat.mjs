@@ -1,12 +1,14 @@
 // AI-generated with Claude Code, 2026-10-09, reviewed by Hyun Park
 // In-canvas chat: spawns claude -p / codex exec and turns their output (JSONL) into uniform events streamed over WS.
 // Attaches the selection, visible boards, comments, references and errors as context; for "N variants" it first creates copies side by side.
+// Each run copies the tracked files to .easel/runs/<id>/ first (POST /api/chat/revert), and everything it changes becomes one undo step.
 import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 
 import { createBoards } from "./boards.mjs";
-import { rootOf } from "./fsutil.mjs";
+import { copyRun, revertRun } from "./copies.mjs";
+import { rootOf, toPosix } from "./fsutil.mjs";
 import { readBody, sendJson } from "./index.mjs";
 import { NO_TOKENS_NOTE, readTokens } from "./tokens.mjs";
 
@@ -222,6 +224,11 @@ export function chatRoutes({ getSelection } = {}) {
           const agent = body.agent === "codex" ? "codex" : "claude";
           if (!String(body.text ?? "").trim()) return sendJson(res, 400, { error: "Please enter a message" });
           state.selection = getSelection?.() ?? null;
+          let id = `r${Date.now().toString(36)}`;
+          while (runs.has(id)) id = `r${(parseInt(id.slice(1), 36) + 1).toString(36)}`;
+          const label = AGENT_LABEL[agent];
+          // Pre-run copy on disk (before variant copies too): revertable even after a restart, no git needed
+          await ctx.store.exclusive(() => copyRun(ctx, id, { agent, label, request: String(body.text).slice(0, 200) })).catch((e) => console.error("run copy failed", e));
           // N variants: create copies of the original side by side to the right
           const n = Math.min(4, Math.max(0, Number(body.variants) || 0));
           if (n > 1) {
@@ -245,13 +252,15 @@ export function chatRoutes({ getSelection } = {}) {
           const images = (body.attach?.refs ?? []).filter((r) => r.kind === "image").map((r) => path.join(ctx.dir, r.value));
           const model = validModel(body.model);
           const { cmd, args } = agentCommand(agent, { prompt, resume: body.resume, root: rootOf(ctx.dir), images, model });
-          const id = `r${Date.now().toString(36)}`;
+          const request = String(body.text).trim().replace(/\s+/g, " ");
+          ctx.history.beginRun({ id, label: `${label}: ${request.length > 40 ? request.slice(0, 40) + "…" : request}`, by: label });
           let proc;
           try {
             // Windows: claude/codex are .cmd wrappers so a shell is needed, and there is no process-group kill so detached is not used
             const win = process.platform === "win32";
-            proc = spawn(cmd, win ? args.map(winQuote) : args, { cwd: rootOf(ctx.dir), stdio: ["ignore", "pipe", "pipe"], detached: !win, shell: win, windowsHide: true, env: { ...process.env, DESIGN_CANVAS_PORT: String(req.socket.localPort) } });
+            proc = spawn(cmd, win ? args.map(winQuote) : args, { cwd: rootOf(ctx.dir), stdio: ["ignore", "pipe", "pipe"], detached: !win, shell: win, windowsHide: true, env: { ...process.env, DESIGN_CANVAS_PORT: String(req.socket.localPort), EASEL_RUN_ID: id } });
           } catch (e) {
+            ctx.history.endRun(id);
             return sendJson(res, 500, { error: `Could not run ${cmd}: ${e.message}` });
           }
           const run = { proc, agent, events: [], status: "running", prompt };
@@ -274,6 +283,20 @@ export function chatRoutes({ getSelection } = {}) {
             const raw = [shown, ...all.split("\n").slice(-20), code != null || signal ? `Exit code ${code ?? signal}` : ""].filter(Boolean).join("\n");
             emit({ kind: "error", text: c.text, cause: c.cause, raw, changed: !!run.changed });
           };
+          // At the end: diff the tracked files now (watcher events may still be pending), so the run's undo step is complete before `end`
+          const finish = async () => {
+            const steps = await ctx.store
+              .exclusive(async () => {
+                await ctx.history.observe().catch((e) => console.error("run diff failed", e));
+                ctx.history.endRun(id);
+                return ctx.history.runSteps(id);
+              })
+              .catch(() => []);
+            if (steps.length) ctx.broadcast({ type: "history-changed" });
+            const rel = (p) => toPosix(path.relative(ctx.store.screensDir, p));
+            const changed = [...new Set(steps.flatMap((s) => s.changes.map((c) => c.path)).filter((p) => p.endsWith(".html") && !rel(p).startsWith("..")).map(rel))];
+            return { changed, step: steps.length > 0 };
+          };
           emit({ kind: "start", agent, prompt, variants: body.variants?.files });
           const st = {};
           let buf = "";
@@ -288,17 +311,17 @@ export function chatRoutes({ getSelection } = {}) {
           });
           let err = "";
           proc.stderr.on("data", (d) => (err += d).length > 4000 && (err = err.slice(-4000)));
-          proc.on("error", (e) => {
+          proc.on("error", async (e) => {
             run.status = "error";
             fail({ enoent: e.code === "ENOENT", message: e.message });
-            emit({ kind: "end", status: "error" });
+            emit({ kind: "end", status: "error", ...(await finish()) });
           });
-          proc.on("close", (code, signal) => {
+          proc.on("close", async (code, signal) => {
             if (run.status === "error") return;
             if (buf.trim()) for (const ev of parseLine(agent, buf, st)) emit(ev);
             run.status = run.cancelled ? "cancelled" : code === 0 ? "done" : "error";
             if (run.status === "error") fail({ code, signal });
-            emit({ kind: "end", status: run.status });
+            emit({ kind: "end", status: run.status, ...(await finish()) });
           });
           sendJson(res, 200, { id, variants: body.variants?.files ?? [] });
         },
@@ -321,6 +344,21 @@ export function chatRoutes({ getSelection } = {}) {
         },
       ],
       ["GET", "/api/chat", async (req, res, url) => sendJson(res, 200, { events: runs.get(url.searchParams.get("id"))?.events ?? [] })],
+      // Puts the tracked files back as they were before a run, as one undo step. Works from the disk copy, so also after a restart
+      [
+        "POST",
+        "/api/chat/revert",
+        async (req, res, url, ctx) => {
+          const { id } = await readBody(req);
+          if (runs.get(id)?.status === "running") return sendJson(res, 409, { error: "The run is still going; cancel it first" });
+          const r = await revertRun(ctx, id);
+          if (!r) return sendJson(res, 404, { error: "No copy of that run is left (only the newest 10 are kept)" });
+          ctx.broadcast({ type: "board-changed", source: "server:revert" });
+          ctx.broadcast({ type: "history-changed" });
+          const rel = (p) => toPosix(path.relative(ctx.store.screensDir, p));
+          sendJson(res, 200, { ok: true, label: `Revert ${r.meta.label ?? "AI"} run`, changed: r.changes.map((c) => c.path).filter((p) => p.endsWith(".html")).map(rel) });
+        },
+      ],
       // Readiness per agent, checked on every call (the app asks when the AI tab opens and on Check again)
       [
         "GET",

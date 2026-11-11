@@ -1,5 +1,6 @@
 // AI-generated with Claude Code, 2026-10-09, reviewed by Hyun Park
 // Design folder watcher: when HTML changes, notify so only that board is redrawn; new files are auto-placed in board.json. PLAN.md ch. 7 M2.
+// Changes the app did not make (agents' own file tools, editors) are handed to the undo history, which records them as steps.
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -9,7 +10,7 @@ import chokidar from "chokidar";
 import { createDeps } from "./deps.mjs";
 import { toPosix } from "./fsutil.mjs";
 
-export function watchDesign({ dir, store, broadcast }) {
+export function watchDesign({ dir, store, broadcast, history }) {
   const screensDir = store.screensDir;
   const watcher = chokidar.watch([screensDir, store.boardPath], {
     ignoreInitial: true,
@@ -57,8 +58,17 @@ export function watchDesign({ dir, store, broadcast }) {
     broadcast({ type: "board-changed", source: "server:rename" });
   }
 
+  // Compared with the last known content inside exclusive, so an app write still in flight has been recorded first
+  const track = (p) =>
+    history &&
+    store
+      .exclusive(() => history.observe([p]))
+      .then((step) => step && broadcast({ type: "history-changed" }))
+      .catch((e) => console.error("tracking an outside change failed", e));
+
   watcher.on("all", async (event, abs) => {
     if (abs === store.boardPath) {
+      void track(store.boardPath);
       // Do not notify for content this server just wrote (avoids echoing our own saves)
       try {
         const now = await fs.readFile(abs, "utf8");
@@ -72,6 +82,7 @@ export function watchDesign({ dir, store, broadcast }) {
     if (!abs.endsWith(".html")) return;
     const file = toPosix(path.relative(screensDir, abs));
     const kind = event === "add" ? "add" : event === "unlink" ? "unlink" : "change";
+    void track(path.join(screensDir, file));
     if (kind === "unlink") {
       deps.remove(file);
       if (hashes.has(file)) removed.push({ file, hash: hashes.get(file), at: Date.now() });

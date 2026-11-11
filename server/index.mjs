@@ -7,9 +7,11 @@ import path from "node:path";
 import chokidar from "chokidar";
 import { WebSocketServer } from "ws";
 
+import { cleanAgent } from "./agents.mjs";
 import { TOOL_ROOT } from "./args.mjs";
 import { createBoardStore } from "./board.mjs";
-import { createHistory } from "./history.mjs";
+import { toPosix } from "./fsutil.mjs";
+import { createHistory, requestScope } from "./history.mjs";
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -105,10 +107,23 @@ async function appIsStale(distDir) {
   return newest > built.mtimeMs;
 }
 
+/** Tracked for undo of outside changes: every .html under screens/ (any depth) and board.json */
+function trackedFiles(store) {
+  const rel = (p) => toPosix(path.relative(store.screensDir, p));
+  return {
+    list: async () => [...(await store.listScreenFiles()).map((f) => path.join(store.screensDir, f)), store.boardPath],
+    isTracked: (p) => p === store.boardPath || (p.endsWith(".html") && !rel(p).startsWith("..") && !rel(p).split("/").some((s) => s.startsWith("."))),
+    name: (p) => (p === store.boardPath ? "board.json" : rel(p)),
+  };
+}
+
 export async function createServer({ dir, port, dev = true, extraRoutes = [] }) {
   if (!existsSync(dir)) throw new Error(`Design folder not found: ${dir}`);
-  const store = createBoardStore(dir);
-  const ctx = { dir, store, history: createHistory(), broadcast: () => {} };
+  let history;
+  const store = createBoardStore(dir, { onWrite: (p, text) => history.note(p, text) });
+  history = createHistory(trackedFiles(store));
+  const ctx = { dir, store, history, broadcast: () => {} };
+  await history.seed();
 
   // App UI: on startup, build once if the app source is newer than dist, then serve dist statically.
   // (The Vite dev server is not used: even with HMR off it injects a websocket client that causes console errors)
@@ -119,7 +134,7 @@ export async function createServer({ dir, port, dev = true, extraRoutes = [] }) 
   }
   if (!existsSync(path.join(distDir, "index.html"))) throw new Error("No app build found (running with npm start creates it)");
 
-  const LOCKED = /^\/api\/(board|boards\/|history\/|edit|undo|redo|place|notes|pages|comments)/;
+  const LOCKED = /^\/api\/(board|boards\/|history\/|edit|undo|redo|place|notes|pages|comments|chat\/revert)/;
   const routes = [
     ["GET", "/api/health", async (req, res) => sendJson(res, 200, { ok: true, dir })],
     [
@@ -162,7 +177,8 @@ export async function createServer({ dir, port, dev = true, extraRoutes = [] }) 
         return res.end("not found");
       }
       for (const [m, p, h] of routes) {
-        if (req.method === m && url.pathname === p) return await h(req, res, url);
+        // Who sent a write (MCP clients send their agent name, in-app runs their run id): read by history.push
+        if (req.method === m && url.pathname === p) return await requestScope.run({ agent: cleanAgent(req.headers["x-easel-agent"]) || undefined, run: cleanAgent(req.headers["x-easel-run"]) || undefined }, () => h(req, res, url));
       }
       if (url.pathname.startsWith("/api/")) return sendJson(res, 404, { error: "Unknown API" });
       if (url.pathname.startsWith("/_app/")) {

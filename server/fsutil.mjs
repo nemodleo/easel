@@ -31,6 +31,14 @@ async function renameRetry(from, to, tries = 6) {
   }
 }
 
+/** <design dir>/.easel: Easel's own files in the project (screenshots, run copies, snapshot copies), kept out of git by its .gitignore */
+export async function easelDir(dir) {
+  const d = path.join(dir, ".easel");
+  await fs.mkdir(d, { recursive: true });
+  await fs.writeFile(path.join(d, ".gitignore"), "*\n", { flag: "wx" }).catch(() => {});
+  return d;
+}
+
 /** Repo root: two levels up for docs/design, otherwise (temp folders in tests) the folder itself */
 export const rootOf = (dir) => (dir.endsWith(path.join("docs", "design")) ? path.resolve(dir, "../..") : dir);
 
