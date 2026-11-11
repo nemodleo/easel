@@ -3,13 +3,12 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { TOOL_ROOT } from "./args.mjs";
 import { boardRoutes } from "./boards.mjs";
 import { chatRoutes } from "./chat.mjs";
 import { tokenRoutes } from "./tokens.mjs";
 import { snapshotRoutes } from "./snapshot.mjs";
 import { applyEdit, EditError } from "./edit.mjs";
-import { writeAtomic } from "./fsutil.mjs";
+import { easelDir, rootOf, toPosix, writeAtomic } from "./fsutil.mjs";
 import { inspect, outline } from "./html.mjs";
 import { readBody, safeJoin, sendJson } from "./index.mjs";
 import { watchDesign } from "./watch.mjs";
@@ -123,7 +122,7 @@ export async function screenshot(ctx, port, file, elPath) {
   const page = await newPage({ viewport: { width: board?.w ?? 390, height: board?.h ?? 844 }, deviceScaleFactor: 2 });
   try {
     await page.goto(`http://127.0.0.1:${port}/screens/${encodeURI(file)}`, { waitUntil: "networkidle" });
-    const outDir = path.join(TOOL_ROOT, ".out");
+    const outDir = path.join(await easelDir(ctx.dir), "screenshots");
     await fs.mkdir(outDir, { recursive: true });
     const name = `${file.replace(/[\\/]/g, "_").replace(/\.html$/, "")}${elPath ? "--" + elPath.replace(/\//g, "-") : ""}.png`;
     const out = path.join(outDir, name);
@@ -382,7 +381,7 @@ export const extraRoutes = [
       await readScreen(ctx, b.file);
       const port = Number(req.socket.localPort);
       const out = await screenshot(ctx, port, b.file, b.path || "");
-      sendJson(res, 200, { path: out });
+      sendJson(res, 200, { path: out, relPath: toPosix(path.relative(rootOf(ctx.dir), out)) });
     },
   ],
   [

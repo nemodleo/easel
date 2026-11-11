@@ -1,5 +1,6 @@
 // AI-generated with Claude Code, 2026-11-10, reviewed by Hyun Park
-// A copy of the tracked files before each in-app AI run, in <design dir>/.easel/runs/: revertable without git and after a restart.
+// Folder copies that work without git: a copy of the tracked files before each in-app AI run (revertable after a restart),
+// and snapshot copies of the design folder when it is not in a git repository. Both live in <design dir>/.easel/.
 import fs from "node:fs/promises";
 import path from "node:path";
 
@@ -67,4 +68,38 @@ export async function revertRun(ctx, id) {
   }
   ctx.history.push(`Revert ${meta.label ?? "AI"} run`, changes);
   return { meta, changes };
+}
+
+/* ---------- Snapshot copies (no git) ---------- */
+const snapsDir = async (dir) => path.join(await easelDir(dir), "snapshots");
+const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "snapshot";
+
+/** Copies the design folder (without dot folders like .easel, .thumbs, .trash, .refs) to .easel/snapshots/<time>-<slug>/ */
+export async function copySnapshot(dir, { message, author }) {
+  const at = new Date();
+  const name = `${at.toISOString().replace(/[:.]/g, "-")}-${slug(message)}`;
+  const dest = path.join(await snapsDir(dir), name);
+  await fs.mkdir(dest, { recursive: true });
+  // Entry by entry: fs.cp refuses a destination inside its source even when a filter skips it
+  for (const e of await fs.readdir(dir)) if (!e.startsWith(".")) await fs.cp(path.join(dir, e), path.join(dest, e), { recursive: true, filter: (s) => !path.basename(s).startsWith(".") });
+  await fs.writeFile(path.join(dest, ".snapshot.json"), JSON.stringify({ message, author, at: at.toISOString() }, null, 1) + "\n");
+  return { name, dest };
+}
+
+/** "3 minutes ago", like git's %ar */
+export function relTime(at, now = Date.now()) {
+  const s = Math.max(0, Math.round((now - new Date(at).getTime()) / 1000));
+  const [n, u] = s < 60 ? [s, "second"] : s < 3600 ? [Math.round(s / 60), "minute"] : s < 86400 ? [Math.round(s / 3600), "hour"] : [Math.round(s / 86400), "day"];
+  return `${n} ${u}${n === 1 ? "" : "s"} ago`;
+}
+
+/** Snapshot copies, newest first, in the /api/snapshots row shape */
+export async function listSnapshotCopies(dir) {
+  const d = path.join(dir, ".easel", "snapshots");
+  const out = [];
+  for (const n of await fs.readdir(d).catch(() => [])) {
+    const m = await read(path.join(d, n, ".snapshot.json")).then((t) => (t ? JSON.parse(t) : null)).catch(() => null);
+    if (m) out.push({ hash: n, author: m.author ?? "", when: relTime(m.at), subject: m.message ?? "", at: m.at, kind: "copy", path: toPosix(path.join(".easel", "snapshots", n)) });
+  }
+  return out.sort((a, b) => (a.at < b.at ? 1 : -1));
 }

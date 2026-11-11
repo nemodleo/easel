@@ -1,6 +1,6 @@
 // AI-generated with Claude Code, 2026-11-10, reviewed by Hyun Park
 // Outside changes become undo steps: one step per in-app AI run (undo/redo), idle edits as their own step,
-// revert from the pre-run disk copy
+// revert from the pre-run disk copy, snapshots without git, screenshots inside the project
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
@@ -160,4 +160,30 @@ test("revert restores only tracked file names, whatever run.json lists", { skip 
   }
   await api("POST", "/api/history/undo", {});
   assert.match(await read("screens/a.html"), /A2/);
+});
+
+test("snapshot without git: a folder copy in .easel/snapshots, listed with kind copy", { skip }, async () => {
+  const s = await api("POST", "/api/snapshot", { message: "Before the review" });
+  assert.equal(s.status, 200);
+  assert.equal(s.body.kind, "copy");
+  const copy = path.join(dir, s.body.path);
+  assert.match(await fs.readFile(path.join(copy, "screens/a.html"), "utf8"), /A2/);
+  assert.ok(!existsSync(path.join(copy, ".easel")));
+  const l = (await api("GET", "/api/snapshots")).body;
+  assert.equal(l.git, false);
+  assert.equal(l.snapshots[0].kind, "copy");
+  assert.equal(l.snapshots[0].subject, "Before the review");
+  assert.match(l.snapshots[0].when, /ago$/);
+  // .easel stays out of boards and history
+  await wait(400);
+  assert.ok(!(await api("GET", "/api/board")).body.files.some((f) => f.includes(".easel")));
+});
+
+test("screenshot is saved in the project's .easel/screenshots with a project-relative path", { skip }, async (t) => {
+  const r = await api("POST", "/api/screenshot", { file: "a.html" });
+  if (r.status === 501 || r.status === 500) return t.skip("no Chromium for playwright");
+  assert.equal(r.status, 200);
+  assert.equal(r.body.relPath, ".easel/screenshots/a.png");
+  assert.ok(r.body.path.startsWith(dir));
+  assert.ok((await fs.stat(r.body.path)).size > 0);
 });
