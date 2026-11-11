@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // AI-generated with Claude Code, 2026-10-09, reviewed by Hyun Park
-// Usage: easel-canvas [--dir <design folder>] [--port 4317] [--open] [--demo] [--init]
+// Usage: easel-canvas [--dir <design folder>] [--port 4317] [--open] [--demo] [--init] | easel-canvas connect [--agents …] [--dry-run]
 import { spawn } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -22,6 +22,7 @@ Usage
   npx easel-canvas --demo          copy the demo project to ./easel-demo and open it
   npx easel-canvas --init          create ./docs/design with a starter screen, then open it
   npx easel-canvas --dir <folder>  open a specific design folder
+  npx easel-canvas connect         add the Easel MCP server to your agents' configs (run in the project)
 
 Options
   --port <n>   port to listen on (default 4317; when it is busy and --port is not given, the next free one)
@@ -29,10 +30,29 @@ Options
   -h, --help   show this help
   -v, --version
 
+connect
+  --agents <list>  claude,cursor,gemini,codex (default: Claude Code, plus the others found on this machine)
+  --dry-run        print what would be written, write nothing
+  Writes .mcp.json, .cursor/mcp.json, .gemini/settings.json in the project and [mcp_servers.easel] in ~/.codex/config.toml.
+
 A design folder holds screens/*.html (one board per file). Easel keeps board.json and
 comments.json next to them. The MCP server (npx -y -p easel-canvas easel-mcp) finds the canvas
 running for the folder your agent works in; pass --port <n> to it to pick one by hand.
 Docs: ${pkg.homepage}`);
+  process.exit(0);
+}
+
+if (args.command === "connect") {
+  const { connect } = await import("../server/connect.mjs");
+  const { rootOf } = await import("../server/fsutil.mjs");
+  try {
+    const lines = await connect({ project: args.dirGiven ? rootOf(args.dir) : process.cwd(), agents: args.agents, dryRun: args.dryRun });
+    console.log(lines.join("\n"));
+    if (!args.dryRun) console.log("\nStart the canvas with npx easel-canvas, then restart your agent so it loads the MCP server.");
+  } catch (e) {
+    console.error(e.message);
+    process.exit(1);
+  }
   process.exit(0);
 }
 
