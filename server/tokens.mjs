@@ -8,6 +8,9 @@ import { writeAtomic } from "./fsutil.mjs";
 import { elementChildren, findBody, parseHtml } from "./html.mjs";
 import { readBody, sendJson } from "./index.mjs";
 
+/** System font stack only: no web font download, nothing language- or brand-specific (the starter templates use it too) */
+export const SYSTEM_FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+
 export const DEFAULT_TOKENS = {
   version: 1,
   active: "Default",
@@ -27,7 +30,7 @@ export const DEFAULT_TOKENS = {
   fontWeights: [400, 600, 700],
   radii: [4, 8, 16, 999],
   spacing: [0, 4, 8, 12, 16, 20, 24, 32, 40],
-  fontFamily: '"Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif',
+  fontFamily: SYSTEM_FONT,
   minTarget: 48,
 };
 

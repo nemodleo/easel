@@ -22,7 +22,8 @@ export function normalizeOrder(order, boards) {
   return out;
 }
 
-export function createBoardStore(dir) {
+/** onWrite(path, text) runs after every board.json save (the undo history keeps it as known content) */
+export function createBoardStore(dir, { onWrite } = {}) {
   const boardPath = path.join(dir, "board.json");
   const screensDir = path.join(dir, "screens");
 
@@ -57,6 +58,7 @@ export function createBoardStore(dir) {
     lastWritten = text;
     writing = writing.then(() => writeAtomic(boardPath, text));
     await writing;
+    onWrite?.(boardPath, text);
   }
 
   /** .html files under screens/ (including subfolders, ignoring .icloud placeholders) */

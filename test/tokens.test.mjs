@@ -78,3 +78,11 @@ test("no tokens.json: check_tokens finds nothing, get_tokens gives no palette; r
     await fs.rm(dir, { recursive: true, force: true });
   }
 });
+
+test("default tokens use the same system font stack as the starter templates", async () => {
+  const { newBoardHtml } = await import("../server/boards.mjs");
+  const { SYSTEM_FONT } = await import("../server/tokens.mjs");
+  assert.equal(DEFAULT_TOKENS.fontFamily, SYSTEM_FONT);
+  assert.doesNotMatch(DEFAULT_TOKENS.fontFamily, /Pretendard|Noto Sans KR/);
+  assert.ok(newBoardHtml({ title: "x", w: 390, h: 844 }).includes(`font-family:${SYSTEM_FONT.replace(/, /g, ",")};`));
+});

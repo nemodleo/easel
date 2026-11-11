@@ -74,22 +74,39 @@ npx easel-canvas --dir ./designs  # any folder of screens/*.html
 
 ## Connect your AI agent
 
-Keep the canvas running (`npx easel-canvas`). Agents write HTML files directly; the MCP server lets them **see** (`list_boards`, `read_board`, `screenshot`, `list_errors`), **know what you mean** (`get_selection` with the selected element, visible boards and the current page), **talk** (comments and replies) and **arrange** (`place_board`, `create_board`, notes, pages, `check_tokens`, `save_snapshot`).
+Keep the canvas running (`npx easel-canvas`). Agents write HTML files directly, and what they change shows up in the canvas's undo history (one step per in-app AI request, or per burst of edits from an outside agent); the MCP server lets them **see** (`list_boards`, `read_board`, `screenshot`, `list_errors`), **know what you mean** (`get_selection` with the selected element, visible boards and the current page), **talk** (comments and replies) and **arrange** (`place_board`, `create_board`, notes, pages, `check_tokens`, `save_snapshot`).
 
-**Claude Code**: add `.mcp.json` to your project root:
+Then, in your project folder:
 
-```json
-{ "mcpServers": { "easel": { "type": "stdio", "command": "npx", "args": ["-y", "-p", "easel-canvas", "easel-mcp", "--port", "4317"] } } }
+```bash
+npx easel-canvas connect
 ```
 
-**Codex**: add to `~/.codex/config.toml`:
+It adds the Easel MCP server to your agents' configs and leaves everything else in those files as it was: `.mcp.json` (Claude Code), `.cursor/mcp.json` (Cursor) and `.gemini/settings.json` (Gemini CLI) in the project, and `[mcp_servers.easel]` in `~/.codex/config.toml` (Codex). Cursor, Gemini CLI and Codex are written only when they are found on your machine; pick agents with `--agents claude,cursor,gemini,codex`, or preview with `--dry-run`. Restart your agent afterwards.
+
+There is no port to set: the MCP server finds the canvas running for the folder your agent works in (each canvas registers itself in `~/.easel/servers/`), and a busy port 4317 simply moves the canvas to the next free one. With several canvases open outside any of their projects, pass `--port <n>` to `easel-mcp` to pick one.
+
+<details>
+<summary>Manual setup</summary>
+
+**Claude Code** (`.mcp.json` in the project root), **Cursor** (`.cursor/mcp.json`), **Gemini CLI** (`.gemini/settings.json`):
+
+```json
+{ "mcpServers": { "easel": { "command": "npx", "args": ["-y", "-p", "easel-canvas", "easel-mcp"] } } }
+```
+
+**Codex** (`~/.codex/config.toml`):
 
 ```toml
 [mcp_servers.easel]
 command = "npx"
-args = ["-y", "-p", "easel-canvas", "easel-mcp", "--port", "4317"]
+args = ["-y", "-p", "easel-canvas", "easel-mcp"]
 default_tools_approval_mode = "approve"  # the tools only view, comment and arrange
 ```
+
+Add `"--port", "4317"` to `args` to pin one canvas instead of finding it by folder.
+
+</details>
 
 Using Easel as a submodule (below)? Point `args` at `tools/easel/bin/mcp.mjs` with `"command": "node"` instead.
 

@@ -7,9 +7,12 @@ import path from "node:path";
 import chokidar from "chokidar";
 import { WebSocketServer } from "ws";
 
+import { cleanAgent } from "./agents.mjs";
 import { TOOL_ROOT } from "./args.mjs";
 import { createBoardStore } from "./board.mjs";
-import { createHistory } from "./history.mjs";
+import { rootOf, toPosix } from "./fsutil.mjs";
+import { createHistory, requestScope } from "./history.mjs";
+import { writeEntry } from "./registry.mjs";
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -105,10 +108,53 @@ async function appIsStale(distDir) {
   return newest > built.mtimeMs;
 }
 
-export async function createServer({ dir, port, dev = true, extraRoutes = [] }) {
+/** Listens on 127.0.0.1:port; with autoPort a busy port moves on to the next ones (up to +20). Resolves to the port used */
+export async function listen(server, port, autoPort = false) {
+  for (let p = port; ; p++) {
+    try {
+      await new Promise((resolve, reject) => {
+        const fail = (e) => {
+          server.off("listening", ok);
+          reject(e);
+        };
+        const ok = () => {
+          server.off("error", fail);
+          resolve();
+        };
+        server.once("error", fail);
+        server.once("listening", ok);
+        server.listen(p, "127.0.0.1");
+      });
+      return p;
+    } catch (e) {
+      if (e.code !== "EADDRINUSE") throw e;
+      if (!autoPort) throw Object.assign(new Error(`Port ${p} is already in use. Pick another with --port <n>, or leave --port out to use the next free one.`), { code: "EADDRINUSE" });
+      if (p >= port + 20) throw Object.assign(new Error(`Ports ${port}–${p} are all in use. Pick one with --port <n>.`), { code: "EADDRINUSE" });
+    }
+  }
+}
+
+/** Tracked for undo of outside changes: every .html under screens/ (any depth) and board.json */
+function trackedFiles(store) {
+  const rel = (p) => toPosix(path.relative(store.screensDir, p));
+  return {
+    list: async () => [...(await store.listScreenFiles()).map((f) => path.join(store.screensDir, f)), store.boardPath],
+    isTracked: (p) => p === store.boardPath || (p.endsWith(".html") && !rel(p).startsWith("..") && !rel(p).split("/").some((s) => s.startsWith("."))),
+    name: (p) => (p === store.boardPath ? "board.json" : rel(p)),
+  };
+}
+
+/**
+ * register: write the running-canvas entry (~/.easel/servers/<port>.json, or under EASEL_HOME) for MCP discovery.
+ * autoPort: when the port is busy, try the next ones instead of failing (for a port the user did not choose).
+ */
+export async function createServer({ dir, port, dev = true, extraRoutes = [], autoPort = false, register = false }) {
   if (!existsSync(dir)) throw new Error(`Design folder not found: ${dir}`);
-  const store = createBoardStore(dir);
-  const ctx = { dir, store, history: createHistory(), broadcast: () => {} };
+  let history;
+  const store = createBoardStore(dir, { onWrite: (p, text) => history.note(p, text) });
+  history = createHistory(trackedFiles(store));
+  const ctx = { dir, store, history, broadcast: () => {} };
+  await history.seed();
 
   // App UI: on startup, build once if the app source is newer than dist, then serve dist statically.
   // (The Vite dev server is not used: even with HMR off it injects a websocket client that causes console errors)
@@ -119,15 +165,17 @@ export async function createServer({ dir, port, dev = true, extraRoutes = [] }) 
   }
   if (!existsSync(path.join(distDir, "index.html"))) throw new Error("No app build found (running with npm start creates it)");
 
-  const LOCKED = /^\/api\/(board|boards\/|history\/|edit|undo|redo|place|notes|pages|comments)/;
+  const LOCKED = /^\/api\/(board|boards\/|history\/|edit|undo|redo|place|notes|pages|comments|chat\/revert)/;
+  // Screens folder as the agent sees it: relative to the project root
+  const screensRel = toPosix(path.relative(rootOf(dir), store.screensDir)) || "screens";
   const routes = [
-    ["GET", "/api/health", async (req, res) => sendJson(res, 200, { ok: true, dir })],
+    ["GET", "/api/health", async (req, res) => sendJson(res, 200, { ok: true, dir, root: rootOf(dir), screens: screensRel, pid: process.pid })],
     [
       "GET",
       "/api/board",
       async (req, res) => {
         const { board, files, missing } = await store.syncBoard();
-        sendJson(res, 200, { board, files, missing, dir });
+        sendJson(res, 200, { board, files, missing, dir, screens: screensRel });
       },
     ],
     [
@@ -162,7 +210,8 @@ export async function createServer({ dir, port, dev = true, extraRoutes = [] }) 
         return res.end("not found");
       }
       for (const [m, p, h] of routes) {
-        if (req.method === m && url.pathname === p) return await h(req, res, url);
+        // Who sent a write (MCP clients send their agent name, in-app runs their run id): read by history.push
+        if (req.method === m && url.pathname === p) return await requestScope.run({ agent: cleanAgent(req.headers["x-easel-agent"]) || undefined, run: cleanAgent(req.headers["x-easel-run"]) || undefined }, () => h(req, res, url));
       }
       if (url.pathname.startsWith("/api/")) return sendJson(res, 404, { error: "Unknown API" });
       if (url.pathname.startsWith("/_app/")) {
@@ -192,6 +241,7 @@ export async function createServer({ dir, port, dev = true, extraRoutes = [] }) 
   });
 
   const wss = new WebSocketServer({ server, path: "/ws" });
+  wss.on("error", () => {}); // ws re-emits the http server's errors; a busy port is handled by listen()
   ctx.broadcast = (msg) => {
     const data = JSON.stringify(msg);
     for (const c of wss.clients) if (c.readyState === 1) c.send(data);
@@ -203,16 +253,23 @@ export async function createServer({ dir, port, dev = true, extraRoutes = [] }) 
     appWatcher.on("all", () => ctx.broadcast({ type: "app-changed" }));
   }
 
-  await new Promise((resolve, reject) => {
-    server.once("error", reject);
-    server.listen(port, "127.0.0.1", resolve);
-  });
+  let used;
+  try {
+    used = await listen(server, port, autoPort);
+  } catch (e) {
+    await appWatcher?.close();
+    throw e;
+  }
+  const unregister = register ? writeEntry({ port: used, dir, root: rootOf(dir) }) : () => {};
 
   return {
     ctx,
     server,
-    url: `http://localhost:${port}`,
+    port: used,
+    url: `http://localhost:${used}`,
+    unregister,
     async close() {
+      unregister();
       await appWatcher?.close();
       for (const c of wss.clients) c.terminate();
       wss.close();

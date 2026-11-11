@@ -22,3 +22,14 @@ test("--dir= and --port= forms; defaults", () => {
   assert.ok(path.isAbsolute(d.dir));
   assert.equal(d.open, false);
 });
+
+test("portGiven/dirGiven tell an explicit choice from the defaults; connect with --agents and --dry-run", () => {
+  assert.deepEqual([parseArgs([]).portGiven, parseArgs([]).dirGiven], [false, false]);
+  assert.equal(parseArgs(["--port=4317"]).portGiven, true);
+  assert.equal(parseArgs(["--dir", "x"]).dirGiven, true);
+  const c = parseArgs(["connect", "--agents", "Claude, codex", "--dry-run"]);
+  assert.equal(c.command, "connect");
+  assert.deepEqual(c.agents, ["claude", "codex"]);
+  assert.equal(c.dryRun, true);
+  assert.equal(parseArgs(["--dir", "connect"]).command, null);
+});
