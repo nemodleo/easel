@@ -24,13 +24,14 @@ Usage
   npx easel-canvas --dir <folder>  open a specific design folder
 
 Options
-  --port <n>   port to listen on (default 4317)
+  --port <n>   port to listen on (default 4317; when it is busy and --port is not given, the next free one)
   --open       open the canvas in your browser (--demo and --init do this; --no-open to skip)
   -h, --help   show this help
   -v, --version
 
 A design folder holds screens/*.html (one board per file). Easel keeps board.json and
-comments.json next to them. MCP for Claude Code / Codex: npx -y -p easel-canvas easel-mcp --port 4317
+comments.json next to them. The MCP server (npx -y -p easel-canvas easel-mcp) finds the canvas
+running for the folder your agent works in; pass --port <n> to it to pick one by hand.
 Docs: ${pkg.homepage}`);
   process.exit(0);
 }
@@ -67,17 +68,26 @@ Try one of:
 
 const { createServer } = await import("../server/index.mjs");
 const { attach, closeBrowser, extraRoutes } = await import("../server/routes.mjs");
-const app = await createServer({ dir, port: args.port, dev: !args.prod, extraRoutes });
+let app;
+try {
+  app = await createServer({ dir, port: args.port, dev: !args.prod, extraRoutes, autoPort: !args.portGiven, register: true });
+} catch (e) {
+  if (e.code !== "EADDRINUSE") throw e;
+  console.error(e.message);
+  process.exit(1);
+}
 await attach(app);
-console.log(`Easel: ${app.url}  (design folder ${dir})`);
+console.log(`Easel: ${app.url}  (design folder ${dir})${app.port !== args.port ? `  port ${args.port} was busy` : ""}`);
 
 if (open && !args.noOpen) {
   const [cmd, cmdArgs] = process.platform === "darwin" ? ["open", [app.url]] : process.platform === "win32" ? ["cmd", ["/c", "start", "", app.url]] : ["xdg-open", [app.url]];
   spawn(cmd, cmdArgs, { stdio: "ignore", detached: true, windowsHide: true }).on("error", () => {}).unref();
 }
 
+process.on("exit", () => app.unregister());
 for (const sig of ["SIGTERM", "SIGINT", "SIGHUP"])
   process.on(sig, async () => {
+    app.unregister();
     await closeBrowser();
     process.exit(0);
   });

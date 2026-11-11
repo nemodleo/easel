@@ -27,7 +27,8 @@ export async function startEnv() {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "dc-e2e-"));
   await fs.cp(REPO_DESIGN, dir, { recursive: true, filter: (src) => !src.endsWith("feedback.md") });
   const port = await freePort();
-  const proc = spawn(process.execPath, [path.join(TOOL, "bin/server.mjs"), "--dir", dir, "--port", String(port)], { stdio: ["ignore", "pipe", "pipe"] });
+  // EASEL_HOME: the running-canvas registry goes to the temp folder, never to the real ~/.easel
+  const proc = spawn(process.execPath, [path.join(TOOL, "bin/server.mjs"), "--dir", dir, "--port", String(port)], { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, EASEL_HOME: path.join(dir, ".easel-home") } });
   let log = "";
   proc.stdout.on("data", (d) => (log += d));
   proc.stderr.on("data", (d) => (log += d));

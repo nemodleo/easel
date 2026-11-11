@@ -23,7 +23,7 @@ export const DEFAULT_DIR = defaultDir();
 const expand = (p) => path.resolve(p.replace(/^~(?=\/)/, process.env.HOME ?? "~"));
 
 export function parseArgs(argv = process.argv.slice(2)) {
-  const out = { dir: null, port: DEFAULT_PORT, open: false, noOpen: false, demo: false, init: false, help: false, version: false, prod: false };
+  const out = { dir: null, port: DEFAULT_PORT, portGiven: false, open: false, noOpen: false, demo: false, init: false, help: false, version: false, prod: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const next = () => argv[++i];
@@ -39,6 +39,7 @@ export function parseArgs(argv = process.argv.slice(2)) {
     else if (a === "-h" || a === "--help") out.help = true;
     else if (a === "-v" || a === "--version") out.version = true;
   }
+  out.portGiven = argv.some((a) => a === "--port" || a.startsWith("--port="));
   out.dir ??= DEFAULT_DIR;
   return out;
 }

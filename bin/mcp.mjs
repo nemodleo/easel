@@ -2,25 +2,54 @@
 // AI-generated with Claude Code, 2026-10-09, reviewed by Hyun Park
 // MCP server (stdio): exposes boards, selection, screenshots, comments and placement through the app server API (http://localhost:<port>). PLAN.md ch. 6.
 // The agent creates and edits HTML by writing files directly. This server only observes, points at things, and places boards.
+// No port needed: the canvas for the folder the agent runs in is found through the registry (server/registry.mjs) on each call.
+import { readFileSync } from "node:fs";
+import fs from "node:fs/promises";
+import path from "node:path";
+
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-import { parseArgs } from "../server/args.mjs";
+import { agentLabel } from "../server/agents.mjs";
+import { parseArgs, TOOL_ROOT } from "../server/args.mjs";
+import { discoverPort } from "../server/registry.mjs";
 
-const { port } = parseArgs();
-const BASE = `http://127.0.0.1:${port}`;
+const args = parseArgs();
+const pkg = JSON.parse(readFileSync(path.join(TOOL_ROOT, "package.json"), "utf8"));
+// --port wins; an in-app chat run passes the canvas it was started from
+const explicit = args.portGiven ? args.port : Number(process.env.DESIGN_CANVAS_PORT) || null;
+const IMAGE_LIMIT = 4 * 1024 * 1024;
+
+let port = null;
+const resolvePort = async (fresh = false) => (port = !fresh && port ? port : await discoverPort({ port: explicit }));
+
+/** Header values for the app server: who made a change (undo history, comments) and which in-app run it belongs to */
+const agentHeaders = () => ({ "X-Easel-Agent": agent(), ...(process.env.EASEL_RUN_ID ? { "X-Easel-Run": process.env.EASEL_RUN_ID } : {}) });
+const agent = () => agentLabel(server.server.getClientVersion()?.name);
 
 async function call(method, path, body) {
-  let res;
-  try {
-    res = await fetch(BASE + path, {
+  const send = async () =>
+    fetch(`http://127.0.0.1:${port}${path}`, {
       method,
-      headers: body ? { "Content-Type": "application/json" } : undefined,
+      headers: { ...agentHeaders(), ...(body ? { "Content-Type": "application/json" } : {}) },
       body: body ? JSON.stringify(body) : undefined,
     });
-  } catch {
-    throw new Error(`Easel is not running. Start it with npm run design from the repo root (${BASE}).`);
+  let res;
+  try {
+    await resolvePort();
+    res = await send();
+  } catch (e) {
+    if (e.message?.startsWith("Several Easel canvases")) throw e;
+    // Nothing was sent: the canvas may have restarted on another port, or started after this server
+    try {
+      if (explicit) throw e;
+      await resolvePort(true);
+      res = await send();
+    } catch (e2) {
+      if (e2.message?.startsWith("Several Easel canvases")) throw e2;
+      throw new Error(`Easel is not running for this project (tried http://localhost:${port}). Start it in the project with \`npx easel-canvas\` (add --dir <design folder> when the screens are not in ./docs/design or the current folder), then try again.`);
+    }
   }
   const text = await res.text();
   if (!res.ok) {
@@ -37,22 +66,22 @@ async function call(method, path, body) {
 const callJson = async (m, p, b) => JSON.parse(await call(m, p, b));
 const ok = (data) => ({ content: [{ type: "text", text: typeof data === "string" ? data : JSON.stringify(data, null, 2) }] });
 
-const server = new McpServer({ name: "easel", version: "0.1.0" });
+const server = new McpServer({ name: "easel", version: pkg.version });
 
 server.registerTool(
   "list_boards",
   {
-    description: "List the boards on the design canvas (each board is a docs/design/screens/*.html file) with file, title, size, position and page. Use it to find which file to read or edit.",
+    description: "List the boards on the design canvas (each board is an .html file in the screens folder, returned as dir) with file, title, size, position and page. Use it to find which file to read or edit.",
     inputSchema: { page: z.string().optional().describe("Only return boards on this page id") },
   },
   async ({ page }) => {
-    const { board, missing } = await callJson("GET", "/api/board");
+    const { board, missing, screens } = await callJson("GET", "/api/board");
     const first = board.pages[0]?.id;
     const rows = board.order
       .filter((f) => board.boards[f])
       .map((f) => ({ file: f, ...board.boards[f], page: board.boards[f].page ?? first }))
       .filter((b) => !page || b.page === page);
-    return ok({ dir: "docs/design/screens", pages: board.pages, boards: rows, missingFiles: missing });
+    return ok({ dir: screens ?? "screens", pages: board.pages, boards: rows, missingFiles: missing });
   },
 );
 
@@ -77,10 +106,18 @@ server.registerTool(
 server.registerTool(
   "screenshot",
   {
-    description: "Take a PNG screenshot of a board, or of an element inside it, and return the image file path. Use it to check how a change looks (requires playwright).",
+    description:
+      "Take a PNG screenshot of a board, or of an element inside it, and return the image (plus the path it was saved to, in the design folder's .easel/screenshots/). Use it to check how a change looks (requires playwright).",
     inputSchema: { file: z.string(), path: z.string().optional().describe("Element path, e.g. 0/2/1; omit for the whole board") },
   },
-  async ({ file, path }) => ok(await callJson("POST", "/api/screenshot", { file, path })),
+  async ({ file, path: elPath }) => {
+    const r = await callJson("POST", "/api/screenshot", { file, path: elPath });
+    const png = await fs.readFile(r.path).catch(() => null);
+    const where = `Saved to ${r.relPath ?? r.path}`;
+    if (!png) return ok(where);
+    if (png.length > IMAGE_LIMIT) return ok(`${where} (${(png.length / 1048576).toFixed(1)} MB, too large to return inline; open the file or screenshot an element by path)`);
+    return { content: [{ type: "image", data: png.toString("base64"), mimeType: "image/png" }, { type: "text", text: where }] };
+  },
 );
 
 server.registerTool(
@@ -103,7 +140,7 @@ server.registerTool(
     description: "Add a comment to a board, or to an element inside it when path is given.",
     inputSchema: { file: z.string(), path: z.string().optional(), text: z.string(), author: z.string().optional() },
   },
-  async (args) => ok(await callJson("POST", "/api/comments", { ...args, author: args.author ?? "AI" })),
+  async (args) => ok(await callJson("POST", "/api/comments", { ...args, author: args.author ?? agent() })),
 );
 
 server.registerTool(
@@ -238,12 +275,15 @@ server.registerTool(
 server.registerTool(
   "reply_comment",
   { description: "Reply to a comment (resolve=true replies and marks it resolved).", inputSchema: { id: z.string(), text: z.string(), resolve: z.boolean().optional(), author: z.string().optional() } },
-  async (args) => ok(await callJson("POST", "/api/comments", { action: "reply", ...args, author: args.author ?? "AI" })),
+  async (args) => ok(await callJson("POST", "/api/comments", { action: "reply", ...args, author: args.author ?? agent() })),
 );
 
 server.registerTool(
   "save_snapshot",
-  { description: "Save a snapshot by committing only the design folder to git (a saved version). Use only when the user explicitly asks to save.", inputSchema: { message: z.string().optional() } },
+  {
+    description: "Save a snapshot (a saved version): commits only the design folder to git, or outside a git repository copies it to .easel/snapshots/. Use only when the user explicitly asks to save.",
+    inputSchema: { message: z.string().optional() },
+  },
   async ({ message }) => ok(await callJson("POST", "/api/snapshot", { message })),
 );
 
