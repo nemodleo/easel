@@ -6,12 +6,13 @@ import path from "node:path";
 import { formatBoard } from "./boardFormat.mjs";
 import { writeAtomic } from "./fsutil.mjs";
 import { readBody, safeJoin, sendJson } from "./index.mjs";
+import { SYSTEM_FONT } from "./tokens.mjs";
 
 const read = (p) => fs.readFile(p, "utf8").catch(() => null);
 const FILE_RE = /^[a-z0-9][a-z0-9._-]*\.html$/i;
 
-// System font stack only: no web font download, nothing language- or brand-specific
-const BASE_CSS = `body{margin:0;color-scheme:light;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;color:#111111;background:#FFFFFF;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}`;
+// System font stack only (the same as the default tokens): no web font download, nothing language- or brand-specific
+const BASE_CSS = `body{margin:0;color-scheme:light;font-family:${SYSTEM_FONT.replace(/, /g, ",")};color:#111111;background:#FFFFFF;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}`;
 
 /** New board templates. The size is written both in the board-size meta and on the outermost div */
 export const TEMPLATES = {
