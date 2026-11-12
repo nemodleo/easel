@@ -1,6 +1,6 @@
 // AI-generated with Claude Code, 2026-10-09, reviewed by Hyun Park
 // Right panel: selection info, copy, screenshot, comments. (Properties and layers attach here since M5)
-import { Children, useState, type ReactNode } from "react";
+import { Children, useState, type ReactNode, type RefObject } from "react";
 
 import { api } from "./api";
 import { Icon } from "./icons";
@@ -13,8 +13,11 @@ export type Comment = { id: string; file: string; path: string; text: string; au
 
 export function Inspector(props: {
   file: string | null;
-  editing: boolean;
   selection: Selection | null;
+  /** Board › parents › element, under the selected element's name */
+  crumbs?: ReactNode;
+  /** The comment box (Comment in the element toolbar focuses it) */
+  commentRef?: RefObject<HTMLTextAreaElement | null>;
   multi: number;
   error: string | null;
   comments: Comment[];
@@ -80,7 +83,7 @@ export function Inspector(props: {
             <p className="muted">{strings.inspector.pickBoard}</p>
             <ul className="muted">
               <li><kbd>B</kbd> {strings.inspector.hintDraw} · <kbd>T</kbd> {strings.inspector.hintTitle} · <kbd>N</kbd> {strings.inspector.hintNote}</li>
-              <li>{strings.inspector.hintDoubleClick} <kbd>E</kbd> {strings.inspector.hintEdit} · <kbd>F</kbd> {strings.inspector.hintFocus}</li>
+              <li>{strings.inspector.hintClick} <kbd>F</kbd> {strings.inspector.hintFocus}</li>
               <li>{strings.inspector.hintRightClick} · <kbd>⌘K</kbd> {strings.inspector.hintFind}</li>
             </ul>
           </div>
@@ -89,7 +92,7 @@ export function Inspector(props: {
         <>
           <section>
             <h3>{props.file}</h3>
-            <p className="muted">{props.editing ? strings.inspector.editModeHint : strings.inspector.viewModeHint}</p>
+            {!(sel && sel.file === props.file) && <p className="muted">{strings.canvas.hint}</p>}
             {props.error && <p className="warn">{props.error}</p>}
             {sel && sel.file === props.file && (
               <div className="sel">
@@ -98,9 +101,7 @@ export function Inspector(props: {
                   {sel.label && <span className="sel-label"> · {sel.label.slice(0, 40)}</span>}
                   {props.multi > 1 && <span className="muted"> {strings.inspector.more(props.multi - 1)}</span>}
                 </div>
-                <div className="sel-tech">
-                  <code>&lt;{sel.tag}&gt;</code> <code>{sel.path}</code>
-                </div>
+                {props.crumbs}
                 {sel.text && !sel.label && <div className="sel-text">“{sel.text.slice(0, 120)}”</div>}
                 <div className="row">
                   <button onClick={copy}>{copied ? strings.inspector.copied : strings.inspector.copy}</button>
@@ -117,6 +118,7 @@ export function Inspector(props: {
           <section>
             <h3>{strings.comments.title} {list.filter((c) => !c.resolved).length > 0 && <span className="muted">{list.filter((c) => !c.resolved).length}</span>}</h3>
             <textarea
+              ref={props.commentRef}
               value={text}
               placeholder={sel?.file === props.file ? strings.comments.placeholderElement(sel.path) : strings.comments.placeholderBoard}
               onChange={(e) => setText(e.target.value)}

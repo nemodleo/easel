@@ -20,7 +20,7 @@
   "scripts": {
     "start": "node bin/server.mjs",
     "demo": "node bin/server.mjs --dir examples/demo --open",
-    "build": "vite build app --config vite.config.mjs",
+    "build": "vite build app --config vite.config.mjs && vite build app --config vite.config.mjs --mode viewer",
     "prepack": "npm run build",
     "mcp": "node bin/mcp.mjs",
     "typecheck": "tsc --noEmit",

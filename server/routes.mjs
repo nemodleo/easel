@@ -3,11 +3,15 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import { activityRoutes } from "./activity.mjs";
+import { closeBrowser, newPage } from "./browser.mjs";
 import { boardRoutes } from "./boards.mjs";
 import { chatRoutes } from "./chat.mjs";
 import { tokenRoutes } from "./tokens.mjs";
 import { snapshotRoutes } from "./snapshot.mjs";
 import { applyEdit, EditError } from "./edit.mjs";
+import { exportRoutes } from "./export.mjs";
+import { forkMessage, forkRoutes, routeWrite } from "./forks.mjs";
 import { easelDir, rootOf, toPosix, writeAtomic } from "./fsutil.mjs";
 import { inspect, outline } from "./html.mjs";
 import { readBody, safeJoin, sendJson } from "./index.mjs";
@@ -46,51 +50,8 @@ async function writeComments(ctx, comments) {
 }
 
 /* ---------- Screenshots (when playwright is available) ---------- */
-let browserPromise = null;
-/** Close the Chromium used for screenshots/thumbnails when the server stops (otherwise it becomes an orphan process) */
-export async function closeBrowser() {
-  const b = await browserPromise?.catch(() => null);
-  browserPromise = null;
-  await b?.close().catch(() => {});
-}
-
-async function getBrowser() {
-  // A browser that exited behind our back (crash, killed, sleep) must not stay cached, or every thumbnail fails until a restart
-  const pending = browserPromise;
-  const cached = pending && (await pending.catch(() => null));
-  if (cached && !cached.isConnected() && browserPromise === pending) browserPromise = null;
-  if (!browserPromise) {
-    const p = (browserPromise = (async () => {
-      const { chromium } = await import("playwright").catch(() => {
-        throw Object.assign(new Error("Screenshots are unavailable because playwright is not installed (npm run design:install)"), { status: 501 });
-      });
-      // Fall back to the installed Chrome if no downloaded Chromium exists
-      const b = await chromium.launch().catch(() => chromium.launch({ channel: "chrome" }));
-      b.on("disconnected", () => {
-        if (browserPromise === p) browserPromise = null;
-      });
-      return b;
-    })());
-    p.catch(() => {
-      if (browserPromise === p) browserPromise = null;
-    });
-  }
-  return browserPromise;
-}
-
-/** New page on the shared browser; if the browser died since it was cached, launch a fresh one and try once more */
-export async function newPage(opts) {
-  const browser = await getBrowser();
-  try {
-    return await browser.newPage(opts);
-  } catch (e) {
-    if (browser.isConnected()) throw e;
-    return (await getBrowser()).newPage(opts); // getBrowser drops the dead one and launches again
-  }
-}
-
-/** For tests: the browser currently cached for screenshots, if any */
-export const cachedBrowser = () => browserPromise?.catch(() => null) ?? Promise.resolve(null);
+// The shared Chromium lives in browser.mjs (export uses it too); re-exported here for existing callers
+export { cachedBrowser, closeBrowser, newPage } from "./browser.mjs";
 
 /** Thumbnail sizes (long side, device px) the client may ask for; anything else snaps to the next one up. Matches THUMB_SIZES in Canvas.tsx */
 const THUMB_PX = [600, 1200, 2400];
@@ -150,19 +111,24 @@ export const extraRoutes = [
     "/api/edit",
     async (req, res, url, ctx) => {
       const b = await readBody(req);
-      const { p, html } = await readScreen(ctx, b.file);
+      await readScreen(ctx, b.file);
+      // An agent editing a board another agent is on works on its fork (people always edit the board they are on)
+      const to = await routeWrite(ctx, b.file);
+      const { p, html } = await readScreen(ctx, to.file);
+      const fork = to.forked ? { file: to.file, forked: true, original: b.file, message: forkMessage(ctx, b.file, to) } : {};
       let next;
       try {
         next = applyEdit(html, b);
       } catch (e) {
-        if (e instanceof EditError) return sendJson(res, e.status, { error: e.message });
+        // On a fork the agent may hold the original's HTML, so the error says which file it is on now
+        if (e instanceof EditError) return sendJson(res, e.status, { error: to.forked ? `${e.message}. ${fork.message}` : e.message, ...fork });
         throw e;
       }
-      if (next === html) return sendJson(res, 200, { ok: true, changed: false });
+      if (next === html) return sendJson(res, 200, { ok: true, changed: false, ...fork });
       await writeScreen(ctx, p, next);
-      ctx.history.push(`${b.file} ${b.op}`, [{ path: p, before: html, after: next }]);
+      ctx.history.push(`${to.file} ${b.op}`, [{ path: p, before: html, after: next }]);
       ctx.broadcast({ type: "history-changed" });
-      sendJson(res, 200, { ok: true, changed: true });
+      sendJson(res, 200, { ok: true, changed: true, ...fork });
     },
   ],
   // Legacy route: forwards to the chronological history
@@ -176,6 +142,8 @@ export const extraRoutes = [
     },
   ]),
   ...boardRoutes(),
+  ...forkRoutes(),
+  ...activityRoutes(),
   ...chat.routes,
   ...tokenRoutes(),
   // Zoomed-out thumbnails: small images shown below 25% instead of empty frames. Stored per modification time in docs/design/.thumbs/ (gitignored)
@@ -220,6 +188,7 @@ export const extraRoutes = [
     },
   ],
   ...snapshotRoutes(),
+  ...exportRoutes(),
   // Assets: list and upload docs/design/assets/ (images, fonts). Screens reference them as ../assets/<name>
   [
     "GET",
@@ -412,6 +381,7 @@ export async function attach(app) {
   const stop = watchDesign(app.ctx);
   const close = app.close;
   app.close = async () => {
+    chat.close(); // open permission requests are denied, so a waiting agent does not hang
     await stop();
     await closeBrowser();
     await close();

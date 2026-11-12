@@ -2,22 +2,28 @@
 // App shell: board.json state, toolbar, left (pages, boards) and right (inspector) panels, context menus, a single undo history. PLAN.md section 5.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { api, clientId, connectEvents, type ServerEvent } from "./api";
+import { BoardTags, ChangeOutline, HistoryMenu, TagPopover, authorColor, useActivity, type Step, type Tag } from "./activity";
+import { api, clientId, connectEvents, reportEditing, setAuthorName, type ServerEvent } from "./api";
 import { Canvas, clamp, fitView, isTyping, MAX_ZOOM, MIN_ZOOM, type ContextTarget, type Rect } from "./Canvas";
 import { AssetGrid, AssetPicker, uploadAssets, type Asset } from "./assets";
 import { ChatPanel, type Attach, type ChatEvent } from "./chat";
+import { Compare, stepBefore } from "./compare";
 import { CheckList, checkA11y, readTweaks, TokenCheckOff, TokenPanel, TweaksPanel, useTokens, type A11yItem, type LintItem, type Tokens } from "./ds";
 import { GuidesEditor, GuidesOverlay, MAX_NOTES, NoteOptions, ShapeDrawer, ShapeOptions, ShapesLayer } from "./drawing";
+import { crumbPaths } from "./directSelect";
+import { boardVars, Crumbs, ElementBar } from "./ElementBar";
 import { alignOps, EditHandles, type DropPlan } from "./elementDrag";
 import { elementAt, inlineStyles, pathOf, rectOf } from "./editor";
 import { Icon, type IconName } from "./icons";
 import { Inspector, type Comment } from "./Inspector";
+import { busyIn, choiceGroup, ForkLinks, holderColor, listDot, OccTags, shortTitle, UseButton, UseConfirm, writersOn, type Occupancy } from "./occupancy";
 import { Layers } from "./Layers";
 import { BoardOptions, FocusView, LeftPanel, Minimap } from "./panels";
 import { Play } from "./Play";
 import { Properties } from "./Properties";
+import { ShareButton } from "./share";
 import { ContextMenu, Dialog, useDialog, useToast, type MenuItem, type MenuState, Collapsible } from "./ui";
-import { useEditMode } from "./useEditMode";
+import { elementsInside, elementUnder, kindLabel, useElementSelect } from "./useElementSelect";
 import type { Board, BoardItem, BoardResponse, LayoutGuide, Note, Shape, ShapeKind, Tool, View } from "./types";
 import { strings } from "./strings";
 
@@ -68,7 +74,15 @@ export function App() {
   /** Single selected note (options panel, arrow keys); null when none or several */
   const selectedNote = selectedNotes.length === 1 ? selectedNotes[0] : null;
   const setSelectedNote = (id: string | null) => setSelectedNotes(id ? [id] : []);
+  /** The board this tab has an element selected on (or a text being edited); null while only boards, notes or shapes are selected */
   const [editFile, setEditFile] = useState<string | null>(null);
+  /** The board whose text is being edited in place right now */
+  const [typing, setTyping] = useState<string | null>(null);
+  /** The element under the pointer on any live board (hover outline) */
+  const [hover, setHover] = useState<{ file: string; path: string; rect: Rect } | null>(null);
+  /** Shift-drag over the board in element selection: the rectangle in the board's own coordinates */
+  const [elMarquee, setElMarquee] = useState<{ file: string; rect: Rect } | null>(null);
+  const commentRef = useRef<HTMLTextAreaElement>(null);
   const [playFile, setPlayFile] = useState<string | null>(null);
   const [inlinePlay, setInlinePlay] = useState<string | null>(null);
   const [firstRunHint, setFirstRunHint] = useState(false);
@@ -120,9 +134,13 @@ export function App() {
   useEffect(() => {
     if (!author) api.get<{ name: string }>("/api/me").then((r) => r.name && setAuthor(r.name)).catch(() => {});
   }, []);
+  useEffect(() => setAuthorName(author), [author]);
+  const me = author || strings.app.defaultAuthor;
   const [lint, setLint] = useState<LintItem[] | null>(null);
   const [a11y, setA11y] = useState<A11yItem[] | null>(null);
-  const pendingPick = useRef<{ file: string; path: string } | null>(null);
+  const pendingPick = useRef<{ file: string; paths: string[] } | null>(null);
+  // The newest click handler, for a click that had to wait for its board to load
+  const pickAtRef = useRef<(f: string, at: { clientX: number; clientY: number }, how: { add: boolean; double: boolean }) => void>(() => {});
   const [guidesOn, setGuidesOn] = useState(true);
   const [theme, setTheme] = useState<Theme>(() => {
     try {
@@ -149,7 +167,7 @@ export function App() {
   const toast = useToast();
   const ask = useDialog();
   const getFrame = useCallback((f: string) => frames.current.get(f) ?? null, [frameTick]);
-  const editRef = useRef<ReturnType<typeof useEditMode> | null>(null);
+  const editRef = useRef<ReturnType<typeof useElementSelect> | null>(null);
   const boardRef = useRef<Board | null>(null);
   boardRef.current = board;
   const draftTimer = useRef<number | null>(null);
@@ -167,6 +185,16 @@ export function App() {
   const loadComments = useCallback(() => api.get<{ comments: Comment[] }>("/api/comments").then((r) => setComments(r.comments)).catch(() => {}), []);
   const loadHistory = useCallback(() => api.get<typeof hist>("/api/history").then(setHist).catch(() => {}), []);
   const loadErrors = useCallback(() => api.get<{ errors: Record<string, BoardError[]> }>("/api/errors").then((r) => setErrors(r.errors)).catch(() => {}), []);
+  /* ---------- Who changed what: board tags and the History menu ---------- */
+  const act = useActivity(data?.dir ?? null);
+  const [tagPop, setTagPop] = useState<{ file: string; key: string; conflict: string[] | null; busy: boolean } | null>(null);
+  const [tagCmp, setTagCmp] = useState<{ file: string; step: string; added: boolean } | null>(null);
+  const [histOpen, setHistOpen] = useState(false);
+  /* ---------- Who is on which board, and picking a version (Use this) ---------- */
+  const [occ, setOcc] = useState<Occupancy>({});
+  const [useOpen, setUseOpen] = useState<{ file: string; busy: boolean } | null>(null);
+  const [histBusy, setHistBusy] = useState(false);
+  const caretRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     void load();
@@ -250,10 +278,10 @@ export function App() {
 
   /* ---------- HTML editing ---------- */
   const doEdit = useCallback(
-    async (payload: Record<string, unknown>) => {
-      if (!editFile) return false;
+    async (payload: Record<string, unknown>, file: string | null = editFile) => {
+      if (!file) return false;
       try {
-        await api.post("/api/edit", { file: editFile, ...payload });
+        await api.post("/api/edit", { file, ...payload });
         return true;
       } catch (e) {
         editRef.current?.setError(String((e as Error).message));
@@ -263,14 +291,16 @@ export function App() {
     },
     [editFile, toast],
   );
-  /** Double-click: edit a text-only element in place. Enter during IME composition is ignored */
+  /** Double-click: edit a text-only element in place. Enter during IME composition is ignored. While typing the board takes the
+   *  pointer (to place the caret); its links and buttons still do nothing, and a press outside the text ends the edit */
   const onTextEdit = useCallback(
-    (el: HTMLElement, path: string) => {
+    (file: string, el: HTMLElement, path: string) => {
       if (Array.from(el.children).some((c) => c.tagName !== "BR")) {
         editRef.current?.setError(strings.toast.textOnly);
         return;
       }
       const before = el.innerText ?? "";
+      setTyping(file);
       el.contentEditable = "true";
       el.focus();
       const doc = el.ownerDocument;
@@ -278,17 +308,30 @@ export function App() {
       r.selectNodeContents(el);
       doc.getSelection()?.removeAllRanges();
       doc.getSelection()?.addRange(r);
+      const guard = (e: Event) => {
+        if (el.contains(e.target as Node)) return void (e.type === "click" && e.preventDefault());
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.type === "mousedown") el.blur();
+      };
+      doc.addEventListener("mousedown", guard, true);
+      doc.addEventListener("click", guard, true);
       let cancelled = false;
       const finish = async () => {
         el.removeEventListener("keydown", onKey);
+        doc.removeEventListener("mousedown", guard, true);
+        doc.removeEventListener("click", guard, true);
         el.contentEditable = "false";
+        setTyping(null);
+        // Focus left in the board would keep the app's shortcuts (Esc, ⌘Z) from the window
+        if (document.activeElement === doc.defaultView?.frameElement) focusCanvas();
         const text = (el.innerText ?? "").replace(/\n$/, "");
         if (cancelled || text === before) {
           if (cancelled) el.innerText = before;
           return;
         }
-        const { hash } = await api.get<{ hash: string }>(`/api/element?f=${encodeURIComponent(editFile!)}&path=${encodeURIComponent(path)}`);
-        if (!(await doEdit({ op: "setText", path, hash, text }))) el.innerText = before; // Shift+Enter line breaks become <br> in the source
+        const { hash } = await api.get<{ hash: string }>(`/api/element?f=${encodeURIComponent(file)}&path=${encodeURIComponent(path)}`);
+        if (!(await doEdit({ op: "setText", path, hash, text }, file))) el.innerText = before; // Shift+Enter line breaks become <br> in the source
       };
       const onKey = (e: KeyboardEvent) => {
         if (e.isComposing || e.keyCode === 229) return; // Enter during composition only commits the character
@@ -323,7 +366,7 @@ export function App() {
       el.addEventListener("keydown", onKey);
       el.addEventListener("blur", onBlur);
     },
-    [editFile, doEdit],
+    [doEdit],
   );
   const hashOf = (file: string, path: string) => api.get<{ hash: string }>(`/api/element?f=${encodeURIComponent(file)}&path=${encodeURIComponent(path)}`).then((r) => r.hash);
   /** Move element: compute the new path after moving and reselect it */
@@ -377,10 +420,20 @@ export function App() {
       if (ok) toast({ tone: "ok", text: strings.toast.imageReplaced(a.name), action: undoAction });
     });
 
-  const onElementContext = useCallback((path: string, at: { clientX: number; clientY: number }) => elementMenuRef.current?.(path, at), []);
   const elementMenuRef = useRef<((path: string, at: { clientX: number; clientY: number }) => void) | null>(null);
-  const edit = useEditMode(editFile, getFrame, { onTextEdit, onContext: onElementContext });
+  const edit = useElementSelect(editFile, getFrame);
   editRef.current = edit;
+  /** Each change from the toolbar or the panel: a fresh hash, then one edit (one undo step), one after another */
+  const styleQueue = useRef<Promise<unknown>>(Promise.resolve());
+  const setElementStyle = (prop: string, value: string) => {
+    const file = editFile;
+    const path = edit.state.selection?.path;
+    if (!file || !path) return;
+    styleQueue.current = styleQueue.current.then(async () => {
+      const hash = await hashOf(file, path).catch(() => null);
+      if (hash) await doEdit({ op: "setStyle", path, hash, prop, value }, file);
+    });
+  };
 
   // Server notifications: redraw only boards whose files changed; reload board.json if it changed externally
   useEffect(
@@ -389,16 +442,24 @@ export function App() {
         if (e.type === "file-changed") {
           setReloadKeys((k) => ({ ...k, [e.file]: (k[e.file] ?? 0) + 1 }));
           if (e.kind !== "change") void load();
-        } else if (e.type === "board-changed" && e.source !== clientId) void load();
-        else if (e.type === "comments-changed") void loadComments();
-        else if (e.type === "history-changed") void loadHistory();
+        } else if (e.type === "board-changed" && e.source !== clientId) {
+          void load();
+          act.reload();
+        } else if (e.type === "comments-changed") void loadComments();
+        else if (e.type === "history-changed") {
+          void loadHistory();
+          act.reload();
+        }
         else if (e.type === "errors-changed") void loadErrors();
         else if (e.type === "assets-changed") setAssetsVersion((v) => v + 1);
         else if (e.type === "tokens-changed") setTokensVersion((v) => v + 1);
         else if (e.type === "app-changed") window.location.reload();
         else if (e.type === "chat") for (const fn of chatListeners.current) fn(e.id, e.ev);
+        // Sent on every (re)connect: the chat notices when the server restarted and its undo history is gone
+        else if (e.type === "hello") for (const fn of chatListeners.current) fn("", { kind: "boot", boot: e.boot });
+        else if (e.type === "occupancy") setOcc(e.boards);
       }),
-    [load, loadComments, loadHistory, loadErrors],
+    [load, loadComments, loadHistory, loadErrors, act.reload],
   );
 
   /* ---------- Pages and visibility ---------- */
@@ -516,8 +577,10 @@ export function App() {
       window.removeEventListener("keydown", off, true);
     };
   }, [firstRunHint]);
+  /** Select boards; replacing the selection also lets go of a selected element (the board itself is selected) */
   const select = (files: string[], m: "replace" | "toggle" | "add" = "replace") => {
     setSelected((cur) => (m === "replace" ? files : m === "add" ? [...new Set([...cur, ...files])] : files.reduce((a, f) => (a.includes(f) ? a.filter((x) => x !== f) : [...a, f]), cur)));
+    if (m === "replace") setEditFile(null);
     if (files.length && m === "replace") {
       setSelectedNotes([]);
       setSelectedShapes([]);
@@ -839,7 +902,7 @@ export function App() {
     const files = selected.includes(file) ? selected : [file];
     const many = files.length > 1;
     return [
-      { label: editFile === file ? strings.menu.stopEditing : strings.menu.edit, icon: "edit", shortcut: "E", disabled: many, run: () => setEditFile(editFile === file ? null : file) },
+      { label: strings.menu.selectInside, icon: "select", shortcut: "Enter", disabled: many, run: () => selectInside(file) },
       ...(b?.is_interactive
         ? [
             { label: inlinePlay === file ? strings.menu.stopPlay : strings.menu.playInPlace, icon: "play" as IconName, shortcut: "P", disabled: many, run: () => (inlinePlay === file ? stopInline() : setInlinePlay(file)) },
@@ -910,8 +973,8 @@ export function App() {
       y: at.clientY,
       title: el ? `<${el.tagName.toLowerCase()}>` : strings.menu.element,
       items: [
-        { label: strings.menu.editText, icon: "edit", disabled: !el || el.children.length > 0, run: () => el && onTextEdit(el as HTMLElement, path) },
-        { label: strings.menu.selectParent, icon: "layers", shortcut: "Esc", disabled: up == null, run: () => up != null && void edit.select([up]) },
+        { label: strings.menu.editText, icon: "edit", disabled: !el || el.children.length > 0, run: () => el && onTextEdit(editFile, el as HTMLElement, path) },
+        { label: strings.menu.selectParent, icon: "layers", shortcut: "↑", disabled: up == null, run: () => up != null && void edit.select([up]) },
         { label: strings.menu.elementToAI, icon: "comment", run: () => openChat() },
         { label: strings.menu.copy, icon: "copy", shortcut: `${mod}C`, run: () => void copyElement() },
         { label: strings.menu.pasteAfter, icon: "copy", shortcut: `${mod}V`, run: () => void pasteElement() },
@@ -941,11 +1004,7 @@ export function App() {
     setInlinePlay(null);
     // If focus stays inside the iframe, shortcuts never reach the app
     (document.activeElement as HTMLElement | null)?.blur?.();
-    const c = document.querySelector<HTMLElement>(".canvas");
-    if (c) {
-      c.tabIndex = -1;
-      c.focus({ preventScroll: true });
-    }
+    focusCanvas();
     if (f) setReloadKeys((k) => ({ ...k, [f]: (k[f] ?? 0) + 1 }));
   };
   // During Play in place, also catch Esc pressed inside the iframe (even after navigating)
@@ -1020,22 +1079,67 @@ export function App() {
       toast({ tone: "error", text: String((e as Error).message) });
     }
   };
-  /** Picking from a check list opens that board in edit mode and selects the element */
-  const pickPath = (file: string, path: string) => {
-    pendingPick.current = { file, path };
-    if (editFile !== file) setEditFile(file);
-    else void edit.select([path]);
+  /** Select elements on a board (a click on the canvas, the check lists, Layers, the breadcrumb): the board becomes the one selected */
+  const pickElement = (file: string, paths: string[]) => {
+    if (editFile === file) {
+      if (paths.join() !== edit.state.paths.join()) void edit.select(paths);
+      return;
+    }
+    pendingPick.current = { file, paths };
+    setEditFile(file);
+    setSelected([file]);
+    setSelectedNotes([]);
+    setSelectedShapes([]);
   };
+  const pickPath = (file: string, path: string) => pickElement(file, [path]);
+  /** A click on a live board: the element under the pointer */
+  const pickAt = (f: string, at: { clientX: number; clientY: number }, how: { add: boolean; double: boolean }) => {
+    const hit = elementUnder(frames.current.get(f), at.clientX, at.clientY);
+    // The page itself (no element under the pointer): the board stays selected on its own
+    if (!hit) return void (!how.add && editFile === f && setEditFile(null));
+    if (how.add && editFile === f) {
+      const cur = edit.state.paths;
+      return void edit.select(cur.includes(hit.path) ? cur.filter((x) => x !== hit.path) : [...cur, hit.path]);
+    }
+    pickElement(f, [hit.path]);
+    if (how.double) onTextEdit(f, hit.el as HTMLElement, hit.path);
+  };
+  pickAtRef.current = pickAt;
+  // The pick lands once the board is the selected one and its page has loaded (a board zoomed out to a thumbnail is drawn live first)
   useEffect(() => {
     const p = pendingPick.current;
-    if (!p || editFile !== p.file || !frames.current.get(p.file)?.contentDocument) return;
-    const t = window.setTimeout(() => {
+    const frame = p && editFile === p.file ? frames.current.get(p.file) : null;
+    if (!p || !frame) return;
+    const go = () => {
       pendingPick.current = null;
-      void edit.select([p.path]);
-    }, 300);
-    return () => window.clearTimeout(t);
+      void edit.select(p.paths);
+    };
+    if (frame.contentDocument?.readyState === "complete" && frame.contentDocument.body?.childElementCount) return go();
+    frame.addEventListener("load", go, { once: true });
+    return () => frame.removeEventListener("load", go);
   }, [editFile, frameTick]);
+  /** Enter on a board: its first element (not a script or style) */
+  const selectInside = (file: string) => {
+    const doc = frames.current.get(file)?.contentDocument;
+    const first = doc ? Array.from(doc.body?.children ?? []).find((c) => !/^(SCRIPT|STYLE|TEMPLATE)$/.test(c.tagName)) : null;
+    const path = first ? pathOf(first) : "0";
+    if (path != null) pickElement(file, [path]);
+  };
+  // An element selection lives only while its board is the one selected board
+  useEffect(() => {
+    if (editFile && !(selected.length === 1 && selected[0] === editFile)) setEditFile(null);
+  }, [selected]);
+  useEffect(() => {
+    setHover(null);
+    setElMarquee(null);
+  }, [editFile, tool]);
+  // Play in place takes the board's clicks: an element selected on it is let go
+  useEffect(() => {
+    if (inlinePlay && editFile === inlinePlay) setEditFile(null);
+  }, [inlinePlay]);
   const lintTarget = editFile ?? (selected.length === 1 ? selected[0] : null);
+  /** The board's own CSS variables: choosing a token writes the variable the board already has for it */
+  const vars = useMemo(() => boardVars(editFile ? frames.current.get(editFile)?.contentDocument : null), [editFile, frameTick, reloadKeys[editFile ?? ""], edit.state.selection?.hash]);
   useEffect(() => {
     if (!lintTarget) return setLint(null);
     api.get<{ files: Record<string, LintItem[]> }>(`/api/lint?f=${encodeURIComponent(lintTarget)}`).then((r) => setLint(r.files[lintTarget] ?? [])).catch(() => setLint(null));
@@ -1121,6 +1225,128 @@ export function App() {
     });
   };
 
+  // A person is editing a board while this tab has an element selected on it (or is typing in it): "You · editing" here, "<name> · editing" elsewhere
+  useEffect(() => reportEditing(editFile), [editFile]);
+  /** Use this / Use this one: the chosen version becomes the original board and the rest go to trash, as one history step */
+  const applyUse = async (file: string) => {
+    const b = boardRef.current;
+    const g = b && choiceGroup(b, file);
+    if (!b || !g) return;
+    const title = (f: string) => b.boards[f]?.title ?? f;
+    setUseOpen((c) => c && { ...c, busy: true });
+    try {
+      const r = await api.post<{ step: string | null }>("/api/boards/use", { file });
+      setUseOpen(null);
+      if (editFile && g.alts.includes(editFile)) setEditFile(null);
+      await load();
+      setLocate([g.original]); // the original, now holding the chosen version, comes into view selected
+      const text = g.chosen === g.original ? strings.occupancy.kept(title(g.original)) : strings.occupancy.applied(shortTitle(title(g.chosen)), title(g.original));
+      toast({ tone: "ok", text, action: r.step ? { label: strings.occupancy.undo, run: () => void undoStep(r.step!, text, [g.original, ...g.alts]) } : undoAction });
+    } catch (e) {
+      setUseOpen((c) => c && { ...c, busy: false });
+      toast({ tone: "error", text: String((e as Error).message) });
+    }
+    void loadHistory();
+    act.reload();
+  };
+  /** Keep all: the variants (or the fork) stay as ordinary boards; nothing is deleted */
+  const keepAll = async (file: string) => {
+    const b = boardRef.current;
+    const g = b && choiceGroup(b, file);
+    if (!b || !g) return;
+    setUseOpen((c) => c && { ...c, busy: true });
+    try {
+      const r = await api.post<{ step: string | null }>("/api/boards/keep", { file });
+      setUseOpen(null);
+      await load();
+      const text = strings.occupancy.keptAll(g.kind, g.alts.length);
+      toast({ text, action: r.step ? { label: strings.occupancy.undo, run: () => void undoStep(r.step!, text) } : undoAction });
+    } catch (e) {
+      setUseOpen((c) => c && { ...c, busy: false });
+      toast({ tone: "error", text: String((e as Error).message) });
+    }
+    void loadHistory();
+    act.reload();
+  };
+  /** The toast's Undo: that one step, a plain undo when it is the newest (else only its own files, like a tag's Undo); focus: boards to bring back into view */
+  const undoStep = async (id: string, name: string, focus: string[] = []) => {
+    try {
+      await api.post("/api/history/undo-steps", { ids: [id], mode: "rest" });
+      await load();
+      if (focus.length) setLocate(focus);
+      toast({ text: strings.toast.undoRedoDone("undo", name), action: { label: strings.toolbar.redo, run: () => void undoRedo("redo") } });
+    } catch (e) {
+      toast({ tone: "error", text: String((e as Error).message) });
+    }
+    void loadHistory();
+    act.reload();
+  };
+
+  // A board selected or entered after it changed: its tags count as seen (they fade)
+  const prevSel = useRef<string[]>([]);
+  useEffect(() => {
+    const cur = [...selected, ...(editFile ? [editFile] : [])];
+    const added = cur.filter((f) => !prevSel.current.includes(f));
+    prevSel.current = cur;
+    for (const f of added) act.markSeen(act.tagsOf(f).flatMap((t) => t.steps));
+  }, [selected, editFile]);
+  const tagOf = (file: string, key: string) => act.tagsOf(file).find((t) => t.key === key) ?? null;
+  const openTag = (file: string, key: string) => {
+    if (!tagOf(file, key)) return;
+    setTagPop((cur) => (cur?.file === file && cur.key === key ? null : { file, key, conflict: null, busy: false }));
+  };
+  // A tag whose popover was opened counts as seen once the popover closes (while open it stays fresh and keeps its outline)
+  const openedTag = useRef<{ id: string; steps: string[] } | null>(null);
+  useEffect(() => {
+    const prev = openedTag.current;
+    const t = tagPop && tagOf(tagPop.file, tagPop.key);
+    openedTag.current = t ? { id: `${tagPop.file}|${t.key}`, steps: t.steps } : null;
+    if (prev && prev.id !== openedTag.current?.id) act.markSeen(prev.steps);
+  }, [tagPop?.file, tagPop?.key]);
+  /** Undo from a tag: a chat run goes through Undo this run (the chat row follows), anything else through undo-steps; same rule either way */
+  const undoTag = async (file: string, t: Tag, mode?: "rest" | "all") => {
+    setTagPop((p) => p && { ...p, busy: true });
+    const name = act.data?.steps.find((s) => s.id === t.steps[0])?.name ?? "";
+    try {
+      const steps = () => api.post("/api/history/undo-steps", { ids: t.steps, mode });
+      if (t.run) await api.post("/api/chat/undo-run", { id: t.run, mode }).catch((e: Error & { status?: number }) => (e.status === 404 ? steps() : Promise.reject(e)));
+      else await steps();
+      setTagPop(null);
+      toast({ text: strings.toast.undoRedoDone("undo", t.steps.length === 1 ? name : strings.activity.changes(t.steps.length)), action: { label: strings.toolbar.redo, run: () => void undoRedo("redo") } });
+      await load();
+    } catch (e) {
+      const err = e as Error & { status?: number; body?: { conflicts?: { file: string }[] } };
+      const conflicts = err.status === 409 ? err.body?.conflicts : undefined;
+      if (conflicts) setTagPop((p) => p && { ...p, busy: false, conflict: [...new Set(conflicts.map((c) => (c.file.endsWith(".html") ? (boardRef.current?.boards[c.file]?.title ?? c.file) : c.file)))] });
+      else {
+        setTagPop((p) => p && { ...p, busy: false });
+        toast({ tone: "error", text: err.message });
+      }
+    }
+    void loadHistory();
+    act.reload();
+  };
+  /** History › Go back to here: walks the undo stack to that step; Redo brings everything back */
+  const goBack = async (s: Step) => {
+    setHistBusy(true);
+    try {
+      await api.post("/api/history/goto", { id: s.id });
+      toast({ text: strings.activity.wentBack(s.name) });
+      await load();
+    } catch (e) {
+      toast({ tone: "error", text: String((e as Error).message) });
+    } finally {
+      setHistBusy(false);
+      void loadHistory();
+      act.reload();
+    }
+  };
+  const closeHist = useCallback(() => setHistOpen(false), []);
+  // A tag that went away (undone, cleared) closes its popover
+  useEffect(() => {
+    if (tagPop && !tagOf(tagPop.file, tagPop.key)) setTagPop(null);
+  }, [act.data, act.now]);
+
   /* ---------- Shortcuts ---------- */
   const keyRef = useRef<(e: KeyboardEvent) => void>(() => {});
   keyRef.current = (e: KeyboardEvent) => {
@@ -1167,6 +1393,7 @@ export function App() {
     if (e.shiftKey && e.code === "Digit2") return run(() => goTo(selected));
     if (e.key === "Escape") {
       if (inlinePlay) return run(() => stopInline());
+      // Esc lets go of the element (the board stays selected), the next Esc of the board
       if (editFile) return run(() => setEditFile(null));
       if (tool !== "select") return run(() => setTool("select"));
       setSelected([]);
@@ -1175,9 +1402,13 @@ export function App() {
       return;
     }
     if (e.key === "F6") return run(() => cycleFocus(e.shiftKey));
-    // Tab: next/previous board when the canvas has focus. Enter: edit (while editing: first child, Shift for parent)
+    // Tab: from a selected element into its toolbar; otherwise next/previous board when the canvas has focus. Enter: select inside (on an element: first child, Shift for parent)
     const ae = document.activeElement as HTMLElement | null;
     const inCanvas = !ae || ae === document.body || !!ae.closest?.(".canvas") || ae.tagName === "IFRAME";
+    if (e.key === "Tab" && !e.shiftKey && inCanvas && editFile && edit.state.selection) {
+      const b = document.querySelector<HTMLElement>('.etb button[tabindex="0"]');
+      if (b) return run(() => b.focus());
+    }
     if (e.key === "Tab" && inCanvas && !editFile && visibleBoards.length) {
       const i = selected.length ? visibleBoards.indexOf(selected[selected.length - 1]) : -1;
       const n = visibleBoards[(i + (e.shiftKey ? -1 : 1) + visibleBoards.length) % visibleBoards.length];
@@ -1187,7 +1418,7 @@ export function App() {
         setAnnounce(strings.app.announceBoard(board.boards[n]?.title ?? n, visibleBoards.indexOf(n) + 1, visibleBoards.length));
       });
     }
-    if (e.key === "Enter" && !editFile && selected.length === 1 && inCanvas) return run(() => setEditFile(selected[0]));
+    if (e.key === "Enter" && !editFile && selected.length === 1 && inCanvas) return run(() => selectInside(selected[0]));
     if (e.key === "Enter" && editFile && edit.state.selection) {
       const doc = frames.current.get(editFile)?.contentDocument;
       const el = doc && elementAt(doc, edit.state.selection.path);
@@ -1196,7 +1427,7 @@ export function App() {
       if (tp != null) return run(() => void edit.select([tp]));
       return;
     }
-    if (k === "p" && !editFile && !cmd && selected.length === 1 && board.boards[selected[0]]?.is_interactive) return run(() => (inlinePlay === selected[0] ? stopInline() : setInlinePlay(selected[0])));
+    if (k === "p" && !cmd && selected.length === 1 && board.boards[selected[0]]?.is_interactive) return run(() => (inlinePlay === selected[0] ? stopInline() : setInlinePlay(selected[0])));
     if ((e.key === "Delete" || e.key === "Backspace") && selectedShapes.length && !editFile) return run(() => deleteShapes(selectedShapes));
     if (e.key === "Delete" || e.key === "Backspace") {
       if (editFile && edit.state.selection) {
@@ -1216,8 +1447,8 @@ export function App() {
       }
       return;
     }
-    // Arrows while editing: move selection to sibling, parent or child; Alt+↑↓ reorders among siblings
-    if ((e.key.startsWith("Arrow") || e.key === "Tab" || e.key === "Enter") && editFile && edit.state.selection) {
+    // Arrows on a selected element: ↑ its parent, ↓ its first child, ←→ its siblings; Alt+↑↓ reorders among siblings
+    if ((e.key.startsWith("Arrow") || e.key === "Enter") && editFile && edit.state.selection) {
       const sel = edit.state.selection;
       const doc = frames.current.get(editFile)?.contentDocument;
       const el = doc && elementAt(doc, sel.path);
@@ -1229,10 +1460,8 @@ export function App() {
         if (to < 0 || to >= (el.parentElement?.children.length ?? 0)) return run(() => {});
         return run(() => void moveElement(sel.path, { toParentPath: parent, index: to, freeze: [] }));
       }
-      // Tab / Shift+Tab walk siblings, Enter goes into the first child (Esc goes back up to the parent)
-      const forward = e.key === "ArrowDown" || e.key === "ArrowRight" || (e.key === "Tab" && !e.shiftKey);
-      const next = forward ? el.nextElementSibling : el.previousElementSibling;
-      const target = (e.key === "ArrowLeft" && e.shiftKey) ? el.parentElement : (e.key === "ArrowRight" && e.shiftKey) || e.key === "Enter" ? el.firstElementChild : next;
+      const target =
+        e.key === "ArrowUp" || (e.key === "Enter" && e.shiftKey) ? el.parentElement : e.key === "ArrowDown" || e.key === "Enter" ? el.firstElementChild : e.key === "ArrowRight" ? el.nextElementSibling : el.previousElementSibling;
       if (target && target !== doc.body) {
         const tp = pathOf(target);
         if (tp != null) return run(() => void edit.select([tp]));
@@ -1245,10 +1474,9 @@ export function App() {
     }
     if (e.key === "F2" && one) return run(() => void renameBoard(one));
     if (k === "f" && one) return run(() => setFocusFile(one));
-    if (k === "e" && one) return run(() => setEditFile(editFile === one ? null : one));
     if (k === "m") return run(() => setMinimapOpen((v) => !v));
     const t = TOOLS.find((x) => x.key.toLowerCase() === k);
-    if (t && !editFile) return run(() => setTool(t.id));
+    if (t) return run(() => setTool(t.id));
   };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => keyRef.current(e);
@@ -1256,20 +1484,27 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  /* ---------- Overlays on boards: edit outlines, selection, comment pins ---------- */
+  /* ---------- Overlays on boards: hover and selection outlines, comment pins ---------- */
   const renderOverlay = (f: string) => {
     const pins = comments.filter((c) => c.file === f && !c.resolved);
     const doc = frames.current.get(f)?.contentDocument;
     const editing = editFile === f;
     const lg = guidesOn ? (board?.guides?.[f] ?? []).filter((g) => !g.hidden) : [];
-    if (!editing && !pins.length && !lg.length) return null;
+    // The newest unseen change by someone else, outlined in its author's colour while its tag is fresh
+    const changed = inlinePlay === f ? undefined : act.tagsOf(f).find((t) => t.paths.length && act.stateOf(t) === "fresh");
+    const hov = hover?.file === f && inlinePlay !== f && !(editing && edit.state.paths.includes(hover.path)) ? hover : null;
+    const mq = elMarquee?.file === f ? elMarquee.rect : null;
+    if (!editing && !pins.length && !lg.length && !changed && !hov && !mq) return null;
+    // Outlines stay the same width on screen whatever the zoom
+    const px = 1 / Math.max(view.zoom, 0.05);
     return (
       <div className="overlay">
+        {changed && <ChangeOutline frame={frames.current.get(f) ?? null} paths={changed.paths} color={authorColor(changed)} zoom={view.zoom} />}
         {lg.length > 0 && board && <GuidesOverlay guides={lg} w={board.boards[f].w} h={board.boards[f].h} />}
-        {editing && edit.state.hover && !edit.state.paths.includes(edit.state.hover.path) && <Box r={edit.state.hover.rect} cls="hover" />}
-        {editing && edit.state.rects.map((r, i) => <Box key={i} r={r} cls="sel" />)}
-        {editing && edit.state.marquee && <Box r={edit.state.marquee} cls="marquee-el" />}
-        {editing && doc && edit.state.paths.length === 1 && edit.state.rects[0] && (
+        {hov && <Box r={hov.rect} cls="hover" px={px} />}
+        {editing && edit.state.rects.map((r, i) => <Box key={i} r={r} cls="sel" px={px} />)}
+        {mq && <Box r={mq} cls="marquee-el" px={px} />}
+        {editing && typing !== f && doc && edit.state.paths.length === 1 && edit.state.rects[0] && (
           <EditHandles
             doc={doc}
             path={edit.state.paths[0]}
@@ -1356,28 +1591,42 @@ export function App() {
           </button>
           <div className="tool-group tb-tools-full" role="radiogroup" aria-label={strings.toolbar.canvasTools}>
             {TOOLS.slice(0, 5).map((t) => (
-              <button key={t.id} role="radio" aria-checked={tool === t.id} aria-label={strings.toolbar.tool(t.label, t.key)} title={strings.toolbar.tool(t.hint, t.key)} className={`icon-btn ${tool === t.id ? "on" : ""}`} disabled={!!editFile && t.id !== "select" && t.id !== "hand"} onClick={() => setTool(t.id)}>
+              <button key={t.id} role="radio" aria-checked={tool === t.id} aria-label={strings.toolbar.tool(t.label, t.key)} title={strings.toolbar.tool(t.hint, t.key)} className={`icon-btn ${tool === t.id ? "on" : ""}`} onClick={() => setTool(t.id)}>
                 <Icon name={t.icon} />
               </button>
             ))}
           </div>
-          <button className={`icon-btn tb-shapes-compact ${SHAPE_TOOLS.includes(tool) ? "on" : ""}`} aria-label={strings.toolbar.shapes} aria-haspopup="menu" title={strings.toolbar.shapes} disabled={!!editFile} onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); shapesMenu({ clientX: r.left, clientY: r.bottom + 4 }); }}>
+          <button className={`icon-btn tb-shapes-compact ${SHAPE_TOOLS.includes(tool) ? "on" : ""}`} aria-label={strings.toolbar.shapes} aria-haspopup="menu" title={strings.toolbar.shapes} onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); shapesMenu({ clientX: r.left, clientY: r.bottom + 4 }); }}>
             <Icon name={TOOLS.find((t) => t.id === tool && SHAPE_TOOLS.includes(t.id))?.icon ?? "rect"} />
             <Icon name="chevronDown" size={12} />
           </button>
           <div className="tool-group tb-shapes-full" role="radiogroup" aria-label={strings.toolbar.shapes}>
             {TOOLS.slice(5).map((t) => (
-              <button key={t.id} role="radio" aria-checked={tool === t.id} aria-label={strings.toolbar.tool(t.label, t.key)} title={strings.toolbar.shapeToolTitle(t.hint, t.key)} className={`icon-btn ${tool === t.id ? "on" : ""}`} disabled={!!editFile} onClick={() => setTool(t.id)}>
+              <button key={t.id} role="radio" aria-checked={tool === t.id} aria-label={strings.toolbar.tool(t.label, t.key)} title={strings.toolbar.shapeToolTitle(t.hint, t.key)} className={`icon-btn ${tool === t.id ? "on" : ""}`} onClick={() => setTool(t.id)}>
                 <Icon name={t.icon} />
               </button>
             ))}
-            <button className="icon-btn" aria-label={strings.toolbar.insertImage} title={strings.toolbar.insertImageTitle} disabled={!!editFile} onClick={() => setPicker(() => (a: Asset) => { setPicker(null); addImageShape(a); })}>
+            <button className="icon-btn" aria-label={strings.toolbar.insertImage} title={strings.toolbar.insertImageTitle} onClick={() => setPicker(() => (a: Asset) => { setPicker(null); addImageShape(a); })}>
               <Icon name="image" />
             </button>
           </div>
-          <div className="tool-group">
+          <div className="tool-group undo-split">
             <button className="icon-btn" aria-label={strings.toolbar.undo} title={strings.toolbar.undoTitle(hist.undo.length ? hist.undo[hist.undo.length - 1] : undefined, mod)} disabled={!hist.canUndo} onClick={() => void undoRedo("undo")}>
               <Icon name="undo" />
+            </button>
+            <button
+              ref={caretRef}
+              className={`icon-btn caret-btn ${histOpen ? "on" : ""}`}
+              aria-label={strings.activity.historyButton}
+              aria-haspopup="menu"
+              aria-expanded={histOpen}
+              title={strings.activity.historyButton}
+              onClick={() => {
+                if (!histOpen) act.reload();
+                setHistOpen((v) => !v);
+              }}
+            >
+              <Icon name="chevronDown" size={14} />
             </button>
             <button className="icon-btn" aria-label={strings.toolbar.redo} title={strings.toolbar.redoTitle(hist.redo.length ? hist.redo[hist.redo.length - 1] : undefined, mod)} disabled={!hist.canRedo} onClick={() => void undoRedo("redo")}>
               <Icon name="redo" />
@@ -1388,16 +1637,7 @@ export function App() {
           </button>
         </div>
         <div className="tb-zone tb-center">
-          {editFile ? (
-            <span className="editing-chip">
-              <Icon name="edit" size={14} /> {strings.toolbar.editing(board.boards[editFile]?.title ?? editFile)}
-              <button className="icon-btn sm" aria-label={strings.toolbar.stopEditing} title={strings.toolbar.stopEditingTitle} onClick={() => setEditFile(null)}>
-                <Icon name="close" size={14} />
-              </button>
-            </span>
-          ) : (
-            <strong className="app-title" title={data?.dir ?? board.title}>{board.title}</strong>
-          )}
+          <strong className="app-title" title={data?.dir ?? board.title}>{board.title}</strong>
         {erroredFiles.length > 0 && (
           <button
             className="err-chip"
@@ -1454,6 +1694,7 @@ export function App() {
               <Icon name="fit" />
             </button>
           </div>
+          <ShareButton pages={pages} currentPage={currentPage} selected={selected} />
           <div className="tool-group">
             <button className={`ask-ai ${rightTab === "chat" ? "on" : ""}`} aria-label={strings.toolbar.aiChat} aria-pressed={rightTab === "chat"} title={strings.toolbar.aiChatTitle(mod)} onClick={() => (rightTab === "chat" ? setRightTab("inspect") : openChat())}>
               <Icon name="comment" size={16} /> <span className="ask-ai-label">{strings.toolbar.askAi}</span>
@@ -1525,6 +1766,7 @@ export function App() {
                 ],
               })
             }
+            dotOf={(f) => listDot(occ, f)}
             onBoardMenu={(f, at) => {
               if (!selected.includes(f)) select([f]);
               setMenu({ x: at.clientX, y: at.clientY, title: board.boards[f]?.title ?? f, items: boardMenuItems(f) });
@@ -1602,9 +1844,41 @@ export function App() {
             onDeleteNote={(id) => deleteNotes([id])}
             onPlay={(f) => (inlinePlay === f ? stopInline() : setInlinePlay(f))}
             playing={inlinePlay}
-            onEdit={(f) => {
-              setEditFile(f);
-              if (f) setSelected([f]);
+            typing={typing}
+            onPickElement={(f, at, how) => {
+              const frame = frames.current.get(f);
+              const doc = frame?.contentDocument;
+              // Between two loads (its file just changed) the board has no page to hit: the click lands once the page is back
+              if (frame && (!doc?.body || doc.readyState === "loading")) {
+                const later = { clientX: at.clientX, clientY: at.clientY };
+                return frame.addEventListener("load", () => pickAtRef.current(f, later, how), { once: true });
+              }
+              pickAt(f, at, how);
+            }}
+            onHoverElement={(f, at) => {
+              const hit = f && at ? elementUnder(frames.current.get(f), at.clientX, at.clientY) : null;
+              setHover((h) => (!hit || !f ? null : h?.file === f && h.path === hit.path ? h : { file: f, path: hit.path, rect: rectOf(hit.el) }));
+            }}
+            onElementMarquee={(f, r, done) => {
+              const frame = frames.current.get(f);
+              const doc = frame?.contentDocument;
+              if (!frame || !doc || !r) return setElMarquee(null);
+              const fr = frame.getBoundingClientRect();
+              const k = fr.width / (frame.offsetWidth || fr.width) || 1;
+              const rect = { x: (r.x - fr.left) / k, y: (r.y - fr.top) / k, w: r.w / k, h: r.h / k };
+              if (!done) return setElMarquee({ file: f, rect });
+              setElMarquee(null);
+              const cur = editFile === f ? edit.state.paths : [];
+              const hits = elementsInside(doc, rect);
+              pickElement(f, [...cur, ...hits.filter((x) => !cur.includes(x))]);
+            }}
+            onElementContext={(f, at) => {
+              const hit = elementUnder(frames.current.get(f), at.clientX, at.clientY);
+              if (!hit) return false;
+              if (!(editFile === f && edit.state.paths.includes(hit.path))) pickElement(f, [hit.path]);
+              // After the pick has rendered, so the menu acts on this board
+              window.setTimeout(() => elementMenuRef.current?.(hit.path, at), 0);
+              return true;
             }}
             onRename={(f) => void renameBoard(f)}
             onCreateBoard={(r) => void createBoard(r)}
@@ -1612,13 +1886,27 @@ export function App() {
             onContext={onContext}
             onSize={setCanvasSize}
             renderBoardOverlay={renderOverlay}
+            renderBoardTags={(f) => {
+              const lead = occ[f]?.length ? <OccTags list={occ[f]} /> : null;
+              return act.tagsOf(f).length || lead ? <BoardTags file={f} act={act} me={me} onOpen={openTag} lead={lead} /> : null;
+            }}
+            renderBoardButtons={(f) => {
+              const g = choiceGroup(board, f);
+              return g ? <UseButton file={f} group={g} busy={busyIn(occ, g)} open={useOpen?.file === f} onOpen={() => setUseOpen((c) => (c?.file === f ? null : { file: f, busy: false }))} /> : null;
+            }}
+            boardRing={(f) => {
+              const w = writersOn(occ, f)[0];
+              return w ? holderColor(w) : null;
+            }}
             worldLayer={
+              <>
+              <ForkLinks board={board} files={visibleBoards} zoom={view.zoom} />
               <ShapesLayer
                 shapes={shapes}
                 ids={visibleShapes}
                 zoom={view.zoom}
                 selected={selectedShapes}
-                interactive={tool === "select" && !editFile}
+                interactive={tool === "select"}
                 onSelect={(id, add) => {
                   setSelectedShapes((cur) => (add ? (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]) : cur.includes(id) ? cur : [id]));
                   if (!add) {
@@ -1652,6 +1940,7 @@ export function App() {
                   })
                 }
               />
+              </>
             }
             iframeRef={(f, el) => {
               // The ref callback is called again with null → el on every render. Update only for a genuinely new iframe
@@ -1661,10 +1950,41 @@ export function App() {
               }
             }}
           />
-          {SHAPE_TOOLS.includes(tool) && !editFile && <ShapeDrawer tool={tool as ShapeKind} view={view} onDone={(sh) => addShape(sh)} />}
+          {SHAPE_TOOLS.includes(tool) && <ShapeDrawer tool={tool as ShapeKind} view={view} onDone={(sh) => addShape(sh)} />}
+          {(() => {
+            // The element toolbar: over the selected element on screen, following zoom, pan, board moves and scrolling inside the board
+            const sel = edit.state.selection;
+            const r = edit.state.rects[0];
+            const b = editFile ? board.boards[editFile] : null;
+            if (!editFile || !b || !sel || sel.file !== editFile || edit.state.paths.length !== 1 || !r || typing || tool !== "select" || inlinePlay === editFile) return null;
+            const anchor = { x: view.x + (b.x + r.x) * view.zoom, y: view.y + (b.y + r.y) * view.zoom, w: r.w * view.zoom, h: r.h * view.zoom };
+            // Narrow windows: the open right drawer covers the canvas' right side, so the toolbar keeps left of it
+            const bounds = { w: size.w - (narrow && rightOpen ? Math.min(340, window.innerWidth - 48) : 0), h: size.h, top: view.y + b.y * view.zoom };
+            if (anchor.x > bounds.w || anchor.y > bounds.h || anchor.x + anchor.w < 0 || anchor.y + anchor.h < 0) return null;
+            const doc = frames.current.get(editFile)?.contentDocument;
+            const el = doc ? elementAt(doc, sel.path) : null;
+            return (
+              <ElementBar
+                anchor={anchor}
+                bounds={bounds}
+                selection={sel}
+                inline={el ? inlineStyles(el) : {}}
+                tokens={tokens}
+                vars={vars}
+                onStyle={setElementStyle}
+                onAskAi={() => openChat()}
+                onComment={() => {
+                  setRightTab("inspect");
+                  setRightOpen(true);
+                  setTimeout(() => commentRef.current?.focus(), 0);
+                }}
+              />
+            );
+          })()}
+          {tool === "select" && !narrow && (editFile || (one && board.boards[one] && !inlinePlay)) && !typing && <div className="canvas-hint" aria-hidden="true">{strings.canvas.hint}</div>}
           {firstRunHint && visibleBoards.length > 0 && (
             <div className="first-run" role="status">
-              <div className="first-run-line"><Icon name="edit" size={16} /> {strings.app.firstRunEdit}</div>
+              <div className="first-run-line"><Icon name="select" size={16} /> {strings.app.firstRunEdit}</div>
               <div className="first-run-line"><Icon name="comment" size={16} /> {strings.app.firstRunAi(mod)}</div>
             </div>
           )}
@@ -1702,6 +2022,9 @@ export function App() {
               boards={editFile ? [editFile] : selected}
               visibleCount={visibleCount}
               titleOf={(f) => board.boards[f]?.title ?? f}
+              sizeOf={(f) => (board.boards[f] ? { w: board.boards[f].w, h: board.boards[f].h } : null)}
+              storeKey={data?.dir ?? null}
+              confirm={ask.confirm}
               attach={chatAttach}
               setAttach={setChatAttach}
               draft={chatDraft}
@@ -1731,12 +2054,39 @@ export function App() {
             openChat(chatDraft || strings.prompts.fixComment, [c.file]);
           }}
           file={editFile ?? one}
-          editing={!!editFile}
           selection={edit.state.selection}
+          crumbs={(() => {
+            const sel = edit.state.selection;
+            const doc = editFile ? frames.current.get(editFile)?.contentDocument : null;
+            if (!editFile || !sel || sel.file !== editFile || !doc) return null;
+            const name = (el: Element | null) => {
+              if (!el) return "";
+              const { kind, label } = kindLabel(el);
+              if (kind !== "container") return label ? `${strings.inspector.kindName(kind)} "${label.slice(0, 24)}"` : strings.inspector.kindName(kind);
+              const cls = el.classList[0];
+              return `${strings.inspector.kindName(kind)}${el.id ? ` #${el.id}` : cls ? ` .${cls}` : ""}`;
+            };
+            const { paths, skipped } = crumbPaths(sel.path);
+            return (
+              <Crumbs
+                board={board.boards[editFile]?.title ?? editFile}
+                parents={paths.map((p) => ({ path: p, name: name(elementAt(doc, p)) }))}
+                skipped={skipped}
+                current={name(elementAt(doc, sel.path))}
+                title={strings.inspector.crumbElement(sel.tag, sel.path)}
+                onBoard={() => setEditFile(null)}
+                onPath={(p) => void edit.select([p])}
+              />
+            );
+          })()}
+          commentRef={commentRef}
           multi={edit.state.paths.length}
           error={edit.state.error}
           comments={comments}
-          onSelectPath={(p) => editFile && void edit.select([p])}
+          onSelectPath={(p) => {
+            const f = editFile ?? one;
+            if (f) pickElement(f, [p]);
+          }}
         >
           {!editFile && selectedShape && shapes[selectedShape] && (
             <ShapeOptions shape={shapes[selectedShape]} onPatch={(pt) => patchShape(selectedShape, pt, strings.history.shapeStyle)} onDelete={() => deleteShapes([selectedShape])} onFront={() => shapeZ(selectedShape, "front")} onBack={() => shapeZ(selectedShape, "back")} />
@@ -1873,7 +2223,8 @@ export function App() {
                 inline={el ? inlineStyles(el) : {}}
                 attrs={attrs}
                 canWrap={paths.length >= 2}
-                onStyle={(prop, value) => void doEdit({ op: "setStyle", path: sel.path, hash: sel.hash, prop, value })}
+                vars={vars}
+                onStyle={setElementStyle}
                 onAttr={(name, value) => void doEdit({ op: "setAttr", path: sel.path, hash: sel.hash, name, value })}
                 onDuplicate={() => void doEdit({ op: "duplicate", path: sel.path, hash: sel.hash })}
                 onDelete={async () => {
@@ -1887,23 +2238,25 @@ export function App() {
               />
             );
           })()}
-          {editFile && (
-            <Layers
-              file={editFile}
-              version={reloadKeys[editFile] ?? 0}
-              selected={edit.state.paths}
-              onSelect={(p, add) => {
-                const cur = edit.state.paths;
-                void edit.select(add ? (cur.includes(p) ? cur.filter((x) => x !== p) : [...cur, p]) : [p]);
-              }}
-              onMove={async (path, toParentPath, index) => {
-                const { hash } = await api.get<{ hash: string }>(`/api/element?f=${encodeURIComponent(editFile)}&path=${encodeURIComponent(path)}`);
-                if (await doEdit({ op: "move", path, hash, toParentPath, index })) {
-                  void edit.select([toParentPath ? `${toParentPath}/${index}` : String(index)]);
-                }
-              }}
-            />
-          )}
+          {(editFile ?? (selectedShapes.length || selectedNotes.length ? null : one)) && (() => {
+            // Layers of the selected board: picking a row selects that element
+            const lf = (editFile ?? one)!;
+            return (
+              <Layers
+                file={lf}
+                version={reloadKeys[lf] ?? 0}
+                selected={editFile ? edit.state.paths : []}
+                onSelect={(p, add) => {
+                  const cur = editFile ? edit.state.paths : [];
+                  pickElement(lf, add ? (cur.includes(p) ? cur.filter((x) => x !== p) : [...cur, p]) : [p]);
+                }}
+                onMove={async (path, toParentPath, index) => {
+                  const { hash } = await api.get<{ hash: string }>(`/api/element?f=${encodeURIComponent(lf)}&path=${encodeURIComponent(path)}`);
+                  if (await doEdit({ op: "move", path, hash, toParentPath, index }, lf)) pickElement(lf, [toParentPath ? `${toParentPath}/${index}` : String(index)]);
+                }}
+              />
+            );
+          })()}
         </Inspector>
           )}
         </div>
@@ -1935,6 +2288,36 @@ export function App() {
         {announce}
       </div>
       <ContextMenu menu={menu} onClose={() => setMenu(null)} />
+      {tagPop && !playFile && (() => {
+        const t = tagOf(tagPop.file, tagPop.key);
+        return t ? (
+          <TagPopover
+            file={tagPop.file}
+            tag={t}
+            me={me}
+            now={act.now}
+            conflict={tagPop.conflict}
+            busy={tagPop.busy}
+            onCompare={() => setTagCmp({ file: tagPop.file, step: t.steps[t.steps.length - 1], added: t.newBoard })}
+            onUndo={(mode) => void undoTag(tagPop.file, t, mode)}
+            onCancelConflict={() => setTagPop((p) => p && { ...p, conflict: null })}
+            onClose={() => setTagPop(null)}
+          />
+        ) : null;
+      })()}
+      {useOpen && !playFile && (() => {
+        const g = choiceGroup(board, useOpen.file);
+        return g ? <UseConfirm file={useOpen.file} group={g} board={board} busy={useOpen.busy} onApply={() => void applyUse(useOpen.file)} onKeepAll={() => void keepAll(useOpen.file)} onClose={() => setUseOpen(null)} /> : null;
+      })()}
+      {tagCmp && board.boards[tagCmp.file] && (
+        <Compare
+          before={stepBefore(tagCmp.step)}
+          notBefore={strings.compare.notBeforeChange}
+          boards={[{ file: tagCmp.file, kind: tagCmp.added ? "added" : "changed", title: board.boards[tagCmp.file].title ?? tagCmp.file, w: board.boards[tagCmp.file].w, h: board.boards[tagCmp.file].h }]}
+          onClose={() => setTagCmp(null)}
+        />
+      )}
+      {histOpen && <HistoryMenu steps={act.data?.steps ?? []} me={me} now={act.now} anchor={caretRef.current?.getBoundingClientRect() ?? null} busy={histBusy} onGo={(s) => void goBack(s)} onClose={closeHist} />}
       <Dialog state={ask.state} onClose={ask.close} />
     </div>
   );
@@ -1950,6 +2333,15 @@ export function movedPath(from: string, toParent: string, index: number) {
   return [...t, index].join("/");
 }
 
-function Box({ r, cls }: { r: { x: number; y: number; w: number; h: number }; cls: string }) {
-  return <div className={`box ${cls}`} style={{ left: r.x, top: r.y, width: r.w, height: r.h }} />;
+/** An outline over an element in board coordinates; px is one screen pixel at the current zoom */
+function Box({ r, cls, px = 1 }: { r: { x: number; y: number; w: number; h: number }; cls: string; px?: number }) {
+  return <div className={`box ${cls}`} style={{ left: r.x, top: r.y, width: r.w, height: r.h, ["--px" as string]: `${px}px` }} />;
+}
+
+/** Focus back on the canvas (after Play in place or a text edit) so the app's shortcuts get the keys again */
+function focusCanvas() {
+  const c = document.querySelector<HTMLElement>(".canvas");
+  if (!c) return;
+  c.tabIndex = -1;
+  c.focus({ preventScroll: true });
 }

@@ -43,7 +43,17 @@ const P: Record<string, string> = {
   image: "M4 5h16v14H4zM4 15l4-4 4 4 3-3 5 5M15 9h.01",
   grid: "M4 4h16v16H4zM4 12h16M12 4v16",
   system: "M4 5h16v11H4zM9 20h6M12 16v4",
+  share: "M12 15V4M8 8l4-4 4 4M5 13v6h14v-6",
+  folder: "M4 6h6l2 2h8v11H4z",
+  file: "M6 3h8l4 4v14H6zM14 3v4h4",
+  pdf: "M6 3h8l4 4v14H6zM14 3v4h4M9 13h6M9 17h4",
+  eye: "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z",
+  compare: "M4 5h7v14H4zM13 5h7v14h-7",
+  restore: "M4 12a8 8 0 1 0 3-6.2M4 4v4h4",
   link: "M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1",
+  radius: "M5 19V11a6 6 0 0 1 6-6h8",
+  spacing: "M4 4v16M20 4v16M8 12h8M8 12l2-2M8 12l2 2M16 12l-2-2M16 12l-2 2",
+  minus: "M5 12h14",
 };
 
 export type IconName = keyof typeof P;

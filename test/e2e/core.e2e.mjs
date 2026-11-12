@@ -6,7 +6,7 @@ import path from "node:path";
 import { after, before, test } from "node:test";
 
 import { ko } from "../fixtures/ko-strings.mjs";
-import { openBoard, startEnv, wait } from "./helpers.mjs";
+import { clickIn, openBoard, startEnv, wait } from "./helpers.mjs";
 
 let env;
 before(async () => (env = await startEnv()));
@@ -15,12 +15,13 @@ after(async () => env?.close());
 test("select -> edit text -> only that part of the source changes, no temp files", async () => {
   const { page, url } = env;
   const orig = await env.read("screens/scr-32.html");
-  const fr = await openBoard(page, url, "scr-32.html", { edit: true });
-  await fr.locator("a.btn").click();
+  // No mode to enter: a click on the board selects the element under the pointer, a double-click edits its text
+  await openBoard(page, url, "scr-32.html");
+  await clickIn(page, "scr-32.html", "a.btn");
   await wait(700);
   const sel = await env.api("GET", "/api/selection");
   assert.equal(sel.body.selection.path, "0/1/1/5");
-  await fr.locator("a.btn").dblclick();
+  await clickIn(page, "scr-32.html", "a.btn", { double: true });
   await wait(200);
   await page.keyboard.press("Meta+A");
   await page.keyboard.type(ko.inquirySubmit);

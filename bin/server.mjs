@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // AI-generated with Claude Code, 2026-10-09, reviewed by Hyun Park
 // Usage: easel-canvas [--dir <design folder>] [--port 4317] [--open] [--demo] [--init] | easel-canvas connect [--agents …] [--dry-run]
+//        | easel-canvas export [--out <dir>] [--page …] [--boards a.html,b.html] [--single-file] [--pdf] [--png]
 import { spawn } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -23,6 +24,7 @@ Usage
   npx easel-canvas --init          create ./docs/design with a starter screen, then open it
   npx easel-canvas --dir <folder>  open a specific design folder
   npx easel-canvas connect         add the Easel MCP server to your agents' configs (run in the project)
+  npx easel-canvas export          write a view-only copy of the canvas to ./easel-export (no canvas needed)
 
 Options
   --port <n>   port to listen on (default 4317; when it is busy and --port is not given, the next free one)
@@ -34,6 +36,14 @@ connect
   --agents <list>  claude,cursor,gemini,codex (default: Claude Code, plus the others found on this machine)
   --dry-run        print what would be written, write nothing
   Writes .mcp.json, .cursor/mcp.json, .gemini/settings.json in the project and [mcp_servers.easel] in ~/.codex/config.toml.
+
+export
+  --out <dir>        folder to write to (default <project>/easel-export; replaces the previous export there)
+  --page <name|id>   only this page
+  --boards a,b       only these boards (file names under screens/)
+  --single-file      one self-contained .html instead of a web folder
+  --pdf, --png       one PDF page / one 2x PNG per board (needs Playwright's Chromium)
+  The web folder is static: host it on Vercel, GitHub Pages or a PR preview, or open index.html.
 
 A design folder holds screens/*.html (one board per file). Easel keeps board.json and
 comments.json next to them. The MCP server (npx -y -p easel-canvas easel-mcp) finds the canvas
@@ -54,6 +64,27 @@ if (args.command === "connect") {
     process.exit(1);
   }
   process.exit(0);
+}
+
+if (args.command === "export") {
+  const { exportDesign } = await import("../server/export.mjs");
+  const { closeBrowser } = await import("../server/browser.mjs");
+  const formats = [...(args.singleFile ? ["single"] : []), ...(args.pdf ? ["pdf"] : []), ...(args.png ? ["png"] : [])];
+  let code = 0;
+  for (const f of formats.length ? formats : ["web"]) {
+    try {
+      const r = await exportDesign({ dir: args.dir, out: args.out ?? undefined, format: f === "single" ? "web" : f, singleFile: f === "single", page: args.page ?? undefined, boards: args.boards ?? undefined });
+      const kb = (n) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+      console.log(`${{ web: "Web folder", single: "Single file", pdf: "PDF", png: "PNG" }[r.kind]}: ${r.main}  (${r.files} file${r.files === 1 ? "" : "s"}, ${kb(r.bytes)})`);
+      for (const s of r.skipped) console.log(`  skipped ${s.ref} in ${s.from}: ${s.reason}`);
+      if (r.deploy) console.log(`  Host it: ${r.deploy}   (or GitHub Pages / a PR preview: it is plain static files)`);
+    } catch (e) {
+      console.error(`Export failed: ${e.message}${e.status === 409 ? " Use --out <dir> to pick another folder." : ""}`);
+      code = 1;
+    }
+  }
+  await closeBrowser();
+  process.exit(code);
 }
 
 let dir = args.dir;

@@ -106,16 +106,16 @@ Edit ops:
   - Pan with Space or middle-button drag; zoom with ⌘/Ctrl+wheel (10–400%).
   - Provide "Fit all" and "Go to board" (selected board) buttons.
   - Boards are rendered as iframes, with a label (title, file name) above each.
-  - While zoomed, iframes get `pointer-events:none`; it is turned off only in edit mode.
+  - Iframes always get `pointer-events:none` (on in Play, and while a text is edited in place): the canvas takes every press, so board scripts and links never run from a click.
 - **Board handling:** dragging a label moves the board and updates x, y in `board.json`. Dragging a corner updates w, h.
 - **Notes:** large titles (grouping several boards) and sticky notes can be added, moved, edited, and deleted.
 - **Pages:** in the top tabs, add and rename pages and move boards to another page.
-- **Edit mode** (double-click a board)
-  - Inject an overlay script into the iframe. It is same-origin, so access it directly through `contentDocument`.
-  - Hover shows an outline; click selects (Shift for multiple). Esc selects the parent element.
-  - When the selection changes, notify the server with `PUT /api/selection`.
+- **Select and edit (no mode)**
+  - A press on a board selects it; dragging moves it (3 screen px decide), a click finds the element under the pointer with `elementFromPoint` in the board's own document (same-origin, through `contentDocument`). Hover shows an outline. Shift-click adds, Shift-drag draws a rectangle over elements. Esc lets go of the element, then the board; ↑ selects the parent.
+  - When the selection changes, notify the server with `PUT /api/selection`. A tab with an element selected on a board counts as a person editing it (occupancy).
   - Double-click to edit text in place; send `setText` on Enter or blur.
-  - **Properties panel** (right): edit width, height, padding, margin, gap, font size, weight, color, background, Radius, display, flex direction, and alignment. Changing a value sends `setStyle`. The 7 token colors are offered as swatches.
+  - **Element toolbar** over the selection: Text, Fill (registered token colours first, written as `var(--slug, #HEX)` or the board's own variable; then Custom), Radius, Spacing, Ask AI, Comment. Each change is one `setStyle`.
+  - **Properties panel** (right) in design words: Fill (with contrast), Text (font, size, weight, colour), Corner radius, Padding, Gap; the CSS name shows on hover and focus. Everything else stays under "More (CSS)".
   - Dragging to reorder in the Layers list sends `move`; "Wrap in flex" and "Wrap in grid" send `wrap`.
   - ⌘Z / ⌘⇧Z call server undo and redo.
 - **Play:** pressing a board's ▶ button opens it in a full-screen overlay where you can interact with it. `<a href="scr-02.html">` navigates directly inside it.

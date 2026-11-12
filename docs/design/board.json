@@ -4,6 +4,8 @@
   "pages": [],
   "launch": {"view":"canvas"},
   "boards": {
+    "activity-on-board.html": {"x":0,"y":6280,"w":1440,"h":900,"title":"Activity · On the board"},
+
     "ai-chat.html": {"x":1520,"y":1000,"w":1440,"h":900,"title":"AI chat"},
 
     "ai-not-ready.html": {"x":0,"y":3000,"w":1440,"h":900,"title":"AI · not ready"},
@@ -12,38 +14,102 @@
 
     "board-groups.html": {"x":1520,"y":2000,"w":1440,"h":900,"title":"Board list · groups"},
 
+    "board-occupancy.html": {"x":0,"y":9600,"w":1440,"h":900,"title":"Canvas · Who is working where"},
+
     "canvas-dark.html": {"x":1520,"y":0,"w":1440,"h":900,"title":"Canvas · dark"},
 
     "canvas-light.html": {"x":0,"y":0,"w":1440,"h":900,"title":"Canvas · light"},
 
-    "edit-mode.html": {"x":0,"y":1000,"w":1440,"h":900,"title":"Edit mode"},
+    "chat-agents.html": {"x":3040,"y":7940,"w":1440,"h":900,"title":"AI chat · More agents"},
+
+    "chat-permission.html": {"x":0,"y":7940,"w":1440,"h":900,"title":"AI chat · Permission request + formatted answers"},
+
+    "chat-undo-run.html": {"x":1520,"y":7940,"w":1440,"h":900,"title":"AI chat · Undo a whole run"},
+
+    "direct-select.html": {"x":0,"y":1000,"w":1440,"h":900,"title":"Select and edit"},
 
     "first-run.html": {"x":0,"y":2000,"w":1440,"h":900,"title":"First run"},
 
+    "history-menu.html": {"x":1520,"y":6280,"w":1440,"h":900,"title":"Activity · History menu"},
+
     "narrow-440.html": {"x":3720,"y":0,"w":440,"h":700,"title":"Phone width · 440"},
 
-    "narrow-600.html": {"x":3040,"y":0,"w":600,"h":700,"title":"Narrow window · 600"}
+    "narrow-600.html": {"x":3040,"y":0,"w":600,"h":700,"title":"Narrow window · 600"},
+
+    "pick-alternative.html": {"x":1520,"y":9600,"w":1440,"h":900,"title":"Canvas · Pick an alternative"},
+
+    "proposal-share-c-live.html": {"x":0,"y":11280,"w":1440,"h":900,"title":"Proposal · Share C · Live link (later)"},
+
+    "share-export.html": {"x":0,"y":4620,"w":1440,"h":900,"title":"Share · Export"},
+
+    "share-viewer.html": {"x":1520,"y":4620,"w":1440,"h":900,"title":"Share · What the viewer sees"}
   },
   "order": [
     "canvas-light.html",
     "canvas-dark.html",
-    "edit-mode.html",
+    "direct-select.html",
     "ai-chat.html",
     "first-run.html",
     "board-groups.html",
     "narrow-600.html",
     "narrow-440.html",
     "ai-not-ready.html",
-    "ai-run-failed.html"
+    "ai-run-failed.html",
+    "share-export.html",
+    "share-viewer.html",
+    "activity-on-board.html",
+    "history-menu.html",
+    "chat-permission.html",
+    "chat-undo-run.html",
+    "chat-agents.html",
+    "board-occupancy.html",
+    "pick-alternative.html",
+    "proposal-share-c-live.html"
   ],
   "notes": {
     "n1": {"kind":"title","x":0,"y":-200,"maxW":1400,"text":"Easel UI"},
 
-    "n2": {"kind":"sticky","x":3040,"y":800,"w":360,"text":"Under 1000px the panels are drawers. Under 640px the zoom readout and Fit hide so the toolbar stays on one row.","color":"yellow"},
+    "n2": {"kind":"sticky","x":3040,"y":760,"w":360,"text":"Under 1000px the panels are drawers. Under 760px Share and Ask AI lose their labels. Under 640px zoom and Fit hide; the toolbar wraps when it still does not fit.","color":"yellow"},
 
-    "n3": {"kind":"sticky","x":3040,"y":1000,"w":360,"text":"Easel drawn in Easel. Edit these boards to redesign the app.\nassets/easel.css holds the chrome styles; app/src/style.css mirrors it.","color":"blue"},
+    "n3": {"kind":"sticky","x":3040,"y":1080,"w":360,"text":"Easel drawn in Easel. Edit these boards to redesign the app.\nassets/easel.css holds the chrome styles; app/src/style.css mirrors it.","color":"blue"},
 
-    "n4": {"kind":"sticky","x":3040,"y":1300,"w":360,"text":"Shipped 2026-11-10 (first run, AI readiness and failure, comment write lock), shown on these boards","color":"blue"}
+    "n4": {"kind":"sticky","x":3040,"y":1360,"w":360,"text":"Shipped 2026-11-10 (first run, AI readiness and failure, comment write lock), shown on these boards\nShipped 2026-11-12 (share, activity, chat permissions and undo, more agents, forks, pick a variant, select without Edit mode), shown on these boards","color":"blue"},
+
+    "s1": {"kind":"sticky","x":3440,"y":1000,"w":760,"text":"Select and edit (the board left of AI chat)\n1. No Edit mode. A click on an element of any board selects it; double-click edits its text; Esc deselects.\n2. A small toolbar sits above the element, or below it near the board's top edge: Text, Fill, Radius, Spacing, Ask AI, Comment.\n3. Fill shows the token swatches first, then Custom: a colour swatch and a hex field. With no tokens, only Custom.\n4. The panel shows a breadcrumb (board › … › two parents › element) and Properties in design words. The CSS name shows on hover. More (CSS) stays folded.\n5. The board says \"You · editing\" while something on it is selected.","color":"yellow"},
+
+    "p0": {"kind":"title","x":0,"y":4100,"maxW":3000,"text":"Built 2026-11-12 · from the approved proposals"},
+
+    "p0s": {"kind":"sticky","x":4000,"y":4080,"w":760,"text":"Picked and built: Share as an export folder with a single-file switch. Activity as tags on the board plus the history menu. AI chat: all three. Canvas: all three.\nThe live link is the one thing left as a proposal (last row).","color":"blue"},
+
+    "p1": {"kind":"title","x":0,"y":4400,"maxW":3000,"text":"1 · Share a view-only copy"},
+
+    "p1a": {"kind":"sticky","x":0,"y":5560,"w":760,"text":"Share · Export\n1. One Share button in the toolbar, outlined. Ask AI stays the only filled one.\n2. Scope first: whole canvas, this page (off when the canvas has no pages) or the selected boards.\n3. Web folder: static files for Vercel, GitHub Pages or a PR preview. The result stays in the popover with Reveal and Copy deploy command.\n4. The \"One .html file\" switch turns the first row into Single file: size first, then Save. Drawn as a second state under the boards.\n5. PDF and PNG below. The foot shows the same export as an npx easel-canvas export line.","color":"yellow"},
+
+    "p1b": {"kind":"sticky","x":1520,"y":5560,"w":760,"text":"Share · What the viewer sees\n1. A slim bar: canvas name, page tabs (only with more than one page), zoom, Play, and a stamp: view only · export time · commit.\n2. Play is the one filled button. It plays the selected board, or the first one.\n3. Comments come along read-only: numbered pins, a thread with ×, and a list on the right that selects the board.\n4. \"Made with Easel\" under the board list.","color":"yellow"},
+
+    "p2": {"kind":"title","x":0,"y":6060,"maxW":3000,"text":"2 · Who changed what"},
+
+    "p2a": {"kind":"sticky","x":0,"y":7220,"w":760,"text":"Activity · On the board\n1. A tag above a board someone else changed: who · when · how many changes, or \"new board\". Tags that do not fit wrap; a long one is cut short.\n2. The changed element is outlined in that author's colour.\n3. Click a tag: the popover opens under it with the change, Before / After (a Compare window) and Undo.\n4. A tag you have opened turns dashed and faded.\nNo Activity tab and no toast.","color":"yellow"},
+
+    "p2b": {"kind":"sticky","x":1520,"y":7220,"w":760,"text":"Activity · History menu\n1. The ▾ between Undo and Redo opens History, newest first.\n2. Each row: who (agent colour; people in blue), what, how long ago.\n3. The current step says Now. Any other row offers \"Go back to here\".\n4. History is kept for this session.\nThe toast from the first drawing was not built.","color":"yellow"},
+
+    "p3": {"kind":"title","x":0,"y":7720,"maxW":3000,"text":"3 · AI chat"},
+
+    "p3a": {"kind":"sticky","x":0,"y":8880,"w":760,"text":"AI chat · Permission request + formatted answers\n1. When Claude Code asks to run a command or edit outside the design folder, a card shows the exact command and where: Allow once / Always allow … / Deny.\n2. The run waits. The message head and the composer say \"Waiting for you\"; Cancel stands where Send was.\n3. An answered request folds into one line in place: Allowed · Edit … .\n4. Answers render markdown: lists, bold, code with Copy, links.\n5. Codex, Cursor Agent and Gemini CLI cannot pause to ask; a line under their run says so.","color":"yellow"},
+
+    "p3b": {"kind":"sticky","x":1520,"y":8880,"w":760,"text":"AI chat · Undo a whole run\n1. A run that changed files ends with a result row: changed and added boards as chips that jump to the board.\n2. Undo this run takes back the whole run in one step. Compare shows before and after side by side.\n3. An undone run stays in the chat with Redo.\n4. After Easel restarts the row offers \"Restore the copy from before this run\", with a confirm. The newest 10 copies are kept.\n5. If a board changed since the run, it asks: undo the rest, or undo all anyway.","color":"yellow"},
+
+    "p3c": {"kind":"sticky","x":3040,"y":8880,"w":760,"text":"AI chat · More agents\n1. The picker lists Claude Code, Codex, Cursor Agent and Gemini CLI with a colour each and a status: ready, sign-in needed, not installed · How to install.\n2. \"Custom command…\" opens a small form: a name and a command with {prompt}. Its output shows as plain text.\n3. The foot says when the list was checked; Check again reads it anew.\nThe form is drawn as a second state on the board.","color":"yellow"},
+
+    "p4": {"kind":"title","x":0,"y":9380,"maxW":3000,"text":"4 · Several people and agents on one canvas"},
+
+    "p4a": {"kind":"sticky","x":0,"y":10540,"w":760,"text":"Canvas · Who is working where\n1. Above a board: \"Claude Code is editing…\" with a ring in its colour, \"You · editing\", or \"… · done 13:52\". An agent's board gets a ring in that colour.\n2. The same colour dot in the board list.\n3. A second agent sent to a busy board works on a fork: right of the original when there is room, otherwise below it with an arrow around the left side.\n4. \"Forked 14:02 — Codex started while Claude Code was editing\" sits on the arrow, or under the fork when it does not fit there.\n5. \"Use this one\" on both. It waits until both are done.","color":"yellow"},
+
+    "p4b": {"kind":"sticky","x":1520,"y":10540,"w":760,"text":"Canvas · Pick an alternative\n1. Each variant gets \"Use this\"; the original does not.\n2. The confirm says what happens: the original is replaced, the other variants go to trash. Apply or Keep all.\n3. A toast with Undo afterwards (drawn under the variants).\n4. Variants land in the first free row, never on top of notes or boards.","color":"yellow"},
+
+    "p5": {"kind":"title","x":0,"y":11060,"maxW":3000,"text":"Later · not built"},
+
+    "p5a": {"kind":"sticky","x":0,"y":12220,"w":760,"text":"Live link (proposal, not built)\n1. A switch, not an export: on while Easel runs.\n2. The link, then Can view / Can comment.\n3. Who is looking now and where: cursors and selection on the canvas.\n4. Comments from the link are marked \"via link\". Files change only on this computer.\nNeeds a tunnel and this computer left on. Kept for later.","color":"yellow"}
   },
   "shapes": {}
 }

@@ -18,14 +18,20 @@ export const LeftPanel = forwardRef<HTMLInputElement, {
   selected: string[];
   missing: string[];
   onPage: (id: string) => void;
-  onAddPage: () => void;
-  onPageMenu: (id: string, e: { clientX: number; clientY: number }) => void;
+  /** Without these the list is view-only (the exported viewer): no add button, no menus */
+  onAddPage?: () => void;
+  onPageMenu?: (id: string, e: { clientX: number; clientY: number }) => void;
   onMovePage?: (id: string, index: number) => void;
   onPick: (file: string, add: boolean) => void;
-  onBoardMenu: (file: string, e: { clientX: number; clientY: number }) => void;
+  onBoardMenu?: (file: string, e: { clientX: number; clientY: number }) => void;
   header?: React.ReactNode;
+  /** The viewer shows pages as tabs in its bar instead */
+  showPages?: boolean;
+  footer?: React.ReactNode;
   onGroupMenu?: (key: string, files: string[], e: { clientX: number; clientY: number }) => void;
   onGroupRename?: (key: string) => void;
+  /** The dot of whoever is editing a board now, in their colour */
+  dotOf?: (file: string) => { color: string; label: string } | null;
 }>(function LeftPanel(p, searchRef) {
   const [q, setQ] = useState("");
   const [dragPage, setDragPage] = useState<string | null>(null);
@@ -77,7 +83,7 @@ export const LeftPanel = forwardRef<HTMLInputElement, {
     const twoLine = !!b.title && b.title !== f.replace(/\.html$/, "");
     return (
       <li key={f}>
-        <button className={`row ${twoLine ? "two-line" : ""} ${p.selected.includes(f) ? "on" : ""}`} onClick={(e) => p.onPick(f, e.shiftKey || e.metaKey)} onContextMenu={(e) => { e.preventDefault(); p.onBoardMenu(f, e); }} title={f}>
+        <button className={`row ${twoLine ? "two-line" : ""} ${p.selected.includes(f) ? "on" : ""}`} onClick={(e) => p.onPick(f, e.shiftKey || e.metaKey)} onContextMenu={(e) => { if (!p.onBoardMenu) return; e.preventDefault(); p.onBoardMenu(f, e); }} title={f}>
           <Icon name="board" size={14} />
           {twoLine ? (
             <span className="row-text">
@@ -88,6 +94,10 @@ export const LeftPanel = forwardRef<HTMLInputElement, {
             <span className="row-text">{b.title ?? f}</span>
           )}
           {p.missing.includes(f) && <Icon name="warn" size={14} className="warn-icon" aria-label={strings.boardList.fileMissing} />}
+          {(() => {
+            const d = p.dotOf?.(f);
+            return d ? <span className="idot occ-dot" style={{ background: d.color }} role="img" aria-label={d.label} title={d.label} /> : null;
+          })()}
         </button>
       </li>
     );
@@ -95,12 +105,14 @@ export const LeftPanel = forwardRef<HTMLInputElement, {
   return (
     <aside className="left" aria-label={strings.boardList.aria}>
       {p.header}
-      <section className="left-pages">
+      {p.showPages !== false && <section className="left-pages">
         <div className="sec-head">
           <span>{strings.boardList.pages}</span>
-          <button className="icon-btn sm" aria-label={strings.boardList.addPage} title={strings.boardList.addPage} onClick={p.onAddPage}>
-            <Icon name="plus" size={14} />
-          </button>
+          {p.onAddPage && (
+            <button className="icon-btn sm" aria-label={strings.boardList.addPage} title={strings.boardList.addPage} onClick={p.onAddPage}>
+              <Icon name="plus" size={14} />
+            </button>
+          )}
         </div>
         {p.pages.length === 0 ? (
           <p className="empty">{strings.boardList.singlePage}</p>
@@ -131,7 +143,7 @@ export const LeftPanel = forwardRef<HTMLInputElement, {
                   setOverPage(null);
                 }}
               >
-                <button role="tab" title={strings.boardList.pageTabTitle} aria-selected={pg.id === p.currentPage} className={`row ${pg.id === p.currentPage ? "on" : ""} ${overPage === i && dragPage !== pg.id ? "drop-before" : ""}`} onClick={() => p.onPage(pg.id)} onContextMenu={(e) => { e.preventDefault(); p.onPageMenu(pg.id, e); }}>
+                <button role="tab" title={strings.boardList.pageTabTitle} aria-selected={pg.id === p.currentPage} className={`row ${pg.id === p.currentPage ? "on" : ""} ${overPage === i && dragPage !== pg.id ? "drop-before" : ""}`} onClick={() => p.onPage(pg.id)} onContextMenu={(e) => { if (!p.onPageMenu) return; e.preventDefault(); p.onPageMenu(pg.id, e); }}>
                   <Icon name="page" size={14} />
                   <span className="row-text">{pg.name}</span>
                   <span className="row-count">{Object.values(p.board.boards).filter((b) => (b.page ?? firstPage) === pg.id).length}</span>
@@ -140,7 +152,7 @@ export const LeftPanel = forwardRef<HTMLInputElement, {
             ))}
           </ul>
         )}
-      </section>
+      </section>}
       <section className="left-boards">
         <div className="sec-head">
           <span>{strings.boardList.boards(list.length)}</span>
@@ -183,6 +195,7 @@ export const LeftPanel = forwardRef<HTMLInputElement, {
           <ul className="board-list">{list.map(row)}</ul>
         )}
       </section>
+      {p.footer}
     </aside>
   );
 });

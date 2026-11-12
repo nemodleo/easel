@@ -24,7 +24,7 @@ Easel turns a folder of plain HTML files into a design canvas. Claude Code or Co
 npx easel-canvas --demo
 ```
 
-That copies the "Tidy" habit tracker demo to `./easel-demo` and opens it at http://localhost:4317. Open the **AI** tab (⌘J) and ask Claude Code or Codex for a change, or double-click a screen and start editing.
+That copies the "Tidy" habit tracker demo to `./easel-demo` and opens it at http://localhost:4317. Open the **AI** tab (⌘J) and ask Claude Code or Codex for a change, or click anything on a screen and start editing.
 
 Already have HTML screens? Run it in your project:
 
@@ -37,7 +37,7 @@ npx easel-canvas --dir ./designs  # any folder of screens/*.html
 ## Why Easel
 
 - **HTML is the source of truth.** Each `screens/*.html` file is one board. What you see is exactly what ships to the browser, and there's nothing to export or keep in sync.
-- **Built for AI agents.** An MCP server with 20 tools lets agents see the boards, read what you selected, leave comments, check tokens and arrange the canvas. An in-app chat runs `claude -p` or `codex exec` with your selection as context.
+- **Built for AI agents.** An MCP server with 22 tools lets agents see the boards, read what you selected, leave comments, check tokens and arrange the canvas. An in-app chat runs `claude -p`, `codex exec`, `cursor-agent -p`, `gemini -p` or your own command with your selection as context; Claude Code's permission requests come up as cards you answer in the chat.
 - **Surgical edits.** Changes are patched into the exact source range (parse5 locations), so formatting, comments and the rest of the file stay untouched. If an agent edits the same element first, your edit is rejected instead of overwriting it.
 - **Git-friendly by design.** Layout, notes and comments live in small JSON files written one entry per line, so two branches moving different boards merge without conflicts.
 - **Local-first.** It runs on `127.0.0.1` and works directly on the files in your repo. No account, no cloud, no lock-in.
@@ -49,7 +49,7 @@ npx easel-canvas --dir ./designs  # any folder of screens/*.html
     <td colspan="2"><img src="docs/screenshots/overview.png" alt="Easel showing a habit tracker app: five mobile screens on an infinite canvas with notes, flow arrows, a board list and a properties panel with token and accessibility checks"></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/screenshots/edit-mode.png" alt="Edit mode: an element selected inside a mobile screen with handles, and a properties panel with token chips"></td>
+    <td width="50%"><img src="docs/screenshots/select.png" alt="A card selected inside a mobile screen with its element toolbar (Text, Fill, Radius, Spacing, Ask AI, Comment) and the Properties panel with the breadcrumb, Fill, Text, Corner radius, Padding and Gap"></td>
     <td width="50%"><img src="docs/screenshots/ai-chat.png" alt="AI chat panel: a streamed reply from Claude Code with Read and Edit tool lines, and the edited Stats screen on the canvas"></td>
   </tr>
   <tr>
@@ -57,7 +57,7 @@ npx easel-canvas --dir ./designs  # any folder of screens/*.html
     <td><b>Chat with your agent.</b> Pick Claude Code or Codex, send the selection, boards and comments as context, watch the edit stream in, ask for N variants side by side.</td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/screenshots/dark-mode.png" alt="Dark mode with a board context menu: Edit, Play in place, Ask AI for a review, Focus view, Rename, Duplicate, Bring to front, Delete"></td>
+    <td width="50%"><img src="docs/screenshots/dark-mode.png" alt="Dark mode with a board context menu: Select inside, Ask AI for a review, Focus view, Ask AI, Go to board, Rename, Rename file, Duplicate, Bring to front, Send to back, Delete"></td>
     <td width="50%">
       <b>Everything a canvas should do.</b>
       <ul>
@@ -74,7 +74,7 @@ npx easel-canvas --dir ./designs  # any folder of screens/*.html
 
 ## Connect your AI agent
 
-Keep the canvas running (`npx easel-canvas`). Agents write HTML files directly, and what they change shows up in the canvas's undo history (one step per in-app AI request, or per burst of edits from an outside agent); the MCP server lets them **see** (`list_boards`, `read_board`, `screenshot`, `list_errors`), **know what you mean** (`get_selection` with the selected element, visible boards and the current page), **talk** (comments and replies) and **arrange** (`place_board`, `create_board`, notes, pages, `check_tokens`, `save_snapshot`).
+Keep the canvas running (`npx easel-canvas`). Agents write HTML files directly, and what they change shows up in the canvas's undo history (one step per in-app AI request, or per burst of edits from an outside agent); the MCP server lets them **see** (`list_boards`, `read_board`, `screenshot`, `list_errors`), **know what you mean** (`get_selection` with the selected element, visible boards and the current page), **talk** (comments and replies) and **arrange** (`place_board`, `create_board`, notes, pages, `check_tokens`, `save_snapshot`). When several agents share a canvas, `claim_board` (before editing a file with their own tools) or `write_board` (a whole board through Easel) keeps one writer per board: a second agent on a busy board is given a fork next to it and told which file it is on.
 
 Then, in your project folder:
 
@@ -118,6 +118,21 @@ Then try:
 
 New files with `<meta name="board-size" content="390x844">` are placed on the canvas automatically at that size.
 
+## Share a view-only copy
+
+**Share** in the toolbar writes a static, read-only copy of the whole canvas, the current page or the selected boards to `<project>/easel-export/`: boards with their pages, notes and comments, Play, and a stamp with the export time and `repo@commit`. Nothing in it calls back to Easel, so any static host works (Vercel, GitHub Pages, a PR preview, under any sub-path), and `index.html` also opens straight from disk (comment pins then stack in their board's corner, because browsers keep `file://` frames apart). **Copy deploy command** gives you `npx vercel deploy easel-export`. Turn on **One .html file** for a single self-contained file to attach to Slack, email or a PR; its size shows before you save. **PDF** (one board per page) and **PNG** (one 2× image per board) need Playwright's Chromium.
+
+The same from the terminal, with no canvas running (it works in CI):
+
+```bash
+npx easel-canvas export                          # web folder in ./easel-export
+npx easel-canvas export --single-file            # one self-contained .html
+npx easel-canvas export --page Onboarding --pdf --png
+npx easel-canvas export --boards home.html,stats.html --out dist/design-preview
+```
+
+Exporting again replaces what the previous export of the same kind wrote there (a small `.easel-export.json` lists it) and leaves anything else in the folder alone; a non-empty folder Easel did not create is never cleared. Dot folders (`.easel/`, `.thumbs/`…) and files outside the design folder are never copied. A single file inlines the screens' images, fonts, CSS and scripts but not HTML embedded with `<iframe>`; the export lists what it skipped.
+
 ## Pin it in your project
 
 `npx easel-canvas` is all most projects need. To pin an exact version for your team, add it as a dev dependency (`npm i -D easel-canvas`, then `"design": "easel-canvas"` in your scripts) or as a git submodule. With your designs in `<project>/docs/design/screens/`:
@@ -157,12 +172,19 @@ npm run design           # http://localhost:4317
 | Board options | Right "Properties": position, size, Radius, No frame, Interactive (Play), Stretch to window, Open as launch screen, Layout guides (Columns · Rows · Grid, up to 6, ⌃G), Adjustable values |
 | View | Focus view (F, ←→), Play in place (P or ▶, Esc), Play full screen (right-click) |
 | Notes and shapes | Title (T), sticky note (N, 8 colors, size, bold, italic), Rectangle (R), Oval (O), Line (L), Arrow (A), Pen (P when no board is selected), image (Assets or paste) |
-| Edit mode | Double-click or E. Click or Shift, Esc for parent, Enter for child, ↑↓ for siblings, Option+↑↓ to reorder, ⌘A for all siblings, ⌘G Wrap in flex |
-| Direct editing | Move with handles (Alt drops inside a box) and resize, 6 align options, double-click text (Shift+Enter for a line break), Properties panel (token chips, ⚠, contrast ratio), Replace image, ⌘C/⌘V to paste into another board |
-| Undo | ⌘Z / ⌘⇧Z. Canvas actions, HTML edits and board create/delete share one history (100 entries) |
+| Select elements | No mode to enter: click anything on a board (drag the board to move it). Shift-click or Shift-drag for several, Esc lets go (then of the board), ↑ parent, ↓ or Enter first child, ←→ siblings, Option+↑↓ to reorder, ⌘A for all siblings, ⌘G Wrap in flex, Tab into the element toolbar |
+| Direct editing | A toolbar over the selection: Text (size, weight), Fill (your tokens first, written as a CSS variable, then Custom), Radius, Spacing (padding, gap), Ask AI, Comment. Double-click text to edit it (Shift+Enter for a line break). Move with handles (Alt drops inside a box) and resize, 6 align options, Properties panel in design words with the breadcrumb (CSS names on hover, everything else under More (CSS), ⚠, contrast), Replace image, ⌘C/⌘V to paste into another board |
+| Undo | ⌘Z / ⌘⇧Z. Canvas actions, HTML edits and board create/delete share one history (100 entries). The ▾ next to Undo lists it newest first (who, what, when; Now marks where you are): Go back to here undoes or redoes step by step to that entry, and Redo brings the rest back. The history lasts until Easel restarts |
+| Who changed what | A board changed by someone else (an agent over MCP or the in-app chat, a file edited outside Easel, another browser) gets a tag above its title, e.g. "Codex · 2m · 1 change", in that author's colour, and the changed element is outlined. Click the tag: the change ("Get started" → "Start free"), Before / After, and Undo (only that change; asks first if one of its boards changed since). Tags fade once you open them or select the board, and clear a day later |
 | Design system | Register tokens (`tokens.json`) and themes in the left "Tokens" tab, Theme menu in the toolbar, Token check and Accessibility lists on the right |
 | Collaboration | Comments (Reply, Resolve, author), Snapshot menu (git-commits only the design folder) |
-| AI | Right "AI" tab (⌘J): Claude Code or Codex; selection, boards, visible boards, comments and references go along as context; N variants; Ask AI for a review |
+| Share | Toolbar "Share": whole canvas, this page or the selected boards as a web folder or one .html file, PDF or PNG; Reveal, Copy deploy command, and the matching `npx easel-canvas export` line |
+| Who is on which board | A board someone is editing says so above its title, in their colour: "Claude Code is editing…", "You · editing", then "Claude Code · done 13:52"; the board list shows the same dot. An agent holds a board from its first write until its in-app run ends, or 45 s after its last write over MCP (or when it disconnects). A second agent writing a board another agent holds works on a fork beside it ("Welcome · Codex"), with an arrow back that says when and why; you are never forked. When both are done, Use this one on either keeps that version under the original's name, title, position and comments, and sends the other to trash; one Undo brings both back |
+| Pick a variant | Variants from the AI tab land in the first free row (never on notes or boards) and each gets Use this: Apply makes it the original board and sends the other variants to trash (toast with Undo), Keep all leaves them as ordinary boards |
+| AI | Right "AI" tab (⌘J): Claude Code, Codex, Cursor Agent, Gemini CLI, or your own command; selection, boards, visible boards, comments and references go along as context; N variants; Ask AI for a review |
+| AI permissions | When Claude Code wants to run a command or edit outside what it may, the chat shows the exact request: Allow once, Always allow (that tool, or a command's first two words, until Easel restarts; never for file edits, for commands with `;` `&&` `\|` `>` and the like, or for `sh -c`-style wrappers), or Deny |
+| Undo an AI run | Each run that changed files ends with the boards it changed and added: Undo this run (one step, ⌘Z brings it back; asks first if you changed one of them since), Redo, Compare before and after. After a restart: Restore the copy from before this run (the newest 10 are kept) |
+| Custom agent | Agent menu › Custom command…: a name and a command with `{prompt}`, e.g. `aider --message {prompt} --yes`. Saved in `~/.easel/agents.json` (not in the project), run without a shell, output shown as plain text |
 | Screen | F6 to move between regions, Tab to move between boards, ⌘\\ to hide panels, Appearance (System · Light · Dark) |
 
 </details>
@@ -180,6 +202,7 @@ your-project/docs/design/
 - A small Node server watches the folder (chokidar) and tells the browser which board changed, so only that board reloads, keeping scroll and selection.
 - Element paths and hashes are computed from the source with parse5. Every edit is a minimal string patch into that range, written atomically.
 - The canvas is a Vite + React app. Each board is an iframe of the real HTML, so scripts, links and CSS behave exactly as in a browser.
+- The server listens on 127.0.0.1 only and refuses changes (and the live connection) from other web pages open in your browser: only requests with no `Origin` (the CLI, the MCP server) or from the canvas page itself, on a local host name, get through. Boards are your project's own HTML and run inside the canvas page, with the same access to it as you have, so open only design folders you trust.
 
 ## Development
 

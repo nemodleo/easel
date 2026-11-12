@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="board-size" content="1440x900">
+<title>Canvas · Pick an alternative</title>
+<link rel="stylesheet" href="/assets/easel.css">
+<style>
+.app{width:1440px;height:900px}
+/* mini mobile screens inside boards (project content, not Easel chrome) */
+.scr{position:absolute;inset:0;background:#fff;display:flex;flex-direction:column;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#10213a}
+.scr .hd{height:30px;display:flex;align-items:center;justify-content:flex-end;padding:0 10px;font-weight:700;font-size:11px;color:#2b59c3;flex:none}
+.scr .bd{flex:1;padding:4px 10px;display:flex;flex-direction:column;gap:6px;overflow:hidden}
+.scr .h{font-size:14px;font-weight:700;line-height:1.2}
+.scr .p{font-size:11px;line-height:1.35;color:#5a6577}
+.scr .ft{padding:8px 10px 14px;display:flex;flex-direction:column;gap:4px;align-items:center;flex:none}
+.scr .cta{width:100%;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;background:#2b59c3}
+.scr .art{height:84px;border-radius:10px;background:linear-gradient(160deg,#dfe7fb,#b9cbf4)}
+.scr .opt{height:26px;border-radius:7px;border:1px solid #d9e0ee;flex:none}
+.scr .opt.on{border-color:#2b59c3;background:#eef3fd}
+.scr .in{height:26px;border-radius:7px;background:#f2f4f8;flex:none}
+.scr .row-i{height:40px;border-bottom:1px solid #eef0f4;display:flex;flex-direction:column;justify-content:center;gap:4px;flex:none}
+.scr .row-i i{display:block;height:6px;border-radius:3px;background:#d6dbe4;width:70%}.scr .row-i i+i{width:45%;background:#e8ebf0}
+.composer textarea{height:72px}
+.inset-label{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.scr .plans{display:flex;gap:4px;flex:none}.scr .plans i{flex:1;height:36px;border-radius:6px;border:1px solid #d9e0ee;background:#fff}.scr .plans i.on{border-color:#2b59c3;background:#eef3fd}
+.note-sticky{position:absolute;background:var(--sticky);color:#111111;padding:12px 16px;box-shadow:0 2px 6px rgba(0,0,0,.12);font-size:13px;line-height:1.45}
+.after-label{position:absolute;z-index:40}
+</style>
+</head>
+<body class="">
+<div class="app"><header class="toolbar">
+  <div class="tb-zone tb-left">
+    <button class="icon-btn on" title="Left panel"><svg class="ic" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM15 5v14"/></svg></button>
+    <div class="tool-group" role="radiogroup"><button class="icon-btn tool on" title="select"><svg class="ic" viewBox="0 0 24 24"><path d="M5 3l13 8-6 1.5L9.5 19z"/></svg></button><button class="icon-btn tool" title="hand"><svg class="ic" viewBox="0 0 24 24"><path d="M8 12V6.5a1.5 1.5 0 0 1 3 0V11m0-5.5V5a1.5 1.5 0 0 1 3 0v6m0-4.5a1.5 1.5 0 0 1 3 0V13a7 7 0 0 1-7 7h-.5a6 6 0 0 1-5-2.7L3.3 14a1.5 1.5 0 0 1 2.4-1.8L8 15"/></svg></button><button class="icon-btn tool" title="board"><svg class="ic" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg></button><button class="icon-btn tool" title="title"><svg class="ic" viewBox="0 0 24 24"><path d="M5 6h14M12 6v13M9 19h6"/></svg></button><button class="icon-btn tool" title="sticky"><svg class="ic" viewBox="0 0 24 24"><path d="M5 4h14v10l-5 6H5zM14 20v-6h5"/></svg></button></div>
+    <div class="tool-group"><button class="icon-btn " title="rect"><svg class="ic" viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/></svg></button><button class="icon-btn " title="oval"><svg class="ic" viewBox="0 0 24 24"><path d="M12 19c4.4 0 8-3.1 8-7s-3.6-7-8-7-8 3.1-8 7 3.6 7 8 7z"/></svg></button><button class="icon-btn " title="line"><svg class="ic" viewBox="0 0 24 24"><path d="M5 19L19 5"/></svg></button><button class="icon-btn " title="arrow"><svg class="ic" viewBox="0 0 24 24"><path d="M5 19L19 5M10 5h9v9"/></svg></button><button class="icon-btn " title="pen"><svg class="ic" viewBox="0 0 24 24"><path d="M4 20l1-4L16.5 4.5l3 3L8 19zM14 7l3 3"/></svg></button><button class="icon-btn " title="image"><svg class="ic" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 15l4-4 4 4 3-3 5 5M15 9h.01"/></svg></button></div>
+    <div class="tool-group undo-split"><button class="icon-btn " title="undo"><svg class="ic" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button><button class="icon-btn caret-btn" title="History"><svg class="ic s" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button><button class="icon-btn " title="redo"><svg class="ic" viewBox="0 0 24 24"><path d="M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3"/></svg></button></div>
+    <button class="new-board"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> New board <svg class="ic s" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+  </div>
+  <div class="tb-zone tb-center"><span class="app-title muted" style="font-weight:500">relay</span></div>
+  <div class="tb-zone tb-right">
+    <div class="tool-group"><button class="icon-btn" title="Zoom out"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button><span class="zoom">39%</span><button class="icon-btn " title="Zoom in"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button><button class="icon-btn " title="Fit all"><svg class="ic" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button></div>
+    <div class="share-wrap"><button class="share-btn"><svg class="ic s" viewBox="0 0 24 24"><path d="M12 15V4M8 8l4-4 4 4M5 13v6h14v-6"/></svg> <span class="share-label">Share</span></button></div>
+    <div class="tool-group"><button class="ask-ai on"><svg class="ic" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg> <span class="ask-ai-label">Ask AI</span></button><button class="icon-btn " title="View"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg></button></div>
+  </div>
+</header>
+<div class="main"><aside class="left">
+  <div class="left-tabs"><button class="on">Boards</button><button>Assets</button><button>Tokens</button></div>
+  <section class="left-pages">
+    <div class="sec-head"><span>Pages</span><button class="icon-btn sm"><svg class="ic s" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div>
+    <p class="empty">Viewing everything as one page. Use + to split it into pages.</p>
+  </section>
+  <section class="left-boards">
+    <div class="sec-head"><span>Boards 8</span></div>
+    <label class="search"><svg class="ic s" viewBox="0 0 24 24"><path d="M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14zM20 20l-4-4"/></svg><span>Find boards (⌘K)</span></label>
+    <ul class="board-list"><li><button class="row two-line" title="home.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Home</span><span class="row-file">home.html</span></span></button></li><li><button class="row two-line" title="onboard-1-welcome.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Onboarding 1 · Welcome</span><span class="row-file">onboard-1-welcome.html</span></span></button></li><li><button class="row two-line" title="onboard-1-welcome-v1.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Variant 1: quiet</span><span class="row-file">onboard-1-welcome-v1.html</span></span></button></li><li><button class="row two-line on" title="onboard-1-welcome-v2.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Variant 2: bold CTA</span><span class="row-file">onboard-1-welcome-v2.html</span></span></button></li><li><button class="row two-line" title="onboard-1-welcome-v3.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Variant 3: photo</span><span class="row-file">onboard-1-welcome-v3.html</span></span></button></li><li><button class="row two-line" title="onboard-2-goals.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Onboarding 2 · Goals</span><span class="row-file">onboard-2-goals.html</span></span></button></li><li><button class="row two-line" title="onboard-3-invite.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Onboarding 3 · Invite</span><span class="row-file">onboard-3-invite.html</span></span></button></li><li><button class="row two-line" title="inbox.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Inbox</span><span class="row-file">inbox.html</span></span></button></li></ul>
+  </section>
+</aside>
+<div class="canvas-wrap"><div class="canvas">
+<div class="board " style="left:16px;top:96px;width:152px;height:329px"><div class="board-label"><span class="lab-row"><span class="board-title">Onboarding 1 · Welcome</span></span></div>
+  <div class="board-frame"><div class="scr"><div class="hd">Skip</div><div class="bd"><div class="art"></div><div class="h">Hand off work, not the whole thread.</div><div class="p">Relay keeps the context.</div></div><div class="ft"><div class="cta">Get started</div></div></div></div></div>
+<div class="note-sticky" style="left:252px;top:112px;width:230px">Keep the headline. Legal approved this copy on Nov 7.</div>
+<div class="board" style="left:228px;top:462px;width:152px;height:329px"><div class="board-label"><span class="lab-row"><span class="board-title">Variant 1: quiet</span><span class="board-btns pinned"><button class="icon-btn sm use-btn ready"><svg class="ic s" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg><span class="use-label">Use this</span></button></span></span></div>
+  <div class="board-frame"><div class="scr"><div class="hd">Skip</div><div class="bd" style="justify-content:center"><div class="h" style="font-weight:600">Hand off work, not the whole thread.</div></div><div class="ft"><div class="cta" style="background:#fff;color:#2b59c3;border:1px solid #c9d5f2">Get started</div></div></div></div></div>
+<div class="board selected" style="left:448px;top:462px;width:152px;height:329px"><div class="board-label"><span class="lab-row"><span class="board-title">Variant 2: bold CTA</span><span class="board-btns pinned"><button class="icon-btn sm use-btn ready pressed"><svg class="ic s" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg><span class="use-label">Use this</span></button></span></span></div>
+  <div class="board-frame"><div class="scr"><div class="hd">Skip</div><div class="bd"><div class="art" style="height:56px"></div><div class="h">Hand off work, not the whole thread.</div><div class="p">Relay keeps the context.</div></div><div class="ft"><div class="cta" style="height:44px;font-size:13px;border-radius:12px">Get started →</div></div></div></div></div>
+<div class="board" style="left:668px;top:462px;width:152px;height:329px"><div class="board-label"><span class="lab-row"><span class="board-title">Variant 3: photo</span><span class="board-btns pinned"><button class="icon-btn sm use-btn ready"><svg class="ic s" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg><span class="use-label">Use this</span></button></span></span></div>
+  <div class="board-frame"><div class="scr"><div class="art" style="height:170px;border-radius:0;background:radial-gradient(circle at 70% 30%,#f3d9b0 0 14%,transparent 15%),linear-gradient(170deg,#7f9cc4,#2b3f63 70%)"></div><div class="bd"><div class="h">Hand off work, not the whole thread.</div></div><div class="ft"><div class="cta">Get started</div></div></div></div></div>
+<div class="menu confirm" style="left:540px;top:464px;--arrow:24px">
+  <p class="c-title">Apply "Variant 2: bold CTA" to Onboarding 1 · Welcome?</p>
+  <p class="c-body">Onboarding 1 · Welcome is replaced. The other 2 variants go to trash.</p>
+  <div class="btn-row"><button class="btn primary">Apply</button><button class="btn">Keep all</button></div>
+</div>
+<div class="toasts" style="left:430px;bottom:auto;top:800px;transform:none"><div class="toast ok"><svg class="ic s" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg> Applied Variant 2 to Onboarding 1 · Welcome<button class="toast-action">Undo</button></div></div>
+<span class="inset-label after-label" style="left:430px;top:780px">After Apply</span>
+</div>
+<div class="canvas-hint">Click selects · Double-click edits text · Esc deselects</div><div class="minimap"><svg width="200" height="130">
+  <rect x="14" y="24" width="24" height="52" class="mm-board"/><rect x="44" y="24" width="24" height="52" class="mm-sel"/><rect x="74" y="24" width="24" height="52" class="mm-board"/><rect x="104" y="24" width="24" height="52" class="mm-board"/><rect x="134" y="24" width="24" height="52" class="mm-board"/>
+  <rect x="8" y="10" width="164" height="96" class="mm-view"/></svg></div>
+</div><aside class="right">
+  <div class="right-tabs"><button>Properties</button><button class="on">AI <kbd>⌘J</kbd></button></div>
+  <section class="chat">
+    <div class="chat-head">
+      <div class="chat-head-row"><div class="agent-pick"><button class="agent-btn" title="Which agent edits the files"><span class="dot ready"></span><span class="agent-name">Claude Code</span><svg class="ic s" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></div><span class="model-field" title="Model for Claude Code: an alias or a full model id. Leave empty for the CLI's own default.">Default (from CLI config)</span></div>
+      <div class="chat-head-row sub"><span class="muted small">Continuing conversation</span><div class="spacer"></div><button class="icon-btn sm new-chat" title="New chat"><svg class="ic s" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> New chat</button></div>
+    </div>
+    <div class="chat-list">
+      <div class="msg user"><div class="chips"><span class="chip">Onboarding 1 · Welcome</span><span class="chip">3 variants</span></div><div class="bubble">Make 3 variants of the selected screen in different directions (each with a different layout, hierarchy and emphasis).</div></div>
+      <div class="msg ai done">
+        <div class="msg-head"><strong>Claude Code</strong><span class="muted small">$0.118</span></div>
+        <button class="btn link" style="align-self:flex-start">Made 3 variants side by side · View</button>
+        <div class="ai-text md"><p>Variant 1 keeps only the headline. Variant 2 makes Get started the focus. Variant 3 leads with a photo.</p></div>
+        <div class="run-result"><span class="rr-line">Added 3 boards</span><div class="chips"><button class="chip"><svg class="ic s" viewBox="0 0 24 24" style="width:12px;height:12px"><path d="M4 5h16v14H4zM4 9h16"/></svg> Variant 1: quiet (new)</button><button class="chip"><svg class="ic s" viewBox="0 0 24 24" style="width:12px;height:12px"><path d="M4 5h16v14H4zM4 9h16"/></svg> Variant 2: bold CTA (new)</button><button class="chip"><svg class="ic s" viewBox="0 0 24 24" style="width:12px;height:12px"><path d="M4 5h16v14H4zM4 9h16"/></svg> Variant 3: photo (new)</button></div><div class="btn-row"><button class="btn"><svg class="ic s" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg> Undo this run</button><button class="btn"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h7v14H4zM13 5h7v14h-7"/></svg> Compare</button></div></div>
+      </div>
+    </div>
+    <div class="composer"><div class="chips"><span class="chip on"><button class="chip-main"><svg class="ic s" viewBox="0 0 24 24" style="width:12px;height:12px"><path d="M4 5h16v14H4zM4 9h16"/></svg> <span>Variant 2: bold CTA</span></button></span><span class="chip on"><button class="chip-main"><svg class="ic s" viewBox="0 0 24 24" style="width:12px;height:12px"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg> <span>Visible boards 5</span></button></span></div><textarea rows="3" placeholder="What should change? (Enter to send · Shift+Enter for a new line)"></textarea><div class="composer-bar"><button class="icon-btn sm" title="Attach file or image"><svg class="ic s" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button><button class="icon-btn sm" title="Add reference link"><svg class="ic s" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg></button><label class="variants"><select><option>1 variant</option></select></label><div class="spacer"></div><button class="btn primary" disabled>Send</button></div></div>
+  </section>
+</aside>
+</div></div></body>
+</html>

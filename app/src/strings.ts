@@ -5,6 +5,9 @@
 
 const plural = (n: number, one: string, many: string) => (n === 1 ? `1 ${one}` : `${n} ${many}`);
 const variantsLabel = (n: number) => plural(n, "variant", "variants");
+/** An element in words for the change popover: "Button", "Heading", ".card", "<div>" */
+const ELEMENTS: Record<string, string> = { button: "Button", a: "Link", img: "Image", input: "Field", textarea: "Field", select: "Menu", label: "Label", p: "Paragraph", span: "Text", li: "List item", ul: "List", ol: "List", nav: "Navigation", header: "Header", footer: "Footer", main: "Main", section: "Section", form: "Form", svg: "Icon", style: "Styles", script: "Script" };
+const elementName = (tag?: string, cls?: string) => ELEMENTS[tag ?? ""] ?? (/^h[1-6]$/.test(tag ?? "") ? "Heading" : cls ? `.${cls}` : tag ? `<${tag}>` : "Element");
 
 export const strings = {
   app: {
@@ -23,8 +26,8 @@ export const strings = {
     defaultAuthor: "Me",
     tokensAside: "Design tokens",
     assetsAside: "Assets",
-    announceBoard: (title: string, i: number, n: number) => `${title} selected, ${i}/${n}. Enter to edit`,
-    firstRunEdit: "Double-click a board to edit it in place",
+    announceBoard: (title: string, i: number, n: number) => `${title} selected, ${i}/${n}. Enter to select inside`,
+    firstRunEdit: "Click anything on a board to select it · double-click text to edit it",
     firstRunAi: (mod: string) => `Press ${mod}J to ask the AI for a change`,
   },
 
@@ -77,9 +80,6 @@ export const strings = {
     redoTitle: (last: string | undefined, mod: string) => (last ? `Redo: ${last} (⇧${mod}Z)` : `Redo (⇧${mod}Z)`),
     newBoard: "New board",
     newBoardTitle: "New board (choose a template)",
-    editing: (name: string) => `Editing ${name}`,
-    stopEditing: "Stop editing",
-    stopEditingTitle: "Stop editing (Esc)",
     themeTitle: "Design system theme (used by swatches, token check and AI)",
     theme: "Theme",
     themeOption: (name: string) => `Theme: ${name}`,
@@ -200,14 +200,74 @@ export const strings = {
     close: "Close",
   },
 
+  /** Share › view-only copy (toolbar popover) */
+  share: {
+    button: "Share",
+    buttonTitle: "Share a view-only copy (web folder, single file, PDF or PNG)",
+    title: "Share a view-only copy",
+    scope: "What to export",
+    whole: "Whole canvas",
+    page: "This page",
+    pageNone: "This canvas has one page",
+    selected: (n: number) => `Selected boards (${n})`,
+    webTitle: "Web folder",
+    webHint: "Static files. Host on Vercel, GitHub Pages or a PR preview.",
+    singleTitle: "Single file",
+    /** Follows the file name, shown as code */
+    singleHint: (size: string) => ` · ${size} · opens in any browser, no hosting`,
+    singleSwitch: "One .html file",
+    measuring: "measuring…",
+    pdfTitle: "PDF",
+    pdfHint: "One board per page",
+    pngTitle: "PNG",
+    pngHint: "One image per board, 2×",
+    export: "Export",
+    save: "Save",
+    working: "Exporting…",
+    exported: "exported",
+    saved: "saved",
+    reveal: "Reveal",
+    revealTitle: "Show the folder in your file manager",
+    copyDeploy: "Copy deploy command",
+    copyDeployTitle: (cmd: string) => `Copies ${cmd} (run it in the project folder)`,
+    copied: (cmd: string) => `Copied: ${cmd}`,
+    copyFailed: "Couldn't copy to the clipboard",
+    attachHint: "Attach it to Slack, email or a PR.",
+    skipped: (n: number) => `${n} reference${n === 1 ? "" : "s"} could not be included`,
+    largeFiles: "Large canvases make large files. No live updates.",
+    sameAs: "Same as:",
+    unavailable: "Unavailable here.",
+  },
+
+  /** The exported, view-only canvas */
+  viewer: {
+    docTitle: (canvas: string) => `${canvas} — view only`,
+    noData: "This page is an Easel export, but its data is missing (easel-viewer/data.js).",
+    bar: "Viewer",
+    pages: "Pages",
+    play: "Play",
+    playTitle: "Try the selected board full screen (or the first one)",
+    stamp: (when: string) => `View only · exported ${when}`,
+    stampTitle: "A read-only copy. Changes happen in the design files, then export again.",
+    madeWith: "Made with Easel",
+    comments: "Comments",
+    commentsN: (n: number) => `Comments ${n}`,
+    noComments: "No comments",
+    replies: (n: number) => (n === 1 ? "1 reply" : `${n} replies`),
+    pin: (n: number, author: string) => `Comment ${n} by ${author}`,
+    threadOf: (i: number, n: number) => `${i} of ${n}`,
+    closeThread: "Close comment",
+    boardsPanel: "Boards",
+    commentsPanel: "Comments panel",
+    empty: "Nothing on this page",
+  },
+
   canvas: {
     aria: "Design canvas",
     board: (title: string, selected: boolean, editing: boolean, playing: boolean) =>
       `Board ${title}${selected ? " (selected)" : ""}${editing ? " editing" : ""}${playing ? " playing" : ""}`,
     interactive: "Interactive (Play)",
-    editMode: "Edit mode",
-    editTitle: "Edit (E · double-click)",
-    editPill: "Edit",
+    hint: "Click selects · Double-click edits text · Esc deselects",
     notLoaded: "Scroll closer to load",
     fileMissing: (file: string) => `File missing · ${file}`,
     playing: "▶ Playing · Esc",
@@ -234,6 +294,50 @@ export const strings = {
     expand: "Expand",
     title: "Layers",
     hint: "Drop an item on another to move it in front of that item. Shift+click to select several (for wrapping). Click the list, then use ↑↓ to move and ←→ to collapse or expand.",
+  },
+
+  /** The small toolbar over a selected element and its popovers */
+  select: {
+    toolbar: "Element",
+    text: "Text",
+    textOff: "No text in this element",
+    fill: "Fill",
+    radius: "Radius",
+    spacing: "Spacing",
+    askAi: "Ask AI",
+    askAiTitle: "Ask AI about this element",
+    comment: "Comment",
+    commentTitle: "Comment on this element",
+    tokens: "Tokens",
+    custom: "Custom…",
+    hex: "Hex colour",
+    picker: "Pick a colour",
+    tokenNow: (name: string) => `${name} · token`,
+    decrease: (what: string) => `Decrease ${what.toLowerCase()}`,
+    increase: (what: string) => `Increase ${what.toLowerCase()}`,
+  },
+
+  /** Properties in design words: the CSS name shows on hover and focus */
+  design: {
+    fill: "Fill",
+    text: "Text",
+    font: "Font",
+    size: "Size",
+    weight: "Weight",
+    color: "Color",
+    cornerRadius: "Corner radius",
+    padding: "Padding",
+    gap: "Gap",
+    more: "More (CSS)",
+    none: "None",
+    inherited: (v: string) => `(${v})`,
+    weights: { 100: "Thin", 200: "Extra light", 300: "Light", 400: "Regular", 500: "Medium", 600: "Semibold", 700: "Bold", 800: "Extra bold", 900: "Black" } as Record<number, string>,
+    white: "white",
+    black: "black",
+    grade: (r: number) => (r >= 7 ? "AAA" : r >= 4.5 ? "AA" : r >= 3 ? "AA large text only" : "too low"),
+    contrastWith: (ratio: string, who: string, grade: string) => `Contrast ${ratio}:1 with ${who} text · ${grade}`,
+    contrastOn: (ratio: string, who: string, grade: string) => `Contrast ${ratio}:1 on ${who} · ${grade}`,
+    openFill: (what: string) => `${what}: change`,
   },
 
   properties: {
@@ -497,8 +601,7 @@ export const strings = {
     moveSelectedToPage: (n: number) => `Move ${plural(n, "selected board", "selected boards")} to this page`,
     delete: "Delete",
     // board menu
-    edit: "Edit",
-    stopEditing: "Stop editing",
+    selectInside: "Select inside",
     playInPlace: "Play in place",
     stopPlay: "Stop Play",
     playFullScreen: "Play full screen",
@@ -572,7 +675,7 @@ export const strings = {
     a11yOk: "No touch target, contrast or label issues",
     askFix: "Ask AI to fix",
     notVisible: "Checks run when the board is visible on screen.",
-    pickInEdit: (path: string) => `Select ${path} in edit mode`,
+    pickInEdit: (path: string) => `Select ${path} on the board`,
     line: (n: number | undefined) => `Line ${n}`,
     more: (n: number) => `+${n} more`,
     // token lint messages
@@ -632,14 +735,15 @@ export const strings = {
     hintDraw: "Draw board",
     hintTitle: "Title",
     hintNote: "Note",
-    hintDoubleClick: "Double-click or",
-    hintEdit: "Edit",
+    hintClick: "Click an element to select it ·",
     hintFocus: "Focus view",
     hintRightClick: "Right-click for menu",
     hintFind: "Find boards",
-    editModeHint: "Editing · click an element to select it, drag or Shift-click for several, Esc for its parent",
     kindName: (k: string) => ({ text: "Text", button: "Button", link: "Link", image: "Image", input: "Input", icon: "Icon", container: "Container" } as Record<string, string>)[k] ?? k,
-    viewModeHint: "Viewing · double-click the board to edit it",
+    crumbs: "Selection path",
+    crumbBoard: "Select the board",
+    crumbParent: (name: string) => `Select ${name}`,
+    crumbElement: (tag: string, path: string) => `<${tag}> ${path}`,
     more: (n: number) => `+${n} more`,
     copy: "Copy",
     copied: "Copied",
@@ -748,5 +852,171 @@ export const strings = {
     chipRemoveTitle: "Click to remove",
     chipAddTitle: "Click to attach",
     remove: (label: string) => `Remove ${label}`,
+    // More agents
+    howToInstall: "How to install",
+    customCommand: "Custom command…",
+    checkedAt: (time: string, onOpen: boolean) => (onOpen ? `Checked when the AI tab opened · ${time}` : `Checked again at ${time}`),
+    customTitle: "Custom command",
+    customName: "Name",
+    customCommandLabel: "Command",
+    customNamePlaceholder: "Aider",
+    customCommandPlaceholder: "aider --message {prompt} --yes",
+    customHint: "`{prompt}` is replaced with your request and the canvas context. Output is shown as plain text.",
+    customSave: "Save",
+    customCommandTitle: (cmd: string) => `Runs without a shell: ${cmd}`,
+    // Permission requests
+    waiting: "Waiting for you",
+    waitingHint: "answer the request above",
+    permAsk: (agent: string, what: string, tool: string) =>
+      what === "command" ? `${agent} asks to run a command` : what === "edit" ? `${agent} asks to ${tool === "Write" ? "write" : "edit"} a file` : what === "fetch" ? `${agent} asks to fetch a page` : `${agent} asks to use ${tool}`,
+    permIn: "in",
+    permOutside: "outside the design folder",
+    allowOnce: "Allow once",
+    alwaysAllow: (rule: string) => `Always allow ${rule}`,
+    alwaysAllowTitle: "Until Easel restarts, for this canvas only",
+    deny: "Deny",
+    permDone: { once: "Allowed", always: "Always allowed", deny: "Denied" } as Record<string, string>,
+    permDoneOutside: "(outside the design folder)",
+    noPause: {
+      codex: "Codex exec cannot pause to ask; it follows its sandbox setting.",
+      cursor: "Cursor Agent cannot pause to ask here; it runs with --force.",
+      gemini: "Gemini CLI cannot pause to ask here; it accepts edits on its own.",
+    } as Record<string, string>,
+    // Result of a run: undo, redo, compare, restore after a restart
+    runChanged: (changed: number, added: number) =>
+      changed && added ? `Changed ${changed} board${changed === 1 ? "" : "s"} · added ${added}` : added ? `Added ${added} board${added === 1 ? "" : "s"}` : changed ? `Changed ${changed} board${changed === 1 ? "" : "s"}` : "Changed the canvas",
+    chipNew: (title: string) => `${title} (new)`,
+    chipRemoved: (title: string) => `${title} (removed)`,
+    undoRun: "Undo this run",
+    compare: "Compare",
+    redo: "Redo",
+    runUndone: (n: number) => `Run undone · ${n} board${n === 1 ? "" : "s"} restored`,
+    conflictUndo: (names: string) => `Changed since this run: ${names}. Undo the rest and keep those, or undo all and overwrite them?`,
+    conflictRedo: (names: string) => `Changed since the undo: ${names}. Redo the rest and keep those, or redo all and overwrite them?`,
+    undoRest: "Undo the rest",
+    undoAll: "Undo all anyway",
+    redoRest: "Redo the rest",
+    redoAll: "Redo all anyway",
+    restoreCopy: "Restore the copy from before this run",
+    savedAt: (time: string) => `Saved ${time}`,
+    copyGone: "The copy from before this run is gone (only the newest 10 are kept).",
+    restoredCopy: "Canvas restored to the copy from before this run",
+    restoreTitle: "Restore the copy from before this run?",
+    restoreBody: (time: string) =>
+      `This puts the whole canvas back to ${time}, before this run: every screen and board.json, including anything changed since by you or by other runs. Undo takes the restore back.`,
+    restoreOk: "Restore",
+    restarted: (time: string) => `Easel restarted · ${time}`,
+  },
+
+  compare: {
+    title: (board: string) => `Compare · ${board}`,
+    boards: "Boards",
+    before: "Before",
+    after: "After",
+    notBefore: "This board did not exist before the run.",
+    notAfter: "This run removed the board.",
+    notBeforeChange: "This board did not exist before this change.",
+    close: "Close",
+  },
+
+  // Who changed what: tags above boards changed by someone else, and the History menu under Undo
+  activity: {
+    /** Author of a change found on disk with no agent or person attached (an editor, an agent's own file tools) */
+    outside: "Outside Easel",
+    /** Short relative time on tags and in History: "now", "2m", "1h", "3d" */
+    ago: (ms: number) => {
+      const m = Math.floor(Math.max(0, ms) / 60000);
+      return m < 1 ? "now" : m < 60 ? `${m}m` : m < 1440 ? `${Math.floor(m / 60)}h` : `${Math.floor(m / 1440)}d`;
+    },
+    /** Longer relative time in the popover: "just now", "2 min ago", "1 h ago" */
+    agoLong: (ms: number) => {
+      const m = Math.floor(Math.max(0, ms) / 60000);
+      return m < 1 ? "just now" : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.floor(m / 60)} h ago` : `${Math.floor(m / 1440)} d ago`;
+    },
+    tag: (who: string, ago: string, count: number, newBoard: boolean) => `${who} · ${ago} · ${newBoard && count === 1 ? "new board" : plural(count, "change", "changes")}`,
+    /** Hover text: the whole tag (it is cut short on narrow boards) */
+    tagTitle: (tag: string) => `${tag} — click for the change, Before / After and Undo`,
+    tagsAria: (n: number) => `${plural(n, "change", "changes")} by others`,
+    popAria: (who: string) => `Change by ${who}`,
+    /** The change in words when it is not a text change */
+    element: elementName,
+    change: (c: { kind: string; count: number; tag?: string; cls?: string; more?: boolean }) => {
+      const el = elementName(c.tag, c.cls);
+      switch (c.kind) {
+        case "style": return `Style changed on ${el}`;
+        case "attr": return `${el} attributes changed`;
+        case "edited": return `${el} changed`;
+        case "added": return c.count > 1 ? `${c.count} elements added` : `${el} added`;
+        case "removed": return c.count > 1 ? `${c.count} elements removed` : `${el} removed`;
+        case "replaced": return `${el} replaced`;
+        case "many": return `${c.count}${c.more ? "+" : ""} elements changed`;
+        case "page": return "Page styles or title changed";
+        case "source": return "Only spacing or comments in the source changed";
+        case "new": return "New board";
+        case "deleted": return "Board deleted";
+        case "moved": return "Board moved";
+        case "resized": return "Board resized";
+        case "renamed": return "Board renamed";
+        case "options": return "Board options changed";
+        default: return "Changed";
+      }
+    },
+    changes: (n: number) => `${plural(n, "change", "changes")} on this board`,
+    /** A text change: “Get started” → “Start free” */
+    quote: (text: string) => `“${text}”`,
+    arrow: "→",
+    beforeAfter: "Before / After",
+    undo: "Undo",
+    undoTitle: (n: number) => (n === 1 ? "Undo this change" : `Undo these ${n} changes`),
+    conflict: (names: string) => `Changed since: ${names}. Undo the rest and keep those, or undo all and overwrite them?`,
+    undoRest: "Undo the rest",
+    undoAll: "Undo all anyway",
+    cancel: "Cancel",
+    close: "Close",
+    // History menu (the ▾ next to Undo)
+    historyButton: "History",
+    historyTitle: "History · newest first",
+    historyEmpty: "Nothing yet. Changes made in this session show up here.",
+    historyFoot: "History is kept for this session.",
+    now: "Now",
+    goBack: "Go back to here",
+    goBackAria: (name: string, who: string, ago: string) => `${name} by ${who}, ${ago} · Go back to here`,
+    nowAria: (name: string, who: string, ago: string) => `${name} by ${who}, ${ago} · current`,
+    undoneAria: (name: string, who: string, ago: string) => `${name} by ${who}, ${ago} · undone`,
+    wentBack: (name: string) => `Back to: ${name}`,
+  },
+  occupancy: {
+    // Labels above a board: who is on it now, and who finished
+    editing: (who: string) => `${who} is editing…`,
+    you: "You · editing",
+    personEditing: (name: string) => `${name} · editing`,
+    done: (who: string, time: string) => `${who} · done ${time}`,
+    someone: "Someone",
+    /** 24-hour clock for "done 13:52" and "Forked 14:02" */
+    clock: (at: number) => new Date(at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }),
+    tagsAria: "Who is on this board",
+    listDot: (who: string) => `${who} is editing`,
+    youListDot: "You are editing",
+    // A fork and its original
+    forked: (time: string, by: string, whileBy: string) => `Forked ${time} — ${by} started while ${whileBy} was editing`,
+    // Picking one version
+    useThis: "Use this",
+    useThisOne: "Use this one",
+    useThisTitle: "Make this variant the original board; the other variants go to trash",
+    useThisOneTitle: "Keep this version as the board; the other version goes to trash",
+    waitFor: (who: string) => `Wait until ${who} is done editing`,
+    confirmVariant: (chosen: string, original: string) => `Apply "${chosen}" to ${original}?`,
+    confirmVariantBody: (original: string, others: number) => `${original} is replaced.${others ? ` The other ${others === 1 ? "variant goes" : `${others} variants go`} to trash.` : ""}`,
+    confirmFork: (chosen: string, original: string) => `Use "${chosen}" for ${original}?`,
+    confirmForkBody: (original: string) => `${original} is replaced by this version. The fork goes to trash.`,
+    confirmKeep: (original: string) => `Keep "${original}"?`,
+    confirmKeepBody: (others: string, n: number) => `${others} ${n === 1 ? "goes" : "go"} to trash.`,
+    apply: "Apply",
+    keepAll: "Keep all",
+    keepBoth: "Keep both",
+    applied: (chosen: string, original: string) => `Applied ${chosen} to ${original}`,
+    kept: (original: string) => `Kept ${original}; the other version is in trash`,
+    keptAll: (kind: "variant" | "fork", n: number) => (kind === "variant" ? `Kept all ${variantsLabel(n)} as boards` : n === 1 ? "Kept both versions as boards" : `Kept all ${n + 1} versions as boards`),
+    undo: "Undo",
   },
 } as const;

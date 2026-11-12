@@ -10,11 +10,13 @@ import { WebSocketServer } from "ws";
 import { cleanAgent } from "./agents.mjs";
 import { TOOL_ROOT } from "./args.mjs";
 import { createBoardStore } from "./board.mjs";
+import { isTrackedRel } from "./copies.mjs";
 import { rootOf, toPosix } from "./fsutil.mjs";
 import { createHistory, requestScope } from "./history.mjs";
+import { createOccupancy } from "./occupancy.mjs";
 import { writeEntry } from "./registry.mjs";
 
-const MIME = {
+export const MIME = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
@@ -46,6 +48,38 @@ export async function readBody(req, limit = 4 * 1024 * 1024) {
   }
   const raw = Buffer.concat(chunks).toString("utf8");
   return raw ? JSON.parse(raw) : {};
+}
+
+/** Host names a browser uses for this local server; anything else is a DNS-rebinding page */
+const LOCAL_HOST = /^(localhost|127\.0\.0\.1|\[::1\]|[a-z0-9.-]+\.localhost)(:\d+)?$/i;
+
+/**
+ * State-changing requests and the WebSocket: refused when they come from another web page in the user's browser.
+ * No Origin header (CLI, MCP server, curl) or the page's own origin is allowed; the Host must be a local name.
+ */
+export function originAllowed(headers) {
+  const host = String(headers.host ?? "");
+  if (!LOCAL_HOST.test(host)) return false;
+  const o = headers.origin;
+  if (o == null) return true;
+  try {
+    const u = new URL(o);
+    return (u.protocol === "http:" || u.protocol === "https:") && u.host.toLowerCase() === host.toLowerCase();
+  } catch {
+    return false; // "null" (sandboxed frames, file://) and anything unparsable
+  }
+}
+
+/** Who sent a request: agent and in-app run (MCP, chat runs), browser id and person's name (the app; the name is URI-encoded so any script fits a header) */
+export function scopeOf(headers) {
+  const h = (k) => cleanAgent(headers[k]) || undefined;
+  let person = headers["x-easel-author"];
+  try {
+    person = person == null ? undefined : decodeURIComponent(String(person));
+  } catch {
+    /* not encoded: kept as sent */
+  }
+  return { agent: h("x-easel-agent"), run: h("x-easel-run"), client: h("x-easel-client"), person: cleanAgent(person) || undefined };
 }
 
 /** Allow only paths inside dir (blocks ../ escapes) */
@@ -89,10 +123,11 @@ async function serveFile(res, file) {
   }
 }
 
-/** Rebuild if files under app/ are newer than dist/index.html */
+/** Rebuild if files under app/ are newer than dist/index.html, or the export viewer (dist/viewer) is missing */
 async function appIsStale(distDir) {
   const built = await fs.stat(path.join(distDir, "index.html")).catch(() => null);
   if (!built) return true;
+  if (existsSync(path.join(TOOL_ROOT, "app")) && !existsSync(path.join(distDir, "viewer", "viewer.js"))) return true;
   let newest = 0;
   const walk = async (d) => {
     for (const e of await fs.readdir(d, { withFileTypes: true })) {
@@ -144,6 +179,18 @@ function trackedFiles(store) {
   };
 }
 
+/** Who wrote a board, from a history step: an agent (MCP or an in-app run) starts or keeps holding it; a change found on disk with no
+ *  author keeps an agent that claimed the board busy; a board file that is gone has nobody on it */
+function noteWriters(occupancy, screensDir, step, changes) {
+  for (const c of changes) {
+    const rel = toPosix(path.relative(screensDir, c.path));
+    if (!c.path.endsWith(".html") || rel.startsWith("..")) continue;
+    if (c.after == null) occupancy.forget(rel);
+    else if (step.by) occupancy.agentWrite(rel, step.by, { run: step.run, client: step.client, before: c.before });
+    else if (step.outside) occupancy.touch(rel);
+  }
+}
+
 /**
  * register: write the running-canvas entry (~/.easel/servers/<port>.json, or under EASEL_HOME) for MCP discovery.
  * autoPort: when the port is busy, try the next ones instead of failing (for a port the user did not choose).
@@ -152,8 +199,11 @@ export async function createServer({ dir, port, dev = true, extraRoutes = [], au
   if (!existsSync(dir)) throw new Error(`Design folder not found: ${dir}`);
   let history;
   const store = createBoardStore(dir, { onWrite: (p, text) => history.note(p, text) });
-  history = createHistory(trackedFiles(store));
-  const ctx = { dir, store, history, broadcast: () => {} };
+  // Who is on which board: in memory, sent to every browser when it changes
+  const occupancy = createOccupancy({ onChange: (boards) => ctx.broadcast({ type: "occupancy", boards }) });
+  history = createHistory({ ...trackedFiles(store), onStep: (step, changes) => noteWriters(occupancy, store.screensDir, step, changes) });
+  // boot: when this server started; the chat shows "Easel restarted" when it changes (the undo history did not survive)
+  const ctx = { dir, store, history, occupancy, broadcast: () => {}, boot: new Date().toISOString() };
   await history.seed();
 
   // App UI: on startup, build once if the app source is newer than dist, then serve dist statically.
@@ -162,10 +212,12 @@ export async function createServer({ dir, port, dev = true, extraRoutes = [], au
   if (dev && (await appIsStale(distDir))) {
     const { build } = await import("vite");
     await build({ root: path.join(TOOL_ROOT, "app"), configFile: path.join(TOOL_ROOT, "vite.config.mjs"), logLevel: "warn" });
+    // Second entry: the view-only viewer that Share › Export copies next to the screens (the first build empties dist/)
+    await build({ root: path.join(TOOL_ROOT, "app"), configFile: path.join(TOOL_ROOT, "vite.config.mjs"), logLevel: "warn", mode: "viewer" });
   }
   if (!existsSync(path.join(distDir, "index.html"))) throw new Error("No app build found (running with npm start creates it)");
 
-  const LOCKED = /^\/api\/(board|boards\/|history\/|edit|undo|redo|place|notes|pages|comments|chat\/revert)/;
+  const LOCKED = /^\/api\/(board|boards\/|history\/|edit|undo|redo|place|notes|pages|comments|chat\/(revert|undo-run|redo-run))/;
   // Screens folder as the agent sees it: relative to the project root
   const screensRel = toPosix(path.relative(rootOf(dir), store.screensDir)) || "screens";
   const routes = [
@@ -209,9 +261,10 @@ export async function createServer({ dir, port, dev = true, extraRoutes = [], au
         res.writeHead(404);
         return res.end("not found");
       }
+      if (req.method !== "GET" && req.method !== "HEAD" && url.pathname.startsWith("/api/") && !originAllowed(req.headers)) return sendJson(res, 403, { error: "Cross-origin request refused" });
       for (const [m, p, h] of routes) {
         // Who sent a write (MCP clients send their agent name, in-app runs their run id): read by history.push
-        if (req.method === m && url.pathname === p) return await requestScope.run({ agent: cleanAgent(req.headers["x-easel-agent"]) || undefined, run: cleanAgent(req.headers["x-easel-run"]) || undefined }, () => h(req, res, url));
+        if (req.method === m && url.pathname === p) return await requestScope.run(scopeOf(req.headers), () => h(req, res, url));
       }
       if (url.pathname.startsWith("/api/")) return sendJson(res, 404, { error: "Unknown API" });
       if (url.pathname.startsWith("/_app/")) {
@@ -240,8 +293,28 @@ export async function createServer({ dir, port, dev = true, extraRoutes = [], au
     }
   });
 
-  const wss = new WebSocketServer({ server, path: "/ws" });
+  const wss = new WebSocketServer({ server, path: "/ws", verifyClient: ({ req }) => originAllowed(req.headers) });
   wss.on("error", () => {}); // ws re-emits the http server's errors; a busy port is handled by listen()
+  let conns = 0;
+  wss.on("connection", (c) => {
+    const conn = `w${++conns}`;
+    c.send(JSON.stringify({ type: "hello", boot: ctx.boot }));
+    c.send(JSON.stringify({ type: "occupancy", boards: occupancy.snapshot() }));
+    // The app says which board this tab is editing (an element selected on it, or none); a closed tab leaves it
+    c.on("message", (data) => {
+      let m;
+      try {
+        m = JSON.parse(String(data));
+      } catch {
+        return;
+      }
+      if (m?.type !== "editing") return;
+      const file = m.file == null ? null : isTrackedRel(`screens/${m.file}`) ? m.file : undefined;
+      if (file === undefined) return;
+      occupancy.personEdit(conn, file, { client: cleanAgent(m.client) || undefined, person: cleanAgent(m.person) || undefined });
+    });
+    c.on("close", () => occupancy.personEdit(conn, null));
+  });
   ctx.broadcast = (msg) => {
     const data = JSON.stringify(msg);
     for (const c of wss.clients) if (c.readyState === 1) c.send(data);
@@ -270,6 +343,7 @@ export async function createServer({ dir, port, dev = true, extraRoutes = [], au
     unregister,
     async close() {
       unregister();
+      occupancy.close();
       await appWatcher?.close();
       for (const c of wss.clients) c.terminate();
       wss.close();
