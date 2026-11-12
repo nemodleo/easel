@@ -68,6 +68,18 @@ export function originAllowed(headers) {
   }
 }
 
+/** Who sent a request: agent and in-app run (MCP, chat runs), browser id and person's name (the app; the name is URI-encoded so any script fits a header) */
+export function scopeOf(headers) {
+  const h = (k) => cleanAgent(headers[k]) || undefined;
+  let person = headers["x-easel-author"];
+  try {
+    person = person == null ? undefined : decodeURIComponent(String(person));
+  } catch {
+    /* not encoded: kept as sent */
+  }
+  return { agent: h("x-easel-agent"), run: h("x-easel-run"), client: h("x-easel-client"), person: cleanAgent(person) || undefined };
+}
+
 /** Allow only paths inside dir (blocks ../ escapes) */
 export function safeJoin(root, rel) {
   const p = path.resolve(root, "." + path.posix.normalize("/" + rel));
@@ -236,7 +248,7 @@ export async function createServer({ dir, port, dev = true, extraRoutes = [], au
       if (req.method !== "GET" && req.method !== "HEAD" && url.pathname.startsWith("/api/") && !originAllowed(req.headers)) return sendJson(res, 403, { error: "Cross-origin request refused" });
       for (const [m, p, h] of routes) {
         // Who sent a write (MCP clients send their agent name, in-app runs their run id): read by history.push
-        if (req.method === m && url.pathname === p) return await requestScope.run({ agent: cleanAgent(req.headers["x-easel-agent"]) || undefined, run: cleanAgent(req.headers["x-easel-run"]) || undefined }, () => h(req, res, url));
+        if (req.method === m && url.pathname === p) return await requestScope.run(scopeOf(req.headers), () => h(req, res, url));
       }
       if (url.pathname.startsWith("/api/")) return sendJson(res, 404, { error: "Unknown API" });
       if (url.pathname.startsWith("/_app/")) {

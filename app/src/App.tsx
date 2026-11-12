@@ -2,10 +2,12 @@
 // App shell: board.json state, toolbar, left (pages, boards) and right (inspector) panels, context menus, a single undo history. PLAN.md section 5.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { api, clientId, connectEvents, type ServerEvent } from "./api";
+import { BoardTags, ChangeOutline, HistoryMenu, TagPopover, authorColor, useActivity, type Step, type Tag } from "./activity";
+import { api, clientId, connectEvents, setAuthorName, type ServerEvent } from "./api";
 import { Canvas, clamp, fitView, isTyping, MAX_ZOOM, MIN_ZOOM, type ContextTarget, type Rect } from "./Canvas";
 import { AssetGrid, AssetPicker, uploadAssets, type Asset } from "./assets";
 import { ChatPanel, type Attach, type ChatEvent } from "./chat";
+import { Compare, stepBefore } from "./compare";
 import { CheckList, checkA11y, readTweaks, TokenCheckOff, TokenPanel, TweaksPanel, useTokens, type A11yItem, type LintItem, type Tokens } from "./ds";
 import { GuidesEditor, GuidesOverlay, MAX_NOTES, NoteOptions, ShapeDrawer, ShapeOptions, ShapesLayer } from "./drawing";
 import { alignOps, EditHandles, type DropPlan } from "./elementDrag";
@@ -121,6 +123,8 @@ export function App() {
   useEffect(() => {
     if (!author) api.get<{ name: string }>("/api/me").then((r) => r.name && setAuthor(r.name)).catch(() => {});
   }, []);
+  useEffect(() => setAuthorName(author), [author]);
+  const me = author || strings.app.defaultAuthor;
   const [lint, setLint] = useState<LintItem[] | null>(null);
   const [a11y, setA11y] = useState<A11yItem[] | null>(null);
   const pendingPick = useRef<{ file: string; path: string } | null>(null);
@@ -168,6 +172,13 @@ export function App() {
   const loadComments = useCallback(() => api.get<{ comments: Comment[] }>("/api/comments").then((r) => setComments(r.comments)).catch(() => {}), []);
   const loadHistory = useCallback(() => api.get<typeof hist>("/api/history").then(setHist).catch(() => {}), []);
   const loadErrors = useCallback(() => api.get<{ errors: Record<string, BoardError[]> }>("/api/errors").then((r) => setErrors(r.errors)).catch(() => {}), []);
+  /* ---------- Who changed what: board tags and the History menu ---------- */
+  const act = useActivity(data?.dir ?? null);
+  const [tagPop, setTagPop] = useState<{ file: string; key: string; conflict: string[] | null; busy: boolean } | null>(null);
+  const [tagCmp, setTagCmp] = useState<{ file: string; step: string; added: boolean } | null>(null);
+  const [histOpen, setHistOpen] = useState(false);
+  const [histBusy, setHistBusy] = useState(false);
+  const caretRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     void load();
@@ -390,9 +401,14 @@ export function App() {
         if (e.type === "file-changed") {
           setReloadKeys((k) => ({ ...k, [e.file]: (k[e.file] ?? 0) + 1 }));
           if (e.kind !== "change") void load();
-        } else if (e.type === "board-changed" && e.source !== clientId) void load();
-        else if (e.type === "comments-changed") void loadComments();
-        else if (e.type === "history-changed") void loadHistory();
+        } else if (e.type === "board-changed" && e.source !== clientId) {
+          void load();
+          act.reload();
+        } else if (e.type === "comments-changed") void loadComments();
+        else if (e.type === "history-changed") {
+          void loadHistory();
+          act.reload();
+        }
         else if (e.type === "errors-changed") void loadErrors();
         else if (e.type === "assets-changed") setAssetsVersion((v) => v + 1);
         else if (e.type === "tokens-changed") setTokensVersion((v) => v + 1);
@@ -401,7 +417,7 @@ export function App() {
         // Sent on every (re)connect: the chat notices when the server restarted and its undo history is gone
         else if (e.type === "hello") for (const fn of chatListeners.current) fn("", { kind: "boot", boot: e.boot });
       }),
-    [load, loadComments, loadHistory, loadErrors],
+    [load, loadComments, loadHistory, loadErrors, act.reload],
   );
 
   /* ---------- Pages and visibility ---------- */
@@ -1124,6 +1140,71 @@ export function App() {
     });
   };
 
+  // A board selected or entered after it changed: its tags count as seen (they fade)
+  const prevSel = useRef<string[]>([]);
+  useEffect(() => {
+    const cur = [...selected, ...(editFile ? [editFile] : [])];
+    const added = cur.filter((f) => !prevSel.current.includes(f));
+    prevSel.current = cur;
+    for (const f of added) act.markSeen(act.tagsOf(f).flatMap((t) => t.steps));
+  }, [selected, editFile]);
+  const tagOf = (file: string, key: string) => act.tagsOf(file).find((t) => t.key === key) ?? null;
+  const openTag = (file: string, key: string) => {
+    if (!tagOf(file, key)) return;
+    setTagPop((cur) => (cur?.file === file && cur.key === key ? null : { file, key, conflict: null, busy: false }));
+  };
+  // A tag whose popover was opened counts as seen once the popover closes (while open it stays fresh and keeps its outline)
+  const openedTag = useRef<{ id: string; steps: string[] } | null>(null);
+  useEffect(() => {
+    const prev = openedTag.current;
+    const t = tagPop && tagOf(tagPop.file, tagPop.key);
+    openedTag.current = t ? { id: `${tagPop.file}|${t.key}`, steps: t.steps } : null;
+    if (prev && prev.id !== openedTag.current?.id) act.markSeen(prev.steps);
+  }, [tagPop?.file, tagPop?.key]);
+  /** Undo from a tag: a chat run goes through Undo this run (the chat row follows), anything else through undo-steps; same rule either way */
+  const undoTag = async (file: string, t: Tag, mode?: "rest" | "all") => {
+    setTagPop((p) => p && { ...p, busy: true });
+    const name = act.data?.steps.find((s) => s.id === t.steps[0])?.name ?? "";
+    try {
+      const steps = () => api.post("/api/history/undo-steps", { ids: t.steps, mode });
+      if (t.run) await api.post("/api/chat/undo-run", { id: t.run, mode }).catch((e: Error & { status?: number }) => (e.status === 404 ? steps() : Promise.reject(e)));
+      else await steps();
+      setTagPop(null);
+      toast({ text: strings.toast.undoRedoDone("undo", t.steps.length === 1 ? name : strings.activity.changes(t.steps.length)), action: { label: strings.toolbar.redo, run: () => void undoRedo("redo") } });
+      await load();
+    } catch (e) {
+      const err = e as Error & { status?: number; body?: { conflicts?: { file: string }[] } };
+      const conflicts = err.status === 409 ? err.body?.conflicts : undefined;
+      if (conflicts) setTagPop((p) => p && { ...p, busy: false, conflict: [...new Set(conflicts.map((c) => (c.file.endsWith(".html") ? (boardRef.current?.boards[c.file]?.title ?? c.file) : c.file)))] });
+      else {
+        setTagPop((p) => p && { ...p, busy: false });
+        toast({ tone: "error", text: err.message });
+      }
+    }
+    void loadHistory();
+    act.reload();
+  };
+  /** History › Go back to here: walks the undo stack to that step; Redo brings everything back */
+  const goBack = async (s: Step) => {
+    setHistBusy(true);
+    try {
+      await api.post("/api/history/goto", { id: s.id });
+      toast({ text: strings.activity.wentBack(s.name) });
+      await load();
+    } catch (e) {
+      toast({ tone: "error", text: String((e as Error).message) });
+    } finally {
+      setHistBusy(false);
+      void loadHistory();
+      act.reload();
+    }
+  };
+  const closeHist = useCallback(() => setHistOpen(false), []);
+  // A tag that went away (undone, cleared) closes its popover
+  useEffect(() => {
+    if (tagPop && !tagOf(tagPop.file, tagPop.key)) setTagPop(null);
+  }, [act.data, act.now]);
+
   /* ---------- Shortcuts ---------- */
   const keyRef = useRef<(e: KeyboardEvent) => void>(() => {});
   keyRef.current = (e: KeyboardEvent) => {
@@ -1265,9 +1346,12 @@ export function App() {
     const doc = frames.current.get(f)?.contentDocument;
     const editing = editFile === f;
     const lg = guidesOn ? (board?.guides?.[f] ?? []).filter((g) => !g.hidden) : [];
-    if (!editing && !pins.length && !lg.length) return null;
+    // The newest unseen change by someone else, outlined in its author's colour while its tag is fresh
+    const changed = inlinePlay === f ? undefined : act.tagsOf(f).find((t) => t.paths.length && act.stateOf(t) === "fresh");
+    if (!editing && !pins.length && !lg.length && !changed) return null;
     return (
       <div className="overlay">
+        {changed && <ChangeOutline frame={frames.current.get(f) ?? null} paths={changed.paths} color={authorColor(changed)} zoom={view.zoom} />}
         {lg.length > 0 && board && <GuidesOverlay guides={lg} w={board.boards[f].w} h={board.boards[f].h} />}
         {editing && edit.state.hover && !edit.state.paths.includes(edit.state.hover.path) && <Box r={edit.state.hover.rect} cls="hover" />}
         {editing && edit.state.rects.map((r, i) => <Box key={i} r={r} cls="sel" />)}
@@ -1378,9 +1462,23 @@ export function App() {
               <Icon name="image" />
             </button>
           </div>
-          <div className="tool-group">
+          <div className="tool-group undo-split">
             <button className="icon-btn" aria-label={strings.toolbar.undo} title={strings.toolbar.undoTitle(hist.undo.length ? hist.undo[hist.undo.length - 1] : undefined, mod)} disabled={!hist.canUndo} onClick={() => void undoRedo("undo")}>
               <Icon name="undo" />
+            </button>
+            <button
+              ref={caretRef}
+              className={`icon-btn caret-btn ${histOpen ? "on" : ""}`}
+              aria-label={strings.activity.historyButton}
+              aria-haspopup="menu"
+              aria-expanded={histOpen}
+              title={strings.activity.historyButton}
+              onClick={() => {
+                if (!histOpen) act.reload();
+                setHistOpen((v) => !v);
+              }}
+            >
+              <Icon name="chevronDown" size={14} />
             </button>
             <button className="icon-btn" aria-label={strings.toolbar.redo} title={strings.toolbar.redoTitle(hist.redo.length ? hist.redo[hist.redo.length - 1] : undefined, mod)} disabled={!hist.canRedo} onClick={() => void undoRedo("redo")}>
               <Icon name="redo" />
@@ -1616,6 +1714,7 @@ export function App() {
             onContext={onContext}
             onSize={setCanvasSize}
             renderBoardOverlay={renderOverlay}
+            renderBoardTags={(f) => (act.tagsOf(f).length ? <BoardTags file={f} act={act} me={me} onOpen={openTag} /> : null)}
             worldLayer={
               <ShapesLayer
                 shapes={shapes}
@@ -1942,6 +2041,32 @@ export function App() {
         {announce}
       </div>
       <ContextMenu menu={menu} onClose={() => setMenu(null)} />
+      {tagPop && !playFile && (() => {
+        const t = tagOf(tagPop.file, tagPop.key);
+        return t ? (
+          <TagPopover
+            file={tagPop.file}
+            tag={t}
+            me={me}
+            now={act.now}
+            conflict={tagPop.conflict}
+            busy={tagPop.busy}
+            onCompare={() => setTagCmp({ file: tagPop.file, step: t.steps[t.steps.length - 1], added: t.newBoard })}
+            onUndo={(mode) => void undoTag(tagPop.file, t, mode)}
+            onCancelConflict={() => setTagPop((p) => p && { ...p, conflict: null })}
+            onClose={() => setTagPop(null)}
+          />
+        ) : null;
+      })()}
+      {tagCmp && board.boards[tagCmp.file] && (
+        <Compare
+          before={stepBefore(tagCmp.step)}
+          notBefore={strings.compare.notBeforeChange}
+          boards={[{ file: tagCmp.file, kind: tagCmp.added ? "added" : "changed", title: board.boards[tagCmp.file].title ?? tagCmp.file, w: board.boards[tagCmp.file].w, h: board.boards[tagCmp.file].h }]}
+          onClose={() => setTagCmp(null)}
+        />
+      )}
+      {histOpen && <HistoryMenu steps={act.data?.steps ?? []} me={me} now={act.now} anchor={caretRef.current?.getBoundingClientRect() ?? null} busy={histBusy} onGo={(s) => void goBack(s)} onClose={closeHist} />}
       <Dialog state={ask.state} onClose={ask.close} />
     </div>
   );

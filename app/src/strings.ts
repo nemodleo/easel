@@ -5,6 +5,9 @@
 
 const plural = (n: number, one: string, many: string) => (n === 1 ? `1 ${one}` : `${n} ${many}`);
 const variantsLabel = (n: number) => plural(n, "variant", "variants");
+/** An element in words for the change popover: "Button", "Heading", ".card", "<div>" */
+const ELEMENTS: Record<string, string> = { button: "Button", a: "Link", img: "Image", input: "Field", textarea: "Field", select: "Menu", label: "Label", p: "Paragraph", span: "Text", li: "List item", ul: "List", ol: "List", nav: "Navigation", header: "Header", footer: "Footer", main: "Main", section: "Section", form: "Form", svg: "Icon", style: "Styles", script: "Script" };
+const elementName = (tag?: string, cls?: string) => ELEMENTS[tag ?? ""] ?? (/^h[1-6]$/.test(tag ?? "") ? "Heading" : cls ? `.${cls}` : tag ? `<${tag}>` : "Element");
 
 export const strings = {
   app: {
@@ -873,6 +876,74 @@ export const strings = {
     after: "After",
     notBefore: "This board did not exist before the run.",
     notAfter: "This run removed the board.",
+    notBeforeChange: "This board did not exist before this change.",
     close: "Close",
+  },
+
+  // Who changed what: tags above boards changed by someone else, and the History menu under Undo
+  activity: {
+    /** Author of a change found on disk with no agent or person attached (an editor, an agent's own file tools) */
+    outside: "Outside Easel",
+    /** Short relative time on tags and in History: "now", "2m", "1h", "3d" */
+    ago: (ms: number) => {
+      const m = Math.floor(Math.max(0, ms) / 60000);
+      return m < 1 ? "now" : m < 60 ? `${m}m` : m < 1440 ? `${Math.floor(m / 60)}h` : `${Math.floor(m / 1440)}d`;
+    },
+    /** Longer relative time in the popover: "just now", "2 min ago", "1 h ago" */
+    agoLong: (ms: number) => {
+      const m = Math.floor(Math.max(0, ms) / 60000);
+      return m < 1 ? "just now" : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.floor(m / 60)} h ago` : `${Math.floor(m / 1440)} d ago`;
+    },
+    tag: (who: string, ago: string, count: number, newBoard: boolean) => `${who} · ${ago} · ${newBoard && count === 1 ? "new board" : plural(count, "change", "changes")}`,
+    /** Hover text: the whole tag (it is cut short on narrow boards) */
+    tagTitle: (tag: string) => `${tag} — click for the change, Before / After and Undo`,
+    tagsAria: (n: number) => `${plural(n, "change", "changes")} by others`,
+    popAria: (who: string) => `Change by ${who}`,
+    /** The change in words when it is not a text change */
+    element: elementName,
+    change: (c: { kind: string; count: number; tag?: string; cls?: string; more?: boolean }) => {
+      const el = elementName(c.tag, c.cls);
+      switch (c.kind) {
+        case "style": return `Style changed on ${el}`;
+        case "attr": return `${el} attributes changed`;
+        case "edited": return `${el} changed`;
+        case "added": return c.count > 1 ? `${c.count} elements added` : `${el} added`;
+        case "removed": return c.count > 1 ? `${c.count} elements removed` : `${el} removed`;
+        case "replaced": return `${el} replaced`;
+        case "many": return `${c.count}${c.more ? "+" : ""} elements changed`;
+        case "page": return "Page styles or title changed";
+        case "source": return "Only spacing or comments in the source changed";
+        case "new": return "New board";
+        case "deleted": return "Board deleted";
+        case "moved": return "Board moved";
+        case "resized": return "Board resized";
+        case "renamed": return "Board renamed";
+        case "options": return "Board options changed";
+        default: return "Changed";
+      }
+    },
+    changes: (n: number) => `${plural(n, "change", "changes")} on this board`,
+    /** A text change: “Get started” → “Start free” */
+    quote: (text: string) => `“${text}”`,
+    arrow: "→",
+    beforeAfter: "Before / After",
+    undo: "Undo",
+    undoTitle: (n: number) => (n === 1 ? "Undo this change" : `Undo these ${n} changes`),
+    conflict: (names: string) => `Changed since: ${names}. Undo the rest and keep those, or undo all and overwrite them?`,
+    undoRest: "Undo the rest",
+    undoAll: "Undo all anyway",
+    cancel: "Cancel",
+    close: "Close",
+    // History menu (the ▾ next to Undo)
+    historyButton: "History",
+    historyTitle: "History · newest first",
+    historyEmpty: "Nothing yet. Changes made in this session show up here.",
+    historyFoot: "History is kept for this session.",
+    now: "Now",
+    goBack: "Go back to here",
+    goBackAria: (name: string, who: string, ago: string) => `${name} by ${who}, ${ago} · Go back to here`,
+    nowAria: (name: string, who: string, ago: string) => `${name} by ${who}, ${ago} · current`,
+    undoneAria: (name: string, who: string, ago: string) => `${name} by ${who}, ${ago} · undone`,
+    wentBack: (name: string) => `Back to: ${name}`,
   },
 } as const;

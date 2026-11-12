@@ -17,7 +17,7 @@ import { rootOf, toPosix } from "./fsutil.mjs";
 import { requestScope } from "./history.mjs";
 import { originAllowed, readBody, sendJson } from "./index.mjs";
 import { createPermissions, describePermission, permissionRule, toolAnswer } from "./permissions.mjs";
-import { applyRunChanges, dropMissingAutoPlaced, mergeSteps, readRunFile, runBoards, runCopyInfo, withBase } from "./runs.mjs";
+import { applyRunChanges, dropMissingAutoPlaced, mergeSteps, readRunFile, runBoards, runCopyInfo, undoChanges, withBase } from "./runs.mjs";
 import { NO_TOKENS_NOTE, readTokens } from "./tokens.mjs";
 
 export const AGENTS = ["claude", "codex", "cursor", "gemini"];
@@ -539,13 +539,9 @@ export function chatRoutes({ getSelection } = {}) {
           await ctx.history.observe();
           const steps = ctx.history.runSteps(id);
           const top = ctx.history.peek().undo;
-          if (top && ((steps.length === 1 && top === steps[0]) || top.redoOf === id)) {
-            await ctx.history.undo();
-            await dropMissingAutoPlaced(ctx);
-          } else {
-            const r = await applyRunChanges(ctx, run.changes, "undo", { mode: ["rest", "all"].includes(mode) ? mode : undefined, label: `Undo ${run.label}`, mark: { undoOf: id } });
-            if (r.conflicts) return sendJson(res, 409, { conflicts: r.conflicts, error: "Some boards changed since this run" });
-          }
+          const onTop = top && ((steps.length === 1 && top === steps[0]) || top.redoOf === id) ? 1 : 0;
+          const r = await undoChanges(ctx, { onTop, changes: run.changes, mode, label: `Undo ${run.label}`, mark: { undoOf: id } });
+          if (r.conflicts) return sendJson(res, 409, { conflicts: r.conflicts, error: "Some boards changed since this run" });
           run.undone = true;
           await ctx.store.syncBoardNow();
           ctx.broadcast({ type: "board-changed", source: "server:undo-run" });

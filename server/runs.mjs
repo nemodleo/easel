@@ -1,5 +1,5 @@
 // AI-generated with Claude Code, 2026-11-11, reviewed by Hyun Park
-// Undo and redo of one whole in-app AI run, and read-only access to a run's pre-run copy (Compare, restore after a restart).
+// Undo and redo of one whole in-app AI run (and of the steps behind a board tag), and read-only access to a run's pre-run copy (Compare, restore after a restart).
 // A run on top of the history is a plain undo/redo; an older run takes back only its own files, and asks before overwriting later changes.
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -112,6 +112,17 @@ export async function applyRunChanges(ctx, changes, dir, { mode, label, mark }) 
   ctx.history.push(label, plan, mark);
   await dropMissingAutoPlaced(ctx);
   return { changed: plan.length, skipped: mode === "rest" ? conflicts.map((c) => c.file) : [] };
+}
+
+/**
+ * Undo of a set of changes that may be older than the newest step (a chat run, the steps behind a board tag): onTop plain history
+ * undos when they are the newest steps, else only their own files as one new step, with the same conflict rule as applyRunChanges
+ */
+export async function undoChanges(ctx, { onTop = 0, changes, mode, label, mark }) {
+  if (!onTop) return applyRunChanges(ctx, changes, "undo", { mode: ["rest", "all"].includes(mode) ? mode : undefined, label, mark });
+  for (let i = 0; i < onTop; i++) await ctx.history.undo();
+  await dropMissingAutoPlaced(ctx);
+  return { changed: onTop, skipped: [] };
 }
 
 /** Entries auto-placed for files that are gone again (an undone run's new screens): placement is not an undo step, so neither is this */

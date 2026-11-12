@@ -277,3 +277,34 @@ code { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--m
 .cf-hint { margin: 0; font-size: 12px; line-height: 1.45; color: var(--muted); }
 .cf-hint code { color: var(--text); }
 .cf .btn-row .btn { height: 28px; padding: 0 10px; font-size: 12px; }
+/* Who changed what: author colours, tags above boards, the change popover, the History menu (mirrors app/src/style.css) */
+:root { --who-1: #c4512b; --who-2: #0d8a66; --who-3: #0e7490; --who-4: #8b44c7; --who-5: #be3a78; --who-6: #8a6a00; }
+.dark { --who-1: #ec8d68; --who-2: #3cc39a; --who-3: #38bdd8; --who-4: #b98af0; --who-5: #f07ab3; --who-6: #d6b445; }
+.board-label.tagged { height: auto; min-height: 52px; flex-direction: column; align-items: flex-start; justify-content: flex-end; gap: 4px; }
+.board-label.tagged .lab-row { display: flex; align-items: center; gap: 4px; width: 100%; height: 24px; }
+.act-tags { display: flex; flex-wrap: wrap; gap: 4px; max-width: 100%; }
+.act-tag { display: inline-flex; align-items: center; gap: 6px; height: 20px; padding: 0 8px 0 6px; border-radius: 10px; background: var(--panel); box-shadow: var(--shadow-1); font-size: 11px; font-weight: 600; color: var(--text); white-space: nowrap; }
+.act-tag .dot { width: 8px; height: 8px; }
+.act-tag.seen { opacity: .45; box-shadow: none; background: transparent; border: 1px dashed var(--line-strong); }
+.callout { position: absolute; z-index: 30; width: 280px; background: var(--panel); border-radius: var(--r); box-shadow: var(--shadow-2); padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; border-top: 3px solid var(--line-strong); }
+.callout-top { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; }
+.callout-top .muted { font-weight: 400; }
+.callout-diff { font-size: 12px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.callout-actions { display: flex; gap: 8px; }
+.callout-actions .btn { height: 32px; font-size: 12px; padding: 0 10px; }
+.diff-old { color: var(--warn); text-decoration: line-through; font-weight: 600; }
+.diff-new { color: var(--ok); font-weight: 600; }
+.undo-split { position: relative; }
+.caret-btn { width: 16px !important; }
+.caret-btn.on { background: var(--pressed); color: var(--text); }
+.hist .menu-item { position: relative; gap: 8px; padding: 0 8px 0 20px; }
+.hist .menu-item.now::before { content: ""; position: absolute; left: 7px; top: 12px; width: 8px; height: 8px; border-radius: 4px; background: var(--accent); }
+.hist .menu-item.past { color: var(--muted); }
+.hist .menu-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.h-when { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.h-go, .h-now { font-size: 11px; font-weight: 600; color: var(--accent); white-space: nowrap; }
+.hist .menu-foot { justify-content: flex-start; }
+.who-chip { display: inline-flex; align-items: center; gap: 6px; height: 20px; padding: 0 8px 0 6px; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); font-size: 11px; font-weight: 600; color: var(--text); white-space: nowrap; flex: none; }
+.who-chip .dot { width: 8px; height: 8px; }
+.who-chip.person { background: var(--select-weak); border-color: transparent; color: var(--select); }
+.who-chip.person .dot { background: var(--select); }

@@ -3,6 +3,21 @@
 import type { Board, BoardResponse } from "./types";
 
 export const clientId = Math.random().toString(36).slice(2);
+/** This browser (all its tabs, across reloads): steps it makes are "yours" and do not tag the boards */
+export const browserId = (() => {
+  try {
+    let v = localStorage.getItem("design-canvas:browser");
+    if (!v) localStorage.setItem("design-canvas:browser", (v = Math.random().toString(36).slice(2)));
+    return v;
+  } catch {
+    return clientId;
+  }
+})();
+let authorName = "";
+/** The person's name sent with every write, so other browsers see who changed a board */
+export const setAuthorName = (n: string) => void (authorName = n);
+/** URI-encoded: a header takes Latin-1 only, and names can be in any script */
+const who = (): Record<string, string> => ({ "X-Easel-Client": browserId, ...(authorName ? { "X-Easel-Author": encodeURIComponent(authorName) } : {}) });
 
 async function json<T>(res: Response): Promise<T> {
   const body = await res.json().catch(() => ({}));
@@ -15,13 +30,13 @@ export const api = {
   saveBoard: (board: Board, label?: string) =>
     fetch("/api/board", {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...who() },
       body: JSON.stringify({ ...board, clientId, ...(label ? { label } : {}) }),
     }).then((r) => json<{ ok: true }>(r)),
   post: <T>(path: string, body: unknown) =>
-    fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((r) => json<T>(r)),
+    fetch(path, { method: "POST", headers: { "Content-Type": "application/json", ...who() }, body: JSON.stringify(body) }).then((r) => json<T>(r)),
   put: <T>(path: string, body: unknown) =>
-    fetch(path, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((r) => json<T>(r)),
+    fetch(path, { method: "PUT", headers: { "Content-Type": "application/json", ...who() }, body: JSON.stringify(body) }).then((r) => json<T>(r)),
   get: <T>(path: string) => fetch(path).then((r) => json<T>(r)),
 };
 

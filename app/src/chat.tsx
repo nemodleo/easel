@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { api } from "./api";
-import { Compare, type CompareBoard } from "./compare";
+import { Compare, runBefore, type CompareBoard } from "./compare";
 import { Icon } from "./icons";
 import { Markdown } from "./Markdown";
 import { strings } from "./strings";
@@ -1004,7 +1004,7 @@ export function ChatPanel(p: {
           )}
         </div>
       </div>
-      {compare && <Compare runId={compare.id} boards={compare.boards} onClose={() => setCompare(null)} />}
+      {compare && <Compare before={runBefore(compare.id)} boards={compare.boards} onClose={() => setCompare(null)} />}
     </section>
   );
 }

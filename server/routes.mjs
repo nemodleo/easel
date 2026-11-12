@@ -3,6 +3,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import { activityRoutes } from "./activity.mjs";
 import { closeBrowser, newPage } from "./browser.mjs";
 import { boardRoutes } from "./boards.mjs";
 import { chatRoutes } from "./chat.mjs";
@@ -135,6 +136,7 @@ export const extraRoutes = [
     },
   ]),
   ...boardRoutes(),
+  ...activityRoutes(),
   ...chat.routes,
   ...tokenRoutes(),
   // Zoomed-out thumbnails: small images shown below 25% instead of empty frames. Stored per modification time in docs/design/.thumbs/ (gitignored)

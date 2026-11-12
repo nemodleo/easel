@@ -1,6 +1,6 @@
 // AI-generated with Claude Code, 2026-11-11, reviewed by Hyun Park
-// Before / After of boards side by side: before is a run's pre-run copy (GET /api/chat/run-file), after is the live screen.
-// Reusable: pass the boards, each with how it changed, and the run whose copy is "before".
+// Before / After of boards side by side: before is an earlier copy (a run's pre-run copy from GET /api/chat/run-file, or a history
+// step's before from GET /api/history/step-file), after is the live screen. Reusable: pass the boards, each with how it changed, and where "before" comes from.
 import { useEffect, useRef, useState } from "react";
 
 import { Icon } from "./icons";
@@ -37,7 +37,12 @@ function Pane({ label, src, empty, w, h }: { label: string; src: string | null; 
   );
 }
 
-export function Compare({ runId, boards, onClose }: { runId: string; boards: CompareBoard[]; onClose: () => void }) {
+/** Before of a chat run: its pre-run copy */
+export const runBefore = (runId: string) => (file: string) => `/api/chat/run-file?id=${encodeURIComponent(runId)}&f=${encodeURIComponent(`screens/${file}`)}`;
+/** Before of a history step: the content the step replaced, kept in the server's history */
+export const stepBefore = (stepId: string) => (file: string) => `/api/history/step-file?id=${encodeURIComponent(stepId)}&f=${encodeURIComponent(file)}`;
+
+export function Compare({ before, boards, onClose, notBefore = strings.compare.notBefore }: { before: (file: string) => string; boards: CompareBoard[]; onClose: () => void; notBefore?: string }) {
   const [i, setI] = useState(() => Math.max(0, boards.findIndex((b) => b.kind === "changed")));
   const b = boards[i];
   if (!b) return null;
@@ -61,7 +66,7 @@ export function Compare({ runId, boards, onClose }: { runId: string; boards: Com
           </div>
         )}
         <div className="cmp-panes">
-          <Pane key={`b-${b.file}`} label={strings.compare.before} src={b.kind === "added" ? null : `/api/chat/run-file?id=${encodeURIComponent(runId)}&f=${encodeURIComponent(`screens/${b.file}`)}`} empty={strings.compare.notBefore} w={b.w} h={b.h} />
+          <Pane key={`b-${b.file}`} label={strings.compare.before} src={b.kind === "added" ? null : before(b.file)} empty={notBefore} w={b.w} h={b.h} />
           <Pane key={`a-${b.file}`} label={strings.compare.after} src={b.kind === "removed" ? null : `/screens/${enc(b.file)}`} empty={strings.compare.notAfter} w={b.w} h={b.h} />
         </div>
       </div>

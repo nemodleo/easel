@@ -55,6 +55,8 @@ type Props = {
   onCreateNote: (kind: Note["kind"], at: { x: number; y: number }) => void;
   onContext: (t: ContextTarget, e: { clientX: number; clientY: number }) => void;
   renderBoardOverlay?: (f: string) => ReactNode;
+  /** Tags stacked above a board's title (who changed it); not drawn while the label is too small to show the title */
+  renderBoardTags?: (f: string) => ReactNode;
   /** Things drawn over boards (shapes) — world coordinates */
   worldLayer?: ReactNode;
   iframeRef?: (f: string, el: HTMLIFrameElement | null) => void;
@@ -348,6 +350,7 @@ export function Canvas(p: Props) {
               onRename={() => p.onRename(f)}
               onContext={(e) => p.onContext({ type: "board", file: f }, e)}
               overlay={p.renderBoardOverlay?.(f)}
+              tags={b.w * view.zoom >= 48 && p.playing !== f ? p.renderBoardTags?.(f) : null}
               iframeRef={(el) => p.iframeRef?.(f, el)}
             />
           );
@@ -392,6 +395,7 @@ function BoardView(props: {
   onRename: () => void;
   onContext: (e: RMouseEvent) => void;
   overlay?: ReactNode;
+  tags?: ReactNode;
   iframeRef: (el: HTMLIFrameElement | null) => void;
   readOnly?: boolean;
   screens: ScreenSource;
@@ -414,7 +418,7 @@ function BoardView(props: {
       aria-label={strings.canvas.board(title, !!props.selected, !!props.editing, !!props.playing)}
     >
       <div
-        className={`board-label ${b.w * zoom < 48 ? "tiny" : ""}`}
+        className={`board-label ${b.w * zoom < 48 ? "tiny" : ""} ${props.tags ? "tagged" : ""}`}
         style={{ transform: `scale(${1 / zoom})`, width: b.w * zoom }}
         onPointerDown={props.onPointerDownLabel}
         onPointerMove={props.onPointerMoveLabel}
@@ -422,30 +426,33 @@ function BoardView(props: {
         onContextMenu={ctx}
         title={`${title} · ${props.file}`}
       >
-        {b.is_interactive && <span className="dot" aria-label={strings.canvas.interactive} />}
-        <span
-          className="board-title"
-          onDoubleClick={(e) => {
-            e.stopPropagation();
-            if (!props.readOnly) props.onRename();
-          }}
-        >
-          {title}
-        </span>
-        {b.w * zoom >= 160 && title !== props.file && <span className="board-file">{props.file}</span>}
-        {b.w * zoom >= 110 && (
-          <span className="board-btns">
-            {b.is_interactive && (
-              <button className="icon-btn sm" aria-label="Play" title="Play" onPointerDown={stop} onClick={(e) => { e.stopPropagation(); props.onPlay(); }}>
-                <Icon name="play" size={14} />
-              </button>
-            )}
-            {!props.readOnly && <button className={`icon-btn sm edit-pill ${props.editing ? "on" : ""}`} aria-label={strings.canvas.editMode} title={strings.canvas.editTitle} onPointerDown={stop} onClick={(e) => { e.stopPropagation(); props.onEdit(); }}>
-              <Icon name="edit" size={14} />
-              {b.w * zoom >= 150 && <span className="edit-pill-label">{strings.canvas.editPill}</span>}
-            </button>}
+        {props.tags}
+        <span className="lab-row">
+          {b.is_interactive && <span className="dot" aria-label={strings.canvas.interactive} />}
+          <span
+            className="board-title"
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              if (!props.readOnly) props.onRename();
+            }}
+          >
+            {title}
           </span>
-        )}
+          {b.w * zoom >= 160 && title !== props.file && <span className="board-file">{props.file}</span>}
+          {b.w * zoom >= 110 && (
+            <span className="board-btns">
+              {b.is_interactive && (
+                <button className="icon-btn sm" aria-label="Play" title="Play" onPointerDown={stop} onClick={(e) => { e.stopPropagation(); props.onPlay(); }}>
+                  <Icon name="play" size={14} />
+                </button>
+              )}
+              {!props.readOnly && <button className={`icon-btn sm edit-pill ${props.editing ? "on" : ""}`} aria-label={strings.canvas.editMode} title={strings.canvas.editTitle} onPointerDown={stop} onClick={(e) => { e.stopPropagation(); props.onEdit(); }}>
+                <Icon name="edit" size={14} />
+                {b.w * zoom >= 150 && <span className="edit-pill-label">{strings.canvas.editPill}</span>}
+              </button>}
+            </span>
+          )}
+        </span>
       </div>
       <div
         className="board-frame"
