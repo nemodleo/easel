@@ -48,6 +48,26 @@ export async function readBody(req, limit = 4 * 1024 * 1024) {
   return raw ? JSON.parse(raw) : {};
 }
 
+/** Host names a browser uses for this local server; anything else is a DNS-rebinding page */
+const LOCAL_HOST = /^(localhost|127\.0\.0\.1|\[::1\]|[a-z0-9.-]+\.localhost)(:\d+)?$/i;
+
+/**
+ * State-changing requests and the WebSocket: refused when they come from another web page in the user's browser.
+ * No Origin header (CLI, MCP server, curl) or the page's own origin is allowed; the Host must be a local name.
+ */
+export function originAllowed(headers) {
+  const host = String(headers.host ?? "");
+  if (!LOCAL_HOST.test(host)) return false;
+  const o = headers.origin;
+  if (o == null) return true;
+  try {
+    const u = new URL(o);
+    return (u.protocol === "http:" || u.protocol === "https:") && u.host.toLowerCase() === host.toLowerCase();
+  } catch {
+    return false; // "null" (sandboxed frames, file://) and anything unparsable
+  }
+}
+
 /** Allow only paths inside dir (blocks ../ escapes) */
 export function safeJoin(root, rel) {
   const p = path.resolve(root, "." + path.posix.normalize("/" + rel));
@@ -154,7 +174,8 @@ export async function createServer({ dir, port, dev = true, extraRoutes = [], au
   let history;
   const store = createBoardStore(dir, { onWrite: (p, text) => history.note(p, text) });
   history = createHistory(trackedFiles(store));
-  const ctx = { dir, store, history, broadcast: () => {} };
+  // boot: when this server started; the chat shows "Easel restarted" when it changes (the undo history did not survive)
+  const ctx = { dir, store, history, broadcast: () => {}, boot: new Date().toISOString() };
   await history.seed();
 
   // App UI: on startup, build once if the app source is newer than dist, then serve dist statically.
@@ -168,7 +189,7 @@ export async function createServer({ dir, port, dev = true, extraRoutes = [], au
   }
   if (!existsSync(path.join(distDir, "index.html"))) throw new Error("No app build found (running with npm start creates it)");
 
-  const LOCKED = /^\/api\/(board|boards\/|history\/|edit|undo|redo|place|notes|pages|comments|chat\/revert)/;
+  const LOCKED = /^\/api\/(board|boards\/|history\/|edit|undo|redo|place|notes|pages|comments|chat\/(revert|undo-run|redo-run))/;
   // Screens folder as the agent sees it: relative to the project root
   const screensRel = toPosix(path.relative(rootOf(dir), store.screensDir)) || "screens";
   const routes = [
@@ -212,6 +233,7 @@ export async function createServer({ dir, port, dev = true, extraRoutes = [], au
         res.writeHead(404);
         return res.end("not found");
       }
+      if (req.method !== "GET" && req.method !== "HEAD" && url.pathname.startsWith("/api/") && !originAllowed(req.headers)) return sendJson(res, 403, { error: "Cross-origin request refused" });
       for (const [m, p, h] of routes) {
         // Who sent a write (MCP clients send their agent name, in-app runs their run id): read by history.push
         if (req.method === m && url.pathname === p) return await requestScope.run({ agent: cleanAgent(req.headers["x-easel-agent"]) || undefined, run: cleanAgent(req.headers["x-easel-run"]) || undefined }, () => h(req, res, url));
@@ -243,8 +265,9 @@ export async function createServer({ dir, port, dev = true, extraRoutes = [], au
     }
   });
 
-  const wss = new WebSocketServer({ server, path: "/ws" });
+  const wss = new WebSocketServer({ server, path: "/ws", verifyClient: ({ req }) => originAllowed(req.headers) });
   wss.on("error", () => {}); // ws re-emits the http server's errors; a busy port is handled by listen()
+  wss.on("connection", (c) => c.send(JSON.stringify({ type: "hello", boot: ctx.boot })));
   ctx.broadcast = (msg) => {
     const data = JSON.stringify(msg);
     for (const c of wss.clients) if (c.readyState === 1) c.send(data);

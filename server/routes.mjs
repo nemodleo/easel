@@ -372,6 +372,7 @@ export async function attach(app) {
   const stop = watchDesign(app.ctx);
   const close = app.close;
   app.close = async () => {
+    chat.close(); // open permission requests are denied, so a waiting agent does not hang
     await stop();
     await closeBrowser();
     await close();

@@ -35,7 +35,8 @@ export type ServerEvent =
   | { type: "assets-changed" }
   | { type: "tokens-changed" }
   | { type: "app-changed" }
-  | { type: "chat"; id: string; ev: import("./chat").ChatEvent };
+  | { type: "chat"; id: string; ev: import("./chat").ChatEvent }
+  | { type: "hello"; boot: string };
 
 /** WebSocket that reconnects 1 second after disconnecting */
 export function connectEvents(onEvent: (e: ServerEvent) => void) {

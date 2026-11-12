@@ -2,6 +2,7 @@
 // AI-generated with Claude Code, 2026-10-09, reviewed by Hyun Park
 // MCP server (stdio): exposes boards, selection, screenshots, comments and placement through the app server API (http://localhost:<port>). PLAN.md ch. 6.
 // The agent creates and edits HTML by writing files directly. This server only observes, points at things, and places boards.
+// With --permission it exposes a single tool instead: the permission prompt of an in-app chat run, answered in the Easel chat.
 // No port needed: the canvas for the folder the agent runs in is found through the registry (server/registry.mjs) on each call.
 import { readFileSync } from "node:fs";
 import fs from "node:fs/promises";
@@ -66,9 +67,33 @@ async function call(method, path, body) {
 const callJson = async (m, p, b) => JSON.parse(await call(m, p, b));
 const ok = (data) => ({ content: [{ type: "text", text: typeof data === "string" ? data : JSON.stringify(data, null, 2) }] });
 
-const server = new McpServer({ name: "easel", version: pkg.version });
+// --permission: started by an in-app Claude Code run (inline --mcp-config) for its permission prompts only, under its own name
+const server = new McpServer({ name: args.permission ? "easel-chat" : "easel", version: pkg.version });
+/** The canvas tools; none of them in --permission mode (the project's own easel server already has them) */
+const tool = args.permission ? () => {} : (...a) => server.registerTool(...a);
 
-server.registerTool(
+if (args.permission)
+  server.registerTool(
+    "permission",
+    {
+      description: "Asks the user in the Easel chat whether a tool call may run (Claude Code --permission-prompt-tool). Returns allow or deny.",
+      inputSchema: { tool_name: z.string(), input: z.record(z.string(), z.unknown()), tool_use_id: z.string().optional() },
+    },
+    async ({ tool_name, input, tool_use_id }) => {
+      let answer;
+      try {
+        let r = await callJson("POST", "/api/chat/permission", { tool_name, input, tool_use_id });
+        // The user may take a while: poll until the card is answered (or the run is cancelled, which denies it)
+        while (r.pending) r = await callJson("GET", `/api/chat/permission?id=${encodeURIComponent(r.id)}`);
+        answer = r.behavior === "allow" ? { behavior: "allow", updatedInput: r.updatedInput ?? input } : { behavior: "deny", message: String(r.message ?? "Denied") };
+      } catch (e) {
+        answer = { behavior: "deny", message: `Easel could not ask the user: ${e.message}` };
+      }
+      return { content: [{ type: "text", text: JSON.stringify(answer) }] };
+    },
+  );
+
+tool(
   "list_boards",
   {
     description: "List the boards on the design canvas (each board is an .html file in the screens folder, returned as dir) with file, title, size, position and page. Use it to find which file to read or edit.",
@@ -85,13 +110,13 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+tool(
   "read_board",
   { description: "Read a board's source HTML exactly as stored in the file. Use it before editing a board.", inputSchema: { file: z.string().describe("Board file name, e.g. scr-01.html") } },
   async ({ file }) => ok(await call("GET", `/api/file?f=${encodeURIComponent(file)}`)),
 );
 
-server.registerTool(
+tool(
   "get_selection",
   {
     description:
@@ -103,7 +128,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+tool(
   "screenshot",
   {
     description:
@@ -120,7 +145,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+tool(
   "list_comments",
   {
     description: "List board comments (docs/design/comments.json), optionally for one file or only unresolved ones.",
@@ -134,7 +159,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+tool(
   "add_comment",
   {
     description: "Add a comment to a board, or to an element inside it when path is given.",
@@ -143,13 +168,13 @@ server.registerTool(
   async (args) => ok(await callJson("POST", "/api/comments", { ...args, author: args.author ?? agent() })),
 );
 
-server.registerTool(
+tool(
   "resolve_comment",
   { description: "Mark a comment as resolved (pass resolved=false to reopen it). Use it after fixing what a comment asked for.", inputSchema: { id: z.string(), resolved: z.boolean().optional() } },
   async ({ id, resolved }) => ok(await callJson("POST", "/api/comments", { action: "resolve", id, resolved: resolved ?? true })),
 );
 
-server.registerTool(
+tool(
   "place_board",
   {
     description: "Record a board's canvas position, title and page in board.json. Use it after creating a new screen to set its name and position.",
@@ -164,7 +189,7 @@ server.registerTool(
   async (args) => ok(await callJson("POST", "/api/place", args)),
 );
 
-server.registerTool(
+tool(
   "list_errors",
   { description: "List boards with errors (script errors, images that failed to load, missing files) and the first error. Use it to check your edits did not break a board.", inputSchema: {} },
   async () => {
@@ -174,7 +199,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+tool(
   "create_board",
   {
     description: "Create a new board (HTML file) from a template and place it on the canvas. Templates: blank (Blank), mobile (390×844 Mobile screen), desktop (1440×900 Desktop screen), doc (Document). Edit the created file directly afterwards.",
@@ -192,7 +217,7 @@ server.registerTool(
   async (args) => ok(await callJson("POST", "/api/boards/create", args)),
 );
 
-server.registerTool(
+tool(
   "list_notes",
   { description: "List canvas notes (titles and sticky notes), optionally for one page.", inputSchema: { page: z.string().optional() } },
   async ({ page }) => {
@@ -202,7 +227,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+tool(
   "add_note",
   {
     description: "Add a note to the canvas. kind=title (large heading) or sticky (sticky note).",
@@ -211,7 +236,7 @@ server.registerTool(
   async (args) => ok(await callJson("POST", "/api/notes", { action: "add", ...args })),
 );
 
-server.registerTool(
+tool(
   "update_note",
   {
     description: "Edit a note (text, position, width, page, color, size, bold, italic).",
@@ -231,19 +256,19 @@ server.registerTool(
   async (args) => ok(await callJson("POST", "/api/notes", { action: "update", ...args })),
 );
 
-server.registerTool(
+tool(
   "delete_note",
   { description: "Delete a note (the user can undo it in the app).", inputSchema: { id: z.string() } },
   async ({ id }) => ok(await callJson("POST", "/api/notes", { action: "delete", id })),
 );
 
-server.registerTool(
+tool(
   "list_pages",
   { description: "List canvas pages (the first page is the default).", inputSchema: {} },
   async () => ok((await callJson("GET", "/api/board")).board.pages),
 );
 
-server.registerTool(
+tool(
   "manage_page",
   {
     description: "Manage pages: add (name), rename (id, name), delete (id; its items move to the first page), move (id, index).",
@@ -252,7 +277,7 @@ server.registerTool(
   async (args) => ok(await callJson("POST", "/api/pages", args)),
 );
 
-server.registerTool(
+tool(
   "get_tokens",
   {
     description:
@@ -262,7 +287,7 @@ server.registerTool(
   async () => ok(await callJson("GET", "/api/tokens?agent=1")),
 );
 
-server.registerTool(
+tool(
   "check_tokens",
   {
     description:
@@ -272,13 +297,13 @@ server.registerTool(
   async ({ file }) => ok(await callJson("GET", `/api/lint${file ? `?f=${encodeURIComponent(file)}` : ""}`)),
 );
 
-server.registerTool(
+tool(
   "reply_comment",
   { description: "Reply to a comment (resolve=true replies and marks it resolved).", inputSchema: { id: z.string(), text: z.string(), resolve: z.boolean().optional(), author: z.string().optional() } },
   async (args) => ok(await callJson("POST", "/api/comments", { action: "reply", ...args, author: args.author ?? agent() })),
 );
 
-server.registerTool(
+tool(
   "save_snapshot",
   {
     description: "Save a snapshot (a saved version): commits only the design folder to git, or outside a git repository copies it to .easel/snapshots/. Use only when the user explicitly asks to save.",

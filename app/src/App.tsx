@@ -398,6 +398,8 @@ export function App() {
         else if (e.type === "tokens-changed") setTokensVersion((v) => v + 1);
         else if (e.type === "app-changed") window.location.reload();
         else if (e.type === "chat") for (const fn of chatListeners.current) fn(e.id, e.ev);
+        // Sent on every (re)connect: the chat notices when the server restarted and its undo history is gone
+        else if (e.type === "hello") for (const fn of chatListeners.current) fn("", { kind: "boot", boot: e.boot });
       }),
     [load, loadComments, loadHistory, loadErrors],
   );
@@ -1704,6 +1706,9 @@ export function App() {
               boards={editFile ? [editFile] : selected}
               visibleCount={visibleCount}
               titleOf={(f) => board.boards[f]?.title ?? f}
+              sizeOf={(f) => (board.boards[f] ? { w: board.boards[f].w, h: board.boards[f].h } : null)}
+              storeKey={data?.dir ?? null}
+              confirm={ask.confirm}
               attach={chatAttach}
               setAttach={setChatAttach}
               draft={chatDraft}

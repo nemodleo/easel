@@ -48,6 +48,8 @@ const P: Record<string, string> = {
   file: "M6 3h8l4 4v14H6zM14 3v4h4",
   pdf: "M6 3h8l4 4v14H6zM14 3v4h4M9 13h6M9 17h4",
   eye: "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z",
+  compare: "M4 5h7v14H4zM13 5h7v14h-7",
+  restore: "M4 12a8 8 0 1 0 3-6.2M4 4v4h4",
   link: "M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1",
 };
 

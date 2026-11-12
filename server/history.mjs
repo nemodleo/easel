@@ -94,15 +94,16 @@ export function createHistory({ onWrite, list = async () => [], isTracked = () =
   }
 
   return {
-    /** Records a change that has already been written. Inside a request from the running in-app agent (X-Easel-Run) it joins the run's step */
-    push(label, changes) {
+    /** Records a change that has already been written. Inside a request from the running in-app agent (X-Easel-Run) it joins the run's step.
+     *  mark: extra fields kept on the step (undoOf / redoOf: the run an undo-run step belongs to) */
+    push(label, changes, mark = {}) {
       for (const c of changes) known.set(c.path, c.after);
       const real = changes.filter((c) => c.before !== c.after);
       if (!real.length) return;
       const scope = requestScope.getStore();
       const run = scope?.run ? runs.get(scope.run) : null;
       if (run) return void group(real, run);
-      undo.push({ label, changes: real, at: Date.now(), ...(scope?.agent ? { by: scope.agent } : {}) });
+      undo.push({ label, changes: real, at: Date.now(), ...(scope?.agent ? { by: scope.agent } : {}), ...mark });
       trim();
       redo = [];
     },
@@ -124,6 +125,8 @@ export function createHistory({ onWrite, list = async () => [], isTracked = () =
     },
     /** Undo steps made by a run (normally one) */
     runSteps: (id) => undo.filter((s) => s.run === id),
+    /** The newest undo and redo steps: undo-run is a plain undo/redo when its step is on top */
+    peek: () => ({ undo: undo[undo.length - 1] ?? null, redo: redo[redo.length - 1] ?? null }),
     async undo() {
       await observe(); // pending outside changes first, so undo takes back the latest change instead of tripping the safety check
       const step = undo[undo.length - 1];

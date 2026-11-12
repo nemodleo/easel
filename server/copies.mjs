@@ -18,7 +18,7 @@ async function trackedRel(store) {
 }
 
 /** A name trackedRel could have produced: board.json or screens/<…>.html, no dot segments */
-const isTrackedRel = (f) => typeof f === "string" && (f === "board.json" || (/^screens\/.+\.html$/.test(f) && !f.split("/").some((s) => s === "" || s.startsWith("."))));
+export const isTrackedRel = (f) => typeof f === "string" && (f === "board.json" || (/^screens\/.+\.html$/.test(f) && !f.split("/").some((s) => s === "" || s.startsWith("."))));
 
 const runsDir = async (dir) => path.join(await easelDir(dir), "runs");
 

@@ -28,17 +28,21 @@ export async function startEnv() {
   await fs.cp(REPO_DESIGN, dir, { recursive: true, filter: (src) => !src.endsWith("feedback.md") });
   const port = await freePort();
   // EASEL_HOME: the running-canvas registry goes to the temp folder, never to the real ~/.easel
-  const proc = spawn(process.execPath, [path.join(TOOL, "bin/server.mjs"), "--dir", dir, "--port", String(port)], { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, EASEL_HOME: path.join(dir, ".easel-home") } });
   let log = "";
-  proc.stdout.on("data", (d) => (log += d));
-  proc.stderr.on("data", (d) => (log += d));
+  let proc;
   const url = `http://localhost:${port}`;
-  for (let i = 0; i < 600; i++) {
-    try {
-      if ((await fetch(url + "/api/health")).ok) break;
-    } catch {}
-    await new Promise((r) => setTimeout(r, 100));
-  }
+  const boot = async () => {
+    proc = spawn(process.execPath, [path.join(TOOL, "bin/server.mjs"), "--dir", dir, "--port", String(port)], { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, EASEL_HOME: path.join(dir, ".easel-home") } });
+    proc.stdout.on("data", (d) => (log += d));
+    proc.stderr.on("data", (d) => (log += d));
+    for (let i = 0; i < 600; i++) {
+      try {
+        if ((await fetch(url + "/api/health")).ok) break;
+      } catch {}
+      await new Promise((r) => setTimeout(r, 100));
+    }
+  };
+  await boot();
   let browser;
   try {
     browser = await chromium.launch();
@@ -59,6 +63,13 @@ export async function startEnv() {
     api: async (method, p, body) => {
       const r = await fetch(url + p, { method, headers: body ? { "Content-Type": "application/json" } : undefined, body: body ? JSON.stringify(body) : undefined });
       return { status: r.status, body: await r.json().catch(() => null) };
+    },
+    /** Stops the server and starts it again on the same port and folder (its in-memory undo history is gone) */
+    async restart() {
+      const done = new Promise((r) => proc.once("exit", r));
+      proc.kill();
+      await done;
+      await boot();
     },
     async close() {
       await browser.close();

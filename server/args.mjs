@@ -1,6 +1,7 @@
 // AI-generated with Claude Code, 2026-10-09, reviewed by Hyun Park
 // Command-line args: [connect] [--dir <design folder>] [--port 4317] [--open] [--demo] [--init] [--help] [--version],
-// plus --agents a,b and --dry-run for connect, and --out, --page, --boards a,b, --single-file, --pdf, --png for export.
+// plus --agents a,b and --dry-run for connect, --out, --page, --boards a,b, --single-file, --pdf, --png for export,
+// and --permission for easel-mcp (only the permission tool of an in-app chat run).
 // Default design folder: <repo>/docs/design when Easel lives in <repo>/tools/<name> (submodule); otherwise
 // ./docs/design or the current folder if it has screens/ (npx).
 import { existsSync } from "node:fs";
@@ -24,7 +25,7 @@ export const DEFAULT_DIR = defaultDir();
 const expand = (p) => path.resolve(p.replace(/^~(?=\/)/, process.env.HOME ?? "~"));
 
 export function parseArgs(argv = process.argv.slice(2)) {
-  const out = { command: null, dir: null, port: DEFAULT_PORT, portGiven: false, dirGiven: false, agents: null, dryRun: false, out: null, page: null, boards: null, singleFile: false, pdf: false, png: false, open: false, noOpen: false, demo: false, init: false, help: false, version: false, prod: false };
+  const out = { command: null, dir: null, port: DEFAULT_PORT, portGiven: false, dirGiven: false, agents: null, dryRun: false, out: null, page: null, boards: null, singleFile: false, pdf: false, png: false, permission: false, open: false, noOpen: false, demo: false, init: false, help: false, version: false, prod: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const next = () => argv[++i];
@@ -50,6 +51,7 @@ export function parseArgs(argv = process.argv.slice(2)) {
     else if (a === "--demo") out.demo = true;
     else if (a === "--init") out.init = true;
     else if (a === "--prod") out.prod = true;
+    else if (a === "--permission") out.permission = true;
     else if (a === "-h" || a === "--help") out.help = true;
     else if (a === "-v" || a === "--version") out.version = true;
   }
