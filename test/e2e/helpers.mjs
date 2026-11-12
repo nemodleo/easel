@@ -100,7 +100,13 @@ export async function openBoard(page, url, file) {
 
 /** Where an element inside a board is on the page (the board's iframe never takes the pointer: clicks land on the canvas) */
 export async function pointOf(page, file, selector) {
-  const b = await page.frameLocator(`.board[data-file="${file}"] iframe`).locator(selector).first().boundingBox();
+  const el = page.frameLocator(`.board[data-file="${file}"] iframe`).locator(selector).first();
+  let b = await el.boundingBox();
+  // A board that is being redrawn (after an undo, say) has no box for a moment
+  for (let i = 0; !b && i < 50; i++) {
+    await wait(100);
+    b = await el.boundingBox();
+  }
   return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
 }
 

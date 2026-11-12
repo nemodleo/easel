@@ -22,7 +22,11 @@ async function until(fn, ms = 6000) {
 }
 const selection = async () => (await env.api("GET", "/api/selection")).body.selection;
 /** After an undo the board redraws the restored source (the button has no inline style again) */
-const redrawn = (page) => page.waitForFunction(() => !document.querySelector('.board[data-file="scr-32.html"] iframe').contentDocument?.querySelector("a.btn")?.hasAttribute("style"));
+const redrawn = (page) =>
+  page.waitForFunction(() => {
+    const btn = document.querySelector('.board[data-file="scr-32.html"] iframe').contentDocument?.querySelector("a.btn");
+    return !!btn && !btn.hasAttribute("style"); // no button at all: the board is still loading
+  });
 
 test("with no tokens registered: hover outlines, a click selects (toolbar, breadcrumb, You · editing), Fill offers only Custom, Undo restores", async () => {
   const { page, url } = env;
@@ -73,7 +77,7 @@ test("tokens first: the Fill popover lists the registered colours, choosing one 
   await page.keyboard.press("Enter"); // Enter selects inside the board
   await page.getByRole("toolbar", { name: "Element" }).waitFor();
   await clickIn(page, F, "a.btn");
-  await until(async () => (await selection())?.path === "0/1/1/5");
+  assert.ok(await until(async () => (await selection())?.path === "0/1/1/5"), "the click selected the button");
   // Keyboard: Tab from the selection lands on the toolbar, arrows move along it, Enter opens Fill
   await page.locator(".canvas").focus();
   await page.keyboard.press("Tab");
@@ -168,5 +172,37 @@ test("the wheel pans the canvas over a board; with an element selected on it, it
   assert.ok(await until(async () => Math.abs((await top()) - (y0 + 40)) <= 1), "at the end of the content the canvas pans");
   await page.keyboard.press("Escape");
   await env.write(`screens/${T}`, orig);
+  assert.deepEqual(env.errors, []);
+});
+
+test("Enter on a board caught between two loads (no root element for a moment) does not take the canvas down", async () => {
+  const { page, url } = env;
+  await openBoard(page, url, F);
+  assert.equal(await page.locator(".etb").count(), 0);
+  await page.evaluate((f) => document.querySelector(`.board[data-file="${f}"] iframe`).contentDocument.documentElement.remove(), F);
+  await page.keyboard.press("Enter"); // select inside: nothing to select yet
+  await wait(300);
+  assert.equal(await page.locator(".zoom").count(), 1, "the app is still there");
+  // Enter did reach the board: the first Esc lets go of the (pending) element, the board stays selected
+  await page.keyboard.press("Escape");
+  assert.equal(await page.locator(`.board.selected[data-file="${F}"]`).count(), 1);
+  await page.evaluate((f) => document.querySelector(`.board[data-file="${f}"] iframe`).contentWindow.location.reload(), F);
+  await page.frameLocator(`.board[data-file="${F}"] iframe`).locator("a.btn").waitFor();
+  assert.deepEqual(env.errors, []);
+});
+
+test("a click that lands while the board is between two loads (its file just changed) selects the element once the page is back", async () => {
+  const { page, url } = env;
+  await openBoard(page, url, F);
+  const at = await pointOf(page, F, "a.btn");
+  const frame = (fn) => page.evaluate(([f, body]) => new Function("frame", body)(document.querySelector(`.board[data-file="${f}"] iframe`)), [F, fn]);
+  await frame("frame.contentDocument.open()"); // a page that is loading: no body yet
+  await page.mouse.click(at.x, at.y);
+  await wait(200);
+  assert.equal(await selection(), null);
+  await frame("frame.contentWindow.location.reload()");
+  assert.ok(await until(async () => (await selection())?.path === "0/1/1/5"), "the click selected the button after the load");
+  await page.getByRole("toolbar", { name: "Element" }).waitFor();
+  await page.keyboard.press("Escape");
   assert.deepEqual(env.errors, []);
 });

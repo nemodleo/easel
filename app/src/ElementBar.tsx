@@ -19,7 +19,7 @@ export const tokenColors = (t: Tokens | null): TokenColor[] => (t?.registered ? 
 /** Custom properties a board defines on :root / html / body (its own token variables), name → value */
 export function boardVars(doc: Document | null | undefined): Record<string, string> {
   const out: Record<string, string> = {};
-  if (!doc) return out;
+  if (!doc?.documentElement) return out; // none yet, or the board is between two loads
   const take = (st: CSSStyleDeclaration) => {
     for (let i = 0; i < st.length; i++) if (st[i].startsWith("--")) out[st[i]] = st.getPropertyValue(st[i]).trim();
   };

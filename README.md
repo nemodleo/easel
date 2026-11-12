@@ -37,7 +37,7 @@ npx easel-canvas --dir ./designs  # any folder of screens/*.html
 ## Why Easel
 
 - **HTML is the source of truth.** Each `screens/*.html` file is one board. What you see is exactly what ships to the browser, and there's nothing to export or keep in sync.
-- **Built for AI agents.** An MCP server with 20 tools lets agents see the boards, read what you selected, leave comments, check tokens and arrange the canvas. An in-app chat runs `claude -p`, `codex exec`, `cursor-agent -p`, `gemini -p` or your own command with your selection as context; Claude Code's permission requests come up as cards you answer in the chat.
+- **Built for AI agents.** An MCP server with 22 tools lets agents see the boards, read what you selected, leave comments, check tokens and arrange the canvas. An in-app chat runs `claude -p`, `codex exec`, `cursor-agent -p`, `gemini -p` or your own command with your selection as context; Claude Code's permission requests come up as cards you answer in the chat.
 - **Surgical edits.** Changes are patched into the exact source range (parse5 locations), so formatting, comments and the rest of the file stay untouched. If an agent edits the same element first, your edit is rejected instead of overwriting it.
 - **Git-friendly by design.** Layout, notes and comments live in small JSON files written one entry per line, so two branches moving different boards merge without conflicts.
 - **Local-first.** It runs on `127.0.0.1` and works directly on the files in your repo. No account, no cloud, no lock-in.

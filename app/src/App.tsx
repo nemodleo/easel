@@ -139,6 +139,8 @@ export function App() {
   const [lint, setLint] = useState<LintItem[] | null>(null);
   const [a11y, setA11y] = useState<A11yItem[] | null>(null);
   const pendingPick = useRef<{ file: string; paths: string[] } | null>(null);
+  // The newest click handler, for a click that had to wait for its board to load
+  const pickAtRef = useRef<(f: string, at: { clientX: number; clientY: number }, how: { add: boolean; double: boolean }) => void>(() => {});
   const [guidesOn, setGuidesOn] = useState(true);
   const [theme, setTheme] = useState<Theme>(() => {
     try {
@@ -1090,6 +1092,19 @@ export function App() {
     setSelectedShapes([]);
   };
   const pickPath = (file: string, path: string) => pickElement(file, [path]);
+  /** A click on a live board: the element under the pointer */
+  const pickAt = (f: string, at: { clientX: number; clientY: number }, how: { add: boolean; double: boolean }) => {
+    const hit = elementUnder(frames.current.get(f), at.clientX, at.clientY);
+    // The page itself (no element under the pointer): the board stays selected on its own
+    if (!hit) return void (!how.add && editFile === f && setEditFile(null));
+    if (how.add && editFile === f) {
+      const cur = edit.state.paths;
+      return void edit.select(cur.includes(hit.path) ? cur.filter((x) => x !== hit.path) : [...cur, hit.path]);
+    }
+    pickElement(f, [hit.path]);
+    if (how.double) onTextEdit(f, hit.el as HTMLElement, hit.path);
+  };
+  pickAtRef.current = pickAt;
   // The pick lands once the board is the selected one and its page has loaded (a board zoomed out to a thumbnail is drawn live first)
   useEffect(() => {
     const p = pendingPick.current;
@@ -1831,15 +1846,14 @@ export function App() {
             playing={inlinePlay}
             typing={typing}
             onPickElement={(f, at, how) => {
-              const hit = elementUnder(frames.current.get(f), at.clientX, at.clientY);
-              // The page itself (no element under the pointer): the board stays selected on its own
-              if (!hit) return void (!how.add && editFile === f && setEditFile(null));
-              if (how.add && editFile === f) {
-                const cur = edit.state.paths;
-                return void edit.select(cur.includes(hit.path) ? cur.filter((x) => x !== hit.path) : [...cur, hit.path]);
+              const frame = frames.current.get(f);
+              const doc = frame?.contentDocument;
+              // Between two loads (its file just changed) the board has no page to hit: the click lands once the page is back
+              if (frame && (!doc?.body || doc.readyState === "loading")) {
+                const later = { clientX: at.clientX, clientY: at.clientY };
+                return frame.addEventListener("load", () => pickAtRef.current(f, later, how), { once: true });
               }
-              pickElement(f, [hit.path]);
-              if (how.double) onTextEdit(f, hit.el as HTMLElement, hit.path);
+              pickAt(f, at, how);
             }}
             onHoverElement={(f, at) => {
               const hit = f && at ? elementUnder(frames.current.get(f), at.clientX, at.clientY) : null;
