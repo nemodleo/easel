@@ -13,10 +13,12 @@ import { TOOL_ROOT } from "./args.mjs";
 import { createBoards } from "./boards.mjs";
 import { copyRun, revertRun } from "./copies.mjs";
 import { addCustom, customArgv, readCustom, removeCustom } from "./custom.mjs";
+import { boardFile, routeWrite } from "./forks.mjs";
 import { rootOf, toPosix } from "./fsutil.mjs";
 import { requestScope } from "./history.mjs";
 import { originAllowed, readBody, sendJson } from "./index.mjs";
 import { createPermissions, describePermission, permissionRule, toolAnswer } from "./permissions.mjs";
+import { freeRow } from "./place.mjs";
 import { applyRunChanges, dropMissingAutoPlaced, mergeSteps, readRunFile, runBoards, runCopyInfo, undoChanges, withBase } from "./runs.mjs";
 import { NO_TOKENS_NOTE, readTokens } from "./tokens.mjs";
 
@@ -279,6 +281,11 @@ export async function buildPrompt(ctx, body, state) {
   }
   const errs = Object.entries(state.errors).filter(([f]) => boards.includes(f));
   for (const [f, list] of errs) lines.push(`- ${f} error: ${list[0].message}${list[0].line ? ` (line ${list[0].line})` : ""}`);
+  for (const f of body.forks ?? []) {
+    const at = (x) => `${rel0 ? rel0 + "/" : ""}screens/${x}`;
+    const why = f.created === false ? `${at(f.of)} already has a fork of yours from an earlier run: ${at(f.file)}` : `${f.while} is editing ${at(f.of)} right now, so a fork was made for you: ${at(f.file)}`;
+    lines.push(`- ${why}. Make your changes in ${f.file}, not in ${f.of}.`);
+  }
   if (body.variants?.files?.length) {
     lines.push(`- Make ${body.variants.files.length} distinct variants of "${body.variants.base}". Copies have already been created side by side: ${body.variants.files.map((f) => `${rel0 ? rel0 + "/" : ""}screens/${f}`).join(", ")}. Take each file in a different direction, and use place_board to retitle each one like "Variant 1: summary". Do not modify the original.`);
   }
@@ -293,18 +300,6 @@ export async function buildPrompt(ctx, body, state) {
     body.text,
   );
   return lines.join("\n");
-}
-
-/** y of the first row below the original where n variants do not overlap other boards */
-function freeRowY(board, b, n) {
-  const w = (b.w + 80) * n;
-  let y = b.y + b.h + 160;
-  for (let k = 0; k < 200; k++) {
-    const hit = Object.values(board.boards).filter((o) => o.x < b.x + w && o.x + o.w > b.x && o.y < y + b.h + 160 && o.y + o.h > y - 80);
-    if (!hit.length) return y;
-    y = Math.max(...hit.map((o) => o.y + o.h)) + 160;
-  }
-  return y;
 }
 
 const readJson = (p, d) => fs.readFile(p, "utf8").then(JSON.parse, () => d);
@@ -344,30 +339,45 @@ export function chatRoutes({ getSelection } = {}) {
           const historyLabel = `${label}: ${request.length > 40 ? request.slice(0, 40) + "…" : request}`;
           // From here every change (variant copies included) joins the run's one undo step
           ctx.history.beginRun({ id, label: historyLabel, by: label });
-          // N variants: create copies of the original side by side to the right
+          // N variants: create copies of the original side by side, in a row below it
           const n = Math.min(4, Math.max(0, Number(body.variants) || 0));
           if (n > 1) {
             const base = body.attach?.boards?.[0] ?? state.selection?.file;
             if (!base) {
               ctx.history.endRun(id);
+              ctx.occupancy?.runEnded(id);
               return sendJson(res, 400, { error: "Select one board to make variants of" });
             }
             const html = await fs.readFile(path.join(ctx.store.screensDir, base), "utf8");
             const { board } = await ctx.store.syncBoard();
             const b = board.boards[base] ?? { x: 0, y: 0, w: 390, h: 844 };
             const stem = base.replace(/\.html$/, "");
+            // In the first free row below the original (never on top of notes or boards); each one remembers where it came from
+            const spots = freeRow(board, b, n);
+            const origin = { kind: "variant", of: base, at: new Date().toISOString() };
             const files = await requestScope.run({ ...requestScope.getStore(), run: id }, () =>
               ctx.store.exclusive(() =>
                 createBoards(
                   ctx,
-                  Array.from({ length: n }, (_, i) => ({ file: `${stem}-v${i + 1}.html`, html, x: b.x + (b.w + 80) * i, y: freeRowY(board, b, n), w: b.w, h: b.h, title: `${b.title ?? stem} variant ${i + 1}`, page: b.page })),
+                  Array.from({ length: n }, (_, i) => ({ file: `${stem}-v${i + 1}.html`, html, ...spots[i], w: b.w, h: b.h, title: `${b.title ?? stem} variant ${i + 1}`, page: b.page, origin })),
                   `Create ${n} variants ${base}`,
                 ),
               ),
             );
             body.variants = { base, files };
             body.attach = { ...body.attach, boards: [base, ...files] };
-          } else body.variants = undefined;
+          } else {
+            body.variants = undefined;
+            // A target board another agent is editing right now: this run works on a fork of it (one writer per board)
+            const targets = [...new Set([...(body.attach?.boards ?? []), ...(state.selection?.file ? [state.selection.file] : [])])].filter(boardFile);
+            const forks = [];
+            for (const f of targets) {
+              const r = await requestScope.run({ ...requestScope.getStore(), agent: label, run: id }, () => ctx.store.exclusive(() => routeWrite(ctx, f)));
+              if (r.forked) forks.push({ of: f, file: r.file, while: r.while ?? "another agent", created: r.created });
+            }
+            body.forks = forks;
+            if (forks.length) body.attach = { ...body.attach, boards: (body.attach?.boards ?? []).map((f) => forks.find((x) => x.of === f)?.file ?? f) };
+          }
           const prompt = await buildPrompt(ctx, body, state);
           const images = (body.attach?.refs ?? []).filter((r) => r.kind === "image").map((r) => path.join(ctx.dir, r.value));
           const model = custom ? "" : validModel(body.model);
@@ -381,6 +391,7 @@ export function chatRoutes({ getSelection } = {}) {
             proc = spawn(cmd, shell ? args.map(winQuote) : args, { cwd: rootOf(ctx.dir), stdio: ["ignore", "pipe", "pipe"], detached: !win, shell, windowsHide: true, env: { ...process.env, DESIGN_CANVAS_PORT: String(req.socket.localPort), EASEL_RUN_ID: id } });
           } catch (e) {
             ctx.history.endRun(id);
+            ctx.occupancy?.runEnded(id);
             return sendJson(res, 500, { error: `Could not run ${cmd}: ${e.message}` });
           }
           const run = { proc, agent, events: [], status: "running", prompt, label: historyLabel, custom: !!custom };
@@ -411,6 +422,7 @@ export function chatRoutes({ getSelection } = {}) {
               .exclusive(async () => {
                 await ctx.history.observe().catch((e) => console.error("run diff failed", e));
                 ctx.history.endRun(id);
+                ctx.occupancy?.runEnded(id);
                 return ctx.history.runSteps(id);
               })
               .catch(() => []);

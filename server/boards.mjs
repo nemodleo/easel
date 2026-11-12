@@ -6,6 +6,7 @@ import path from "node:path";
 import { formatBoard } from "./boardFormat.mjs";
 import { writeAtomic } from "./fsutil.mjs";
 import { readBody, safeJoin, sendJson } from "./index.mjs";
+import { freeSpot, GAP_X, placeNew } from "./place.mjs";
 import { SYSTEM_FONT } from "./tokens.mjs";
 
 const read = (p) => fs.readFile(p, "utf8").catch(() => null);
@@ -75,7 +76,7 @@ ${bodies[template] ?? bodies.blank}
 }
 
 /** A file name that does not collide */
-async function uniqueName(screensDir, base) {
+export async function uniqueName(screensDir, base) {
   const stem = base.replace(/\.html$/i, "");
   for (let i = 0; i < 1000; i++) {
     const name = `${stem}${i ? `-${i + 1}` : ""}.html`;
@@ -110,7 +111,7 @@ function repage(board, pages, map = (pid) => pid) {
   if (board.launch?.page && !pages.some((p) => p.id === board.launch.page)) delete board.launch.page;
 }
 
-/** Creates several boards as one history step. items: [{file, html, x, y, w, h, title, page}] → list of actual file names */
+/** Creates several boards as one history step. items: [{file, html, x, y, w, h, title, page, origin}] → list of actual file names */
 export async function createBoards(ctx, items, label) {
   const changes = [];
   const made = [];
@@ -126,7 +127,7 @@ export async function createBoards(ctx, items, label) {
     label,
     (board) => {
       for (const it of made) {
-        board.boards[it.file] = { x: Math.round(it.x ?? 0), y: Math.round(it.y ?? 0), w: it.w, h: it.h, title: it.title, ...(it.page ? { page: it.page } : {}) };
+        board.boards[it.file] = { x: Math.round(it.x ?? 0), y: Math.round(it.y ?? 0), w: it.w, h: it.h, title: it.title, ...(it.page ? { page: it.page } : {}), ...(it.origin ? { origin: it.origin } : {}) };
         board.order = [...board.order.filter((f) => f !== it.file), it.file];
       }
     },
@@ -146,6 +147,31 @@ export async function commitBoard(ctx, label, mutate, fileChanges = []) {
   ctx.broadcast({ type: "board-changed", source: "server:" + label });
   ctx.broadcast({ type: "history-changed" });
   return after;
+}
+
+/**
+ * Moves board files to the trash (<design dir>/.trash/<time>/, gitignored) and deletes them; Undo brings them back from the history.
+ * Returns the history changes for the files that were there
+ */
+export async function trashFiles(ctx, files) {
+  const trash = path.join(ctx.dir, ".trash", new Date().toISOString().replace(/[:.]/g, "-"));
+  await fs.mkdir(trash, { recursive: true });
+  await fs.writeFile(path.join(ctx.dir, ".trash", ".gitignore"), "*\n").catch(() => {});
+  const changes = [];
+  for (const f of files) {
+    const p = safeJoin(ctx.store.screensDir, f);
+    const html = p && (await read(p));
+    if (html == null) continue;
+    await fs.writeFile(path.join(trash, path.basename(f)), html);
+    await fs.rm(p);
+    changes.push({ path: p, before: html, after: null });
+  }
+  return { changes, trash };
+}
+
+/** Boards that came from a deleted board (its variants and forks) become ordinary boards: the link would point at nothing */
+export function unlinkOrigins(board, gone) {
+  for (const b of Object.values(board.boards)) if (b.origin && gone.includes(b.origin.of)) delete b.origin;
 }
 
 export function boardRoutes() {
@@ -179,8 +205,11 @@ export function boardRoutes() {
         const h = Math.max(40, Math.min(8000, Math.round(b.h ?? TEMPLATES[tpl].h)));
         const wanted = b.file && FILE_RE.test(b.file) ? b.file : `${tpl === "blank" ? "board" : tpl}.html`;
         const title = b.title || (tpl === "blank" ? wanted.replace(/\.html$/, "") : TEMPLATES[tpl].label);
-        const html = b.html ?? newBoardHtml({ title, w, h, template: tpl, brand: (await ctx.store.readBoard()).title });
-        const [file] = await createBoards(ctx, [{ file: wanted, html, x: b.x, y: b.y, w, h, title, page: b.page }], `Create board ${wanted}`);
+        const board0 = await ctx.store.readBoard();
+        const html = b.html ?? newBoardHtml({ title, w, h, template: tpl, brand: board0.title });
+        // No position given (an agent's create_board): the first free spot, never on top of a board or a note
+        const at = Number.isFinite(b.x) && Number.isFinite(b.y) ? { x: b.x, y: b.y } : placeNew(board0, { w, h }, b.page);
+        const [file] = await createBoards(ctx, [{ file: wanted, html, x: at.x, y: at.y, w, h, title, page: b.page }], `Create board ${wanted}`);
         sendJson(res, 200, { file });
       },
     ],
@@ -193,27 +222,18 @@ export function boardRoutes() {
         const files = (b.files ?? []).filter((f) => FILE_RE.test(path.basename(f)));
         if (!files.length) return sendJson(res, 400, { error: "files is required" });
         // Also copy to the trash (docs/design/.trash/). Undo restores from the history
-        const trash = path.join(ctx.dir, ".trash", new Date().toISOString().replace(/[:.]/g, "-"));
-        await fs.mkdir(trash, { recursive: true });
-        await fs.writeFile(path.join(ctx.dir, ".trash", ".gitignore"), "*\n").catch(() => {});
-        const changes = [];
-        for (const f of files) {
-          const p = safeJoin(ctx.store.screensDir, f);
-          const html = p && (await read(p));
-          if (html == null) continue;
-          await fs.writeFile(path.join(trash, path.basename(f)), html);
-          await fs.rm(p);
-          changes.push({ path: p, before: html, after: null });
-        }
+        const { changes, trash } = await trashFiles(ctx, files);
         await commitBoard(
           ctx,
           `Delete board ${files.join(", ")}`,
           (board) => {
             for (const f of files) delete board.boards[f];
             board.order = board.order.filter((f) => !files.includes(f));
+            unlinkOrigins(board, files);
           },
           changes,
         );
+        for (const f of files) ctx.occupancy?.forget(f);
         sendJson(res, 200, { ok: true, trash: path.relative(ctx.dir, trash) });
       },
     ],
@@ -229,12 +249,14 @@ export function boardRoutes() {
         const p = path.join(ctx.store.screensDir, file);
         await writeAtomic(p, html);
         const board0 = await ctx.store.readBoard();
-        const it = board0.boards[b.file] ?? { x: 0, y: 0, w: 390, h: 844 };
+        // The copy is an ordinary board: it is not a variant or fork of anything
+        const { origin, autoPlaced, ...it } = board0.boards[b.file] ?? { x: 0, y: 0, w: 390, h: 844 };
+        const at = freeSpot(board0, { x: it.x + it.w + GAP_X, y: it.y, w: it.w, h: it.h }, { page: it.page });
         await commitBoard(
           ctx,
           `Duplicate board ${b.file}`,
           (board) => {
-            board.boards[file] = { ...it, x: it.x + it.w + 80, title: `${it.title ?? b.file.replace(/\.html$/, "")} copy` };
+            board.boards[file] = { ...it, x: at.x, y: at.y, title: `${it.title ?? b.file.replace(/\.html$/, "")} copy` };
             const i = board.order.indexOf(b.file);
             board.order.splice(i < 0 ? board.order.length : i + 1, 0, file);
           },
@@ -294,6 +316,8 @@ export function boardRoutes() {
             board.boards[b.newFile] = { ...board.boards[b.file], ...(b.title ? { title: b.title } : {}) };
             delete board.boards[b.file];
             board.order = board.order.map((f) => (f === b.file ? b.newFile : f));
+            // Its variants and forks follow the new name
+            for (const o of Object.values(board.boards)) if (o.origin?.of === b.file) o.origin = { ...o.origin, of: b.newFile };
           },
           changes,
         );

@@ -17,6 +17,8 @@ export type BoardItem = {
   is_interactive?: boolean;
   /** Page-style: fills the window in focus view and scrolls */
   expand?: "fill";
+  /** Made from another board: a variant (the chat's "Make N variants") or a fork (a second agent wrote while another was editing) */
+  origin?: { kind: "variant" | "fork"; of: string; by?: string; while?: string; at?: string };
 };
 
 export type Launch = { view: "canvas" | "focused"; file?: string; page?: string };

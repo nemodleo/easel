@@ -57,6 +57,10 @@ type Props = {
   renderBoardOverlay?: (f: string) => ReactNode;
   /** Tags stacked above a board's title (who changed it); not drawn while the label is too small to show the title */
   renderBoardTags?: (f: string) => ReactNode;
+  /** Buttons that stay visible in a board's label row (Use this), before Edit */
+  renderBoardButtons?: (f: string) => ReactNode;
+  /** Colour of the ring around a board an agent is writing right now */
+  boardRing?: (f: string) => string | null;
   /** Things drawn over boards (shapes) — world coordinates */
   worldLayer?: ReactNode;
   iframeRef?: (f: string, el: HTMLIFrameElement | null) => void;
@@ -351,6 +355,8 @@ export function Canvas(p: Props) {
               onContext={(e) => p.onContext({ type: "board", file: f }, e)}
               overlay={p.renderBoardOverlay?.(f)}
               tags={b.w * view.zoom >= 48 && p.playing !== f ? p.renderBoardTags?.(f) : null}
+              buttons={p.readOnly ? null : p.renderBoardButtons?.(f)}
+              ring={p.boardRing?.(f) ?? null}
               iframeRef={(el) => p.iframeRef?.(f, el)}
             />
           );
@@ -396,6 +402,8 @@ function BoardView(props: {
   onContext: (e: RMouseEvent) => void;
   overlay?: ReactNode;
   tags?: ReactNode;
+  buttons?: ReactNode;
+  ring?: string | null;
   iframeRef: (el: HTMLIFrameElement | null) => void;
   readOnly?: boolean;
   screens: ScreenSource;
@@ -411,8 +419,8 @@ function BoardView(props: {
   const stop = (e: RPointerEvent) => e.stopPropagation();
   return (
     <div
-      className={`board ${props.selected ? "selected" : ""} ${props.editing ? "editing" : ""} ${props.playing ? "playing" : ""} ${b.frameless ? "frameless" : ""} ${b.is_interactive ? "interactive" : ""}`}
-      style={{ left: b.x, top: b.y, width: b.w, height: b.h }}
+      className={`board ${props.selected ? "selected" : ""} ${props.editing ? "editing" : ""} ${props.playing ? "playing" : ""} ${b.frameless ? "frameless" : ""} ${b.is_interactive ? "interactive" : ""} ${props.ring ? "held" : ""}`}
+      style={{ left: b.x, top: b.y, width: b.w, height: b.h, ...(props.ring ? { ["--ring" as string]: props.ring } : {}) }}
       data-file={props.file}
       role="group"
       aria-label={strings.canvas.board(title, !!props.selected, !!props.editing, !!props.playing)}
@@ -440,7 +448,8 @@ function BoardView(props: {
           </span>
           {b.w * zoom >= 160 && title !== props.file && <span className="board-file">{props.file}</span>}
           {b.w * zoom >= 110 && (
-            <span className="board-btns">
+            <span className={`board-btns ${props.buttons ? "pinned" : ""}`}>
+              {props.buttons}
               {b.is_interactive && (
                 <button className="icon-btn sm" aria-label="Play" title="Play" onPointerDown={stop} onClick={(e) => { e.stopPropagation(); props.onPlay(); }}>
                   <Icon name="play" size={14} />

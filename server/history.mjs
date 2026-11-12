@@ -22,9 +22,9 @@ export const fileList = (names, max = 3) => names.slice(0, max).join(", ") + (na
 
 /**
  * list: async () => absolute paths of the tracked files on disk now; isTracked(path) for paths seen earlier;
- * name(path) → short name for labels
+ * name(path) → short name for labels; onStep(step, changes) after changes are recorded in a step (who is editing which board)
  */
-export function createHistory({ onWrite, list = async () => [], isTracked = () => true, name = (p) => path.basename(p) } = {}) {
+export function createHistory({ onWrite, list = async () => [], isTracked = () => true, name = (p) => path.basename(p), onStep } = {}) {
   let undo = [];
   let redo = [];
   const known = new Map(); // path → last known content (null: absent)
@@ -81,6 +81,7 @@ export function createHistory({ onWrite, list = async () => [], isTracked = () =
     if (!step.run) step.label = `Changed outside the app: ${fileList(step.changes.map((c) => name(c.path)))}`;
     if (!step.changes.length) undo.splice(undo.indexOf(step), 1);
     redo = [];
+    onStep?.(step, changes);
     return step;
   }
 
@@ -128,9 +129,11 @@ export function createHistory({ onWrite, list = async () => [], isTracked = () =
       const run = scope?.run ? runs.get(scope.run) : null;
       if (run) return void group(real, run);
       const who = scope?.agent ? { by: scope.agent } : scope?.person ? { person: scope.person } : {};
-      undo.push({ id: nextId(), label, changes: real, at: Date.now(), ...who, ...(scope?.client ? { client: scope.client } : {}), ...mark });
+      const step = { id: nextId(), label, changes: real, at: Date.now(), ...who, ...(scope?.client ? { client: scope.client } : {}), ...mark };
+      undo.push(step);
       trim();
       redo = [];
+      onStep?.(step, real);
     },
     /** The app wrote this content without a history step (auto-placement, positions): not an outside change */
     note(p, content) {
@@ -148,6 +151,8 @@ export function createHistory({ onWrite, list = async () => [], isTracked = () =
     endRun(id) {
       runs.delete(id);
     },
+    /** Whether an in-app run with this id is going */
+    running: (id) => runs.has(id),
     /** Undo steps made by a run (normally one) */
     runSteps: (id) => undo.filter((s) => s.run === id),
     /** The newest undo and redo steps: undo-run is a plain undo/redo when its step is on top */

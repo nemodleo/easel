@@ -25,8 +25,10 @@ const IMAGE_LIMIT = 4 * 1024 * 1024;
 let port = null;
 const resolvePort = async (fresh = false) => (port = !fresh && port ? port : await discoverPort({ port: explicit }));
 
-/** Header values for the app server: who made a change (undo history, comments) and which in-app run it belongs to */
-const agentHeaders = () => ({ "X-Easel-Agent": agent(), ...(process.env.EASEL_RUN_ID ? { "X-Easel-Run": process.env.EASEL_RUN_ID } : {}) });
+/** This MCP server's id at the canvas: the boards it writes are released when its client disconnects */
+const CLIENT = `mcp-${process.pid.toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+/** Header values for the app server: who made a change (undo history, comments), which in-app run it belongs to, and this client */
+const agentHeaders = () => ({ "X-Easel-Agent": agent(), "X-Easel-Client": CLIENT, ...(process.env.EASEL_RUN_ID ? { "X-Easel-Run": process.env.EASEL_RUN_ID } : {}) });
 const agent = () => agentLabel(server.server.getClientVersion()?.name);
 
 async function call(method, path, body) {
@@ -96,15 +98,18 @@ if (args.permission)
 tool(
   "list_boards",
   {
-    description: "List the boards on the design canvas (each board is an .html file in the screens folder, returned as dir) with file, title, size, position and page. Use it to find which file to read or edit.",
+    description:
+      "List the boards on the design canvas (each board is an .html file in the screens folder, returned as dir) with file, title, size, position and page, who is editing it right now (editing), and origin for a variant or fork of another board. Use it to find which file to read or edit.",
     inputSchema: { page: z.string().optional().describe("Only return boards on this page id") },
   },
   async ({ page }) => {
     const { board, missing, screens } = await callJson("GET", "/api/board");
+    const occ = (await callJson("GET", "/api/boards/occupancy").catch(() => null))?.boards ?? {};
     const first = board.pages[0]?.id;
+    const editing = (f) => (occ[f] ?? []).filter((h) => h.state === "editing").map((h) => h.by ?? h.person ?? "someone");
     const rows = board.order
       .filter((f) => board.boards[f])
-      .map((f) => ({ file: f, ...board.boards[f], page: board.boards[f].page ?? first }))
+      .map((f) => ({ file: f, ...board.boards[f], page: board.boards[f].page ?? first, ...(editing(f).length ? { editing: editing(f) } : {}) }))
       .filter((b) => !page || b.page === page);
     return ok({ dir: screens ?? "screens", pages: board.pages, boards: rows, missingFiles: missing });
   },
@@ -114,6 +119,26 @@ tool(
   "read_board",
   { description: "Read a board's source HTML exactly as stored in the file. Use it before editing a board.", inputSchema: { file: z.string().describe("Board file name, e.g. scr-01.html") } },
   async ({ file }) => ok(await call("GET", `/api/file?f=${encodeURIComponent(file)}`)),
+);
+
+tool(
+  "claim_board",
+  {
+    description:
+      "Call before you edit a board's file with your own file tools, so people and other agents see you are editing it. Returns the file to edit: the board itself, or, when another agent is editing that board right now, a fork next to it (a copy) so you do not overwrite each other. Edit the returned file. Reading never needs this.",
+    inputSchema: { file: z.string().describe("Board file name, e.g. scr-01.html") },
+  },
+  async ({ file }) => ok(await callJson("POST", "/api/boards/claim", { file })),
+);
+
+tool(
+  "write_board",
+  {
+    description:
+      "Write a board's whole HTML through Easel (instead of writing the file yourself). If another agent is editing that board right now, your version goes to a fork next to it, and the reply says which file you are on; keep writing to that file.",
+    inputSchema: { file: z.string().describe("Board file name, e.g. scr-01.html"), html: z.string().describe("The complete HTML of the board") },
+  },
+  async ({ file, html }) => ok(await callJson("POST", "/api/boards/write", { file, html })),
 );
 
 tool(
@@ -313,3 +338,16 @@ tool(
 );
 
 await server.connect(new StdioServerTransport());
+
+// The client went away (stdin closed, or we are told to stop): the boards this client was editing are released, then exit
+let leaving = false;
+const leave = async () => {
+  if (leaving) return;
+  leaving = true;
+  if (!args.permission && port)
+    await fetch(`http://127.0.0.1:${port}/api/boards/release`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ client: CLIENT }), signal: AbortSignal.timeout(1000) }).catch(() => {});
+  process.exit(0);
+};
+process.stdin.on("end", leave);
+process.stdin.on("close", leave);
+for (const sig of ["SIGTERM", "SIGINT", "SIGHUP"]) process.on(sig, leave);

@@ -51,14 +51,24 @@ export type ServerEvent =
   | { type: "tokens-changed" }
   | { type: "app-changed" }
   | { type: "chat"; id: string; ev: import("./chat").ChatEvent }
-  | { type: "hello"; boot: string };
+  | { type: "hello"; boot: string }
+  | { type: "occupancy"; boards: import("./occupancy").Occupancy };
+
+let socket: WebSocket | null = null;
+let editing: string | null = null;
+/** This tab's Edit mode for the server's "who is on which board": sent now, and again after a reconnect (a restarted server forgot it) */
+export function reportEditing(file: string | null) {
+  editing = file;
+  if (socket?.readyState === 1) socket.send(JSON.stringify({ type: "editing", file, client: browserId, person: authorName || undefined }));
+}
 
 /** WebSocket that reconnects 1 second after disconnecting */
 export function connectEvents(onEvent: (e: ServerEvent) => void) {
   let ws: WebSocket | null = null;
   let closed = false;
   const open = () => {
-    ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`);
+    ws = socket = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`);
+    ws.onopen = () => editing && reportEditing(editing);
     ws.onmessage = (m) => {
       try {
         onEvent(JSON.parse(m.data));

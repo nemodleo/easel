@@ -1,7 +1,7 @@
 // AI-generated with Claude Code, 2026-11-12, reviewed by Hyun Park
 // Who changed what: tags above boards someone else changed (author colour, seen state per browser), the tag popover (the change,
 // Before / After, Undo), the outline of the changed elements, and the History menu under Undo ("Go back to here").
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { api, browserId } from "./api";
 import { elementAt, rectOf, type Rect } from "./editor";
@@ -91,12 +91,13 @@ export function useActivity(canvas: string | null) {
 }
 export type ActivityApi = ReturnType<typeof useActivity>;
 
-/** The tags above one board's title: who · when · how many changes; a faded one has been seen */
-export function BoardTags({ file, act, me, onOpen }: { file: string; act: ActivityApi; me: string; onOpen: (file: string, key: string) => void }) {
+/** The tags above one board's title: who · when · how many changes; a faded one has been seen. lead: drawn first in the same row (who is on the board now) */
+export function BoardTags({ file, act, me, onOpen, lead }: { file: string; act: ActivityApi; me: string; onOpen: (file: string, key: string) => void; lead?: ReactNode }) {
   const tags = act.tagsOf(file);
-  if (!tags.length) return null;
+  if (!tags.length && !lead) return null;
   return (
-    <span className="act-tags" role="group" aria-label={strings.activity.tagsAria(tags.reduce((n, t) => n + t.count, 0))}>
+    <span className="act-tags" role="group" aria-label={tags.length ? strings.activity.tagsAria(tags.reduce((n, t) => n + t.count, 0)) : strings.occupancy.tagsAria}>
+      {lead}
       {tags.map((t) => {
         const text = strings.activity.tag(whoName(t, me), strings.activity.ago(act.now - t.at), t.count, t.newBoard);
         return (

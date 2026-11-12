@@ -141,7 +141,9 @@ const copyNoun = (tag) => (tag === "button" ? "button copy" : tag === "a" ? "lin
  */
 export function stepName(step, env, describe = describeChange) {
   const label = step.label ?? "";
-  const title = (f) => env.titles?.[f] || f.replace(/\.html$/, "");
+  // A board this step removed (a version "Use this" sent to trash) is named as board.json had it before the step
+  const was = () => parseJson(step.changes.find((c) => c.path === env.boardPath)?.before)?.boards ?? {};
+  const title = (f) => env.titles?.[f] || was()[f]?.title || f.replace(/\.html$/, "");
   const rel = (p) => toPosix(path.relative(env.screensDir, p));
   const html = step.changes.filter((c) => c.path.endsWith(".html") && !rel(c.path).startsWith(".."));
   const textOf1 = (c) => {
@@ -160,6 +162,16 @@ export function stepName(step, env, describe = describeChange) {
     return t ? `Change ${copyNoun(t.tag)} on ${title(m[1])}` : `${EDIT_OPS[m[2]]} ${title(m[1])}`;
   }
   if ((m = /^Create board (.+)$/.exec(label))) return `Add board ${title(m[1])}`;
+  // One writer per board, and picking a version (server/forks.mjs)
+  if ((m = /^Fork (.+\.html) for (.+)$/.exec(label))) return `Fork ${title(m[1])} for ${m[2]}`;
+  if ((m = /^Use (.+\.html) for (.+\.html)$/.exec(label))) return `Use ${title(m[1]).replace(/:.*$/, "")} for ${title(m[2])}`;
+  if ((m = /^Keep (.+\.html), trash (.+)$/.exec(label))) return `Keep ${title(m[1])}, trash ${fileList(m[2].split(", ").map(title))}`;
+  if ((m = /^Keep all (variants|versions) of (.+\.html)$/.exec(label))) return `Keep all ${m[1]} of ${title(m[2])}`;
+  if ((m = /^Write board (.+\.html)$/.exec(label))) {
+    if (html.length === 1 && html[0].before == null) return `Add board ${title(m[1])}`;
+    const t = html.length === 1 ? textOf1(html[0]) : null;
+    return t ? `Change ${copyNoun(t.tag)} on ${title(m[1])}` : `Change ${title(m[1])}`;
+  }
   if ((m = /^Duplicate board (.+)$/.exec(label))) return `Duplicate board ${title(m[1])}`;
   if ((m = /^Delete board (.+)$/.exec(label))) {
     const files = m[1].split(", ");

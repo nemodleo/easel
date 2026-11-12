@@ -30,6 +30,8 @@ export const LeftPanel = forwardRef<HTMLInputElement, {
   footer?: React.ReactNode;
   onGroupMenu?: (key: string, files: string[], e: { clientX: number; clientY: number }) => void;
   onGroupRename?: (key: string) => void;
+  /** The dot of whoever is editing a board now, in their colour */
+  dotOf?: (file: string) => { color: string; label: string } | null;
 }>(function LeftPanel(p, searchRef) {
   const [q, setQ] = useState("");
   const [dragPage, setDragPage] = useState<string | null>(null);
@@ -92,6 +94,10 @@ export const LeftPanel = forwardRef<HTMLInputElement, {
             <span className="row-text">{b.title ?? f}</span>
           )}
           {p.missing.includes(f) && <Icon name="warn" size={14} className="warn-icon" aria-label={strings.boardList.fileMissing} />}
+          {(() => {
+            const d = p.dotOf?.(f);
+            return d ? <span className="idot occ-dot" style={{ background: d.color }} role="img" aria-label={d.label} title={d.label} /> : null;
+          })()}
         </button>
       </li>
     );

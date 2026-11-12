@@ -11,6 +11,7 @@ import { tokenRoutes } from "./tokens.mjs";
 import { snapshotRoutes } from "./snapshot.mjs";
 import { applyEdit, EditError } from "./edit.mjs";
 import { exportRoutes } from "./export.mjs";
+import { forkMessage, forkRoutes, routeWrite } from "./forks.mjs";
 import { easelDir, rootOf, toPosix, writeAtomic } from "./fsutil.mjs";
 import { inspect, outline } from "./html.mjs";
 import { readBody, safeJoin, sendJson } from "./index.mjs";
@@ -110,19 +111,24 @@ export const extraRoutes = [
     "/api/edit",
     async (req, res, url, ctx) => {
       const b = await readBody(req);
-      const { p, html } = await readScreen(ctx, b.file);
+      await readScreen(ctx, b.file);
+      // An agent editing a board another agent is on works on its fork (people always edit the board they are on)
+      const to = await routeWrite(ctx, b.file);
+      const { p, html } = await readScreen(ctx, to.file);
+      const fork = to.forked ? { file: to.file, forked: true, original: b.file, message: forkMessage(ctx, b.file, to) } : {};
       let next;
       try {
         next = applyEdit(html, b);
       } catch (e) {
-        if (e instanceof EditError) return sendJson(res, e.status, { error: e.message });
+        // On a fork the agent may hold the original's HTML, so the error says which file it is on now
+        if (e instanceof EditError) return sendJson(res, e.status, { error: to.forked ? `${e.message}. ${fork.message}` : e.message, ...fork });
         throw e;
       }
-      if (next === html) return sendJson(res, 200, { ok: true, changed: false });
+      if (next === html) return sendJson(res, 200, { ok: true, changed: false, ...fork });
       await writeScreen(ctx, p, next);
-      ctx.history.push(`${b.file} ${b.op}`, [{ path: p, before: html, after: next }]);
+      ctx.history.push(`${to.file} ${b.op}`, [{ path: p, before: html, after: next }]);
       ctx.broadcast({ type: "history-changed" });
-      sendJson(res, 200, { ok: true, changed: true });
+      sendJson(res, 200, { ok: true, changed: true, ...fork });
     },
   ],
   // Legacy route: forwards to the chronological history
@@ -136,6 +142,7 @@ export const extraRoutes = [
     },
   ]),
   ...boardRoutes(),
+  ...forkRoutes(),
   ...activityRoutes(),
   ...chat.routes,
   ...tokenRoutes(),

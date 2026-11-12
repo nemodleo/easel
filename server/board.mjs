@@ -5,10 +5,9 @@ import path from "node:path";
 
 import { formatBoard } from "./boardFormat.mjs";
 import { htmlTitle, projectName, writeAtomic } from "./fsutil.mjs";
+import { placeNew } from "./place.mjs";
 
 const DEFAULT_SIZE = { w: 390, h: 844 };
-const GAP_X = 80;
-const GAP_Y = 120;
 
 /**
  * order lists each board exactly once: duplicates and names missing from boards are dropped, boards missing from order
@@ -90,19 +89,6 @@ export function createBoardStore(dir, { onWrite } = {}) {
     return { size: m ? { w: Number(m[1]), h: Number(m[2]) } : { ...DEFAULT_SIZE }, title: htmlTitle(html) };
   }
   const readBoardSize = async (file) => (await readBoardInfo(file)).size;
-
-  /** Row for new screens: right of the last auto-placed board, otherwise below everything + 120 */
-  function placeNew(board, size) {
-    const all = Object.values(board.boards);
-    const auto = all.filter((b) => b.autoPlaced);
-    if (auto.length) {
-      const last = auto.reduce((a, b) => (b.x > a.x ? b : a));
-      return { x: last.x + last.w + GAP_X, y: last.y, ...size };
-    }
-    const bottom = all.reduce((m, b) => Math.max(m, b.y + b.h), 0);
-    const left = all.reduce((m, b) => Math.min(m, b.x), 0);
-    return { x: left, y: bottom + GAP_Y, ...size };
-  }
 
   // Queue board/file-changing requests and auto-placement in a single line. If auto-placement slipped in while an undo
   // is writing board.json and deleting files, the deleted board would come back.

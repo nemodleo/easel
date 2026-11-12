@@ -830,3 +830,38 @@ button.danger { color: var(--warn); }
 .who-chip.person { background: var(--select-weak); border-color: transparent; color: var(--select); }
 .who-chip.person .dot { background: var(--select); }
 .hist .menu-item:focus-visible { outline: none; } /* the active row's background is the focus mark, as in the other menus */
+
+/* Who is on which board: labels in the tag row above a board (same colours as the tags), the writer's ring, the board list dot,
+   the arrow from an original to its fork, and Use this with its confirm */
+.occ-tag {
+  display: inline-flex; align-items: center; gap: 7px; height: 20px; padding: 0 9px 0 8px; border-radius: 10px; flex: 0 1 auto; min-width: 0; max-width: 100%;
+  background: var(--panel); box-shadow: var(--shadow-1); font-size: 11px; font-weight: 600; color: var(--text); white-space: nowrap;
+}
+.occ-tag.you { background: var(--select-weak); color: var(--select); box-shadow: none; }
+.occ-tag.done { color: var(--muted); font-weight: 500; }
+.ring { width: 8px; height: 8px; border-radius: 4px; flex: none; background: var(--c); box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px color-mix(in srgb, var(--c) 40%, transparent); }
+.occ-tag.you .ring { box-shadow: 0 0 0 2px var(--select-weak), 0 0 0 4px color-mix(in srgb, var(--c) 40%, transparent); }
+.board.held:not(.selected):not(.editing) .board-frame { box-shadow: 0 0 0 2px var(--ring); }
+.left .row .occ-dot { margin-left: auto; }
+.left .row .warn-icon + .occ-dot { margin-left: 4px; }
+.board-btns.pinned { opacity: 1; }
+/* With Use this in the row the file name gives way, so the title keeps a few letters */
+.lab-row:has(.board-btns.pinned) .board-file { display: none; }
+.lab-row:has(.board-btns.pinned) .board-title { min-width: 3em; flex: 1 1 auto; }
+.board:not(:hover):not(.selected):not(.editing) .board-btns.pinned > :not(.use-btn) { display: none; }
+.board-btns .edit-pill.use-btn, .board.selected .board-btns .edit-pill.use-btn, .board.editing .board-btns .edit-pill.use-btn { width: auto; padding: 0 8px; gap: 4px; background: var(--panel); border-color: var(--line); color: var(--text); }
+.board-btns .edit-pill.use-btn.ready { border-color: var(--line-strong); }
+.board-btns .edit-pill.use-btn.pressed { background: var(--pressed); border-color: var(--line-strong); }
+.board-btns .use-btn[aria-disabled="true"] { opacity: 0.45; cursor: default; }
+.board-btns .use-btn[aria-disabled="true"]:hover { background: var(--panel); border-color: var(--line); }
+.fork-link { position: absolute; left: 0; top: 0; pointer-events: none; }
+.fork-svg { position: absolute; overflow: visible; fill: none; stroke: var(--line-strong); stroke-linecap: round; stroke-linejoin: round; }
+.fork-caption { position: absolute; display: flex; justify-content: center; font-size: 11px; line-height: 1.4; color: var(--muted); text-align: center; white-space: normal; }
+.fork-caption.below { justify-content: flex-start; text-align: left; }
+.fork-caption span { background: var(--bg); padding: 0 4px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.menu.confirm { z-index: 260; width: 290px; min-width: 0; max-width: calc(100vw - 16px); padding: 12px; gap: 6px; }
+.menu.confirm::before { content: ""; position: absolute; top: -6px; left: var(--arrow, 24px); width: 12px; height: 12px; background: var(--panel); transform: rotate(45deg); box-shadow: -1px -1px 0 rgba(0, 0, 0, 0.06); }
+.confirm .c-title { margin: 0; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.confirm .c-body { margin: 0; font-size: 12px; line-height: 1.45; color: var(--muted); overflow-wrap: anywhere; }
+.confirm .btn-row { margin-top: 6px; gap: 6px; }
+.confirm .btn-row button { height: 28px; padding: 0 10px; font-size: 12px; }

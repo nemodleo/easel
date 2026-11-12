@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { BoardTags, ChangeOutline, HistoryMenu, TagPopover, authorColor, useActivity, type Step, type Tag } from "./activity";
-import { api, clientId, connectEvents, setAuthorName, type ServerEvent } from "./api";
+import { api, clientId, connectEvents, reportEditing, setAuthorName, type ServerEvent } from "./api";
 import { Canvas, clamp, fitView, isTyping, MAX_ZOOM, MIN_ZOOM, type ContextTarget, type Rect } from "./Canvas";
 import { AssetGrid, AssetPicker, uploadAssets, type Asset } from "./assets";
 import { ChatPanel, type Attach, type ChatEvent } from "./chat";
@@ -14,6 +14,7 @@ import { alignOps, EditHandles, type DropPlan } from "./elementDrag";
 import { elementAt, inlineStyles, pathOf, rectOf } from "./editor";
 import { Icon, type IconName } from "./icons";
 import { Inspector, type Comment } from "./Inspector";
+import { busyIn, choiceGroup, ForkLinks, holderColor, listDot, OccTags, shortTitle, UseButton, UseConfirm, writersOn, type Occupancy } from "./occupancy";
 import { Layers } from "./Layers";
 import { BoardOptions, FocusView, LeftPanel, Minimap } from "./panels";
 import { Play } from "./Play";
@@ -177,6 +178,9 @@ export function App() {
   const [tagPop, setTagPop] = useState<{ file: string; key: string; conflict: string[] | null; busy: boolean } | null>(null);
   const [tagCmp, setTagCmp] = useState<{ file: string; step: string; added: boolean } | null>(null);
   const [histOpen, setHistOpen] = useState(false);
+  /* ---------- Who is on which board, and picking a version (Use this) ---------- */
+  const [occ, setOcc] = useState<Occupancy>({});
+  const [useOpen, setUseOpen] = useState<{ file: string; busy: boolean } | null>(null);
   const [histBusy, setHistBusy] = useState(false);
   const caretRef = useRef<HTMLButtonElement>(null);
 
@@ -416,6 +420,7 @@ export function App() {
         else if (e.type === "chat") for (const fn of chatListeners.current) fn(e.id, e.ev);
         // Sent on every (re)connect: the chat notices when the server restarted and its undo history is gone
         else if (e.type === "hello") for (const fn of chatListeners.current) fn("", { kind: "boot", boot: e.boot });
+        else if (e.type === "occupancy") setOcc(e.boards);
       }),
     [load, loadComments, loadHistory, loadErrors, act.reload],
   );
@@ -1140,6 +1145,63 @@ export function App() {
     });
   };
 
+  // This tab's Edit mode, for "You · editing" here and "<name> · editing" in other browsers
+  useEffect(() => reportEditing(editFile), [editFile]);
+  /** Use this / Use this one: the chosen version becomes the original board and the rest go to trash, as one history step */
+  const applyUse = async (file: string) => {
+    const b = boardRef.current;
+    const g = b && choiceGroup(b, file);
+    if (!b || !g) return;
+    const title = (f: string) => b.boards[f]?.title ?? f;
+    setUseOpen((c) => c && { ...c, busy: true });
+    try {
+      const r = await api.post<{ step: string | null }>("/api/boards/use", { file });
+      setUseOpen(null);
+      if (editFile && g.alts.includes(editFile)) setEditFile(null);
+      await load();
+      setLocate([g.original]); // the original, now holding the chosen version, comes into view selected
+      const text = g.chosen === g.original ? strings.occupancy.kept(title(g.original)) : strings.occupancy.applied(shortTitle(title(g.chosen)), title(g.original));
+      toast({ tone: "ok", text, action: r.step ? { label: strings.occupancy.undo, run: () => void undoStep(r.step!, text, [g.original, ...g.alts]) } : undoAction });
+    } catch (e) {
+      setUseOpen((c) => c && { ...c, busy: false });
+      toast({ tone: "error", text: String((e as Error).message) });
+    }
+    void loadHistory();
+    act.reload();
+  };
+  /** Keep all: the variants (or the fork) stay as ordinary boards; nothing is deleted */
+  const keepAll = async (file: string) => {
+    const b = boardRef.current;
+    const g = b && choiceGroup(b, file);
+    if (!b || !g) return;
+    setUseOpen((c) => c && { ...c, busy: true });
+    try {
+      const r = await api.post<{ step: string | null }>("/api/boards/keep", { file });
+      setUseOpen(null);
+      await load();
+      const text = strings.occupancy.keptAll(g.kind, g.alts.length);
+      toast({ text, action: r.step ? { label: strings.occupancy.undo, run: () => void undoStep(r.step!, text) } : undoAction });
+    } catch (e) {
+      setUseOpen((c) => c && { ...c, busy: false });
+      toast({ tone: "error", text: String((e as Error).message) });
+    }
+    void loadHistory();
+    act.reload();
+  };
+  /** The toast's Undo: that one step, a plain undo when it is the newest (else only its own files, like a tag's Undo); focus: boards to bring back into view */
+  const undoStep = async (id: string, name: string, focus: string[] = []) => {
+    try {
+      await api.post("/api/history/undo-steps", { ids: [id], mode: "rest" });
+      await load();
+      if (focus.length) setLocate(focus);
+      toast({ text: strings.toast.undoRedoDone("undo", name), action: { label: strings.toolbar.redo, run: () => void undoRedo("redo") } });
+    } catch (e) {
+      toast({ tone: "error", text: String((e as Error).message) });
+    }
+    void loadHistory();
+    act.reload();
+  };
+
   // A board selected or entered after it changed: its tags count as seen (they fade)
   const prevSel = useRef<string[]>([]);
   useEffect(() => {
@@ -1627,6 +1689,7 @@ export function App() {
                 ],
               })
             }
+            dotOf={(f) => listDot(occ, f)}
             onBoardMenu={(f, at) => {
               if (!selected.includes(f)) select([f]);
               setMenu({ x: at.clientX, y: at.clientY, title: board.boards[f]?.title ?? f, items: boardMenuItems(f) });
@@ -1714,8 +1777,21 @@ export function App() {
             onContext={onContext}
             onSize={setCanvasSize}
             renderBoardOverlay={renderOverlay}
-            renderBoardTags={(f) => (act.tagsOf(f).length ? <BoardTags file={f} act={act} me={me} onOpen={openTag} /> : null)}
+            renderBoardTags={(f) => {
+              const lead = occ[f]?.length ? <OccTags list={occ[f]} /> : null;
+              return act.tagsOf(f).length || lead ? <BoardTags file={f} act={act} me={me} onOpen={openTag} lead={lead} /> : null;
+            }}
+            renderBoardButtons={(f) => {
+              const g = choiceGroup(board, f);
+              return g ? <UseButton file={f} group={g} busy={busyIn(occ, g)} open={useOpen?.file === f} onOpen={() => setUseOpen((c) => (c?.file === f ? null : { file: f, busy: false }))} /> : null;
+            }}
+            boardRing={(f) => {
+              const w = writersOn(occ, f)[0];
+              return w ? holderColor(w) : null;
+            }}
             worldLayer={
+              <>
+              <ForkLinks board={board} files={visibleBoards} zoom={view.zoom} />
               <ShapesLayer
                 shapes={shapes}
                 ids={visibleShapes}
@@ -1755,6 +1831,7 @@ export function App() {
                   })
                 }
               />
+              </>
             }
             iframeRef={(f, el) => {
               // The ref callback is called again with null → el on every render. Update only for a genuinely new iframe
@@ -2057,6 +2134,10 @@ export function App() {
             onClose={() => setTagPop(null)}
           />
         ) : null;
+      })()}
+      {useOpen && !playFile && (() => {
+        const g = choiceGroup(board, useOpen.file);
+        return g ? <UseConfirm file={useOpen.file} group={g} board={board} busy={useOpen.busy} onApply={() => void applyUse(useOpen.file)} onKeepAll={() => void keepAll(useOpen.file)} onClose={() => setUseOpen(null)} /> : null;
       })()}
       {tagCmp && board.boards[tagCmp.file] && (
         <Compare

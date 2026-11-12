@@ -10,8 +10,10 @@ import { WebSocketServer } from "ws";
 import { cleanAgent } from "./agents.mjs";
 import { TOOL_ROOT } from "./args.mjs";
 import { createBoardStore } from "./board.mjs";
+import { isTrackedRel } from "./copies.mjs";
 import { rootOf, toPosix } from "./fsutil.mjs";
 import { createHistory, requestScope } from "./history.mjs";
+import { createOccupancy } from "./occupancy.mjs";
 import { writeEntry } from "./registry.mjs";
 
 export const MIME = {
@@ -177,6 +179,18 @@ function trackedFiles(store) {
   };
 }
 
+/** Who wrote a board, from a history step: an agent (MCP or an in-app run) starts or keeps holding it; a change found on disk with no
+ *  author keeps an agent that claimed the board busy; a board file that is gone has nobody on it */
+function noteWriters(occupancy, screensDir, step, changes) {
+  for (const c of changes) {
+    const rel = toPosix(path.relative(screensDir, c.path));
+    if (!c.path.endsWith(".html") || rel.startsWith("..")) continue;
+    if (c.after == null) occupancy.forget(rel);
+    else if (step.by) occupancy.agentWrite(rel, step.by, { run: step.run, client: step.client, before: c.before });
+    else if (step.outside) occupancy.touch(rel);
+  }
+}
+
 /**
  * register: write the running-canvas entry (~/.easel/servers/<port>.json, or under EASEL_HOME) for MCP discovery.
  * autoPort: when the port is busy, try the next ones instead of failing (for a port the user did not choose).
@@ -185,9 +199,11 @@ export async function createServer({ dir, port, dev = true, extraRoutes = [], au
   if (!existsSync(dir)) throw new Error(`Design folder not found: ${dir}`);
   let history;
   const store = createBoardStore(dir, { onWrite: (p, text) => history.note(p, text) });
-  history = createHistory(trackedFiles(store));
+  // Who is on which board: in memory, sent to every browser when it changes
+  const occupancy = createOccupancy({ onChange: (boards) => ctx.broadcast({ type: "occupancy", boards }) });
+  history = createHistory({ ...trackedFiles(store), onStep: (step, changes) => noteWriters(occupancy, store.screensDir, step, changes) });
   // boot: when this server started; the chat shows "Easel restarted" when it changes (the undo history did not survive)
-  const ctx = { dir, store, history, broadcast: () => {}, boot: new Date().toISOString() };
+  const ctx = { dir, store, history, occupancy, broadcast: () => {}, boot: new Date().toISOString() };
   await history.seed();
 
   // App UI: on startup, build once if the app source is newer than dist, then serve dist statically.
@@ -279,7 +295,26 @@ export async function createServer({ dir, port, dev = true, extraRoutes = [], au
 
   const wss = new WebSocketServer({ server, path: "/ws", verifyClient: ({ req }) => originAllowed(req.headers) });
   wss.on("error", () => {}); // ws re-emits the http server's errors; a busy port is handled by listen()
-  wss.on("connection", (c) => c.send(JSON.stringify({ type: "hello", boot: ctx.boot })));
+  let conns = 0;
+  wss.on("connection", (c) => {
+    const conn = `w${++conns}`;
+    c.send(JSON.stringify({ type: "hello", boot: ctx.boot }));
+    c.send(JSON.stringify({ type: "occupancy", boards: occupancy.snapshot() }));
+    // The app says which board this tab is editing (Edit mode on, off); a closed tab leaves it
+    c.on("message", (data) => {
+      let m;
+      try {
+        m = JSON.parse(String(data));
+      } catch {
+        return;
+      }
+      if (m?.type !== "editing") return;
+      const file = m.file == null ? null : isTrackedRel(`screens/${m.file}`) ? m.file : undefined;
+      if (file === undefined) return;
+      occupancy.personEdit(conn, file, { client: cleanAgent(m.client) || undefined, person: cleanAgent(m.person) || undefined });
+    });
+    c.on("close", () => occupancy.personEdit(conn, null));
+  });
   ctx.broadcast = (msg) => {
     const data = JSON.stringify(msg);
     for (const c of wss.clients) if (c.readyState === 1) c.send(data);
@@ -308,6 +343,7 @@ export async function createServer({ dir, port, dev = true, extraRoutes = [], au
     unregister,
     async close() {
       unregister();
+      occupancy.close();
       await appWatcher?.close();
       for (const c of wss.clients) c.terminate();
       wss.close();

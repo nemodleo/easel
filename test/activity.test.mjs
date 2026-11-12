@@ -234,8 +234,8 @@ test("undo-steps: an older step takes back only its files as a new step (the tag
   await api("POST", "/api/history/undo", {});
   assert.match(await read("screens/a.html"), /Start free/);
   assert.equal((await api("GET", "/api/activity?client=me")).body.tags["a.html"][0].by, "Codex", "undoing the undo brings the tag back");
-  // Changed since by someone else: the undo asks
-  assert.equal((await setText("a.html", "0/0", "Hello", { "X-Easel-Agent": "Claude Code" })).status, 200);
+  // Changed since by someone else: the undo asks (a person in another browser: an agent would get a fork while Codex holds the board)
+  assert.equal((await setText("a.html", "0/0", "Hello", { "X-Easel-Client": "another-browser", "X-Easel-Author": encodeURIComponent("Ana") })).status, 200);
   const box = await setText("b.html", "0/0", "Box", { "X-Easel-Client": "me" });
   assert.equal(box.status, 200, box.text);
   const c = await api("POST", "/api/history/undo-steps", { ids: codex.steps }, { "X-Easel-Client": "me" });

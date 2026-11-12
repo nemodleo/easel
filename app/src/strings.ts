@@ -946,4 +946,38 @@ export const strings = {
     undoneAria: (name: string, who: string, ago: string) => `${name} by ${who}, ${ago} · undone`,
     wentBack: (name: string) => `Back to: ${name}`,
   },
+  occupancy: {
+    // Labels above a board: who is on it now, and who finished
+    editing: (who: string) => `${who} is editing…`,
+    you: "You · editing",
+    personEditing: (name: string) => `${name} · editing`,
+    done: (who: string, time: string) => `${who} · done ${time}`,
+    someone: "Someone",
+    /** 24-hour clock for "done 13:52" and "Forked 14:02" */
+    clock: (at: number) => new Date(at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }),
+    tagsAria: "Who is on this board",
+    listDot: (who: string) => `${who} is editing`,
+    youListDot: "You are editing",
+    // A fork and its original
+    forked: (time: string, by: string, whileBy: string) => `Forked ${time} — ${by} started while ${whileBy} was editing`,
+    // Picking one version
+    useThis: "Use this",
+    useThisOne: "Use this one",
+    useThisTitle: "Make this variant the original board; the other variants go to trash",
+    useThisOneTitle: "Keep this version as the board; the other version goes to trash",
+    waitFor: (who: string) => `Wait until ${who} is done editing`,
+    confirmVariant: (chosen: string, original: string) => `Apply "${chosen}" to ${original}?`,
+    confirmVariantBody: (original: string, others: number) => `${original} is replaced.${others ? ` The other ${others === 1 ? "variant goes" : `${others} variants go`} to trash.` : ""}`,
+    confirmFork: (chosen: string, original: string) => `Use "${chosen}" for ${original}?`,
+    confirmForkBody: (original: string) => `${original} is replaced by this version. The fork goes to trash.`,
+    confirmKeep: (original: string) => `Keep "${original}"?`,
+    confirmKeepBody: (others: string, n: number) => `${others} ${n === 1 ? "goes" : "go"} to trash.`,
+    apply: "Apply",
+    keepAll: "Keep all",
+    keepBoth: "Keep both",
+    applied: (chosen: string, original: string) => `Applied ${chosen} to ${original}`,
+    kept: (original: string) => `Kept ${original}; the other version is in trash`,
+    keptAll: (kind: "variant" | "fork", n: number) => (kind === "variant" ? `Kept all ${variantsLabel(n)} as boards` : n === 1 ? "Kept both versions as boards" : `Kept all ${n + 1} versions as boards`),
+    undo: "Undo",
+  },
 } as const;
