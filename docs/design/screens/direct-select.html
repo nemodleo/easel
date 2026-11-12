@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="board-size" content="1440x900">
+<title>Select and edit</title>
+<link rel="stylesheet" href="/assets/easel.css">
+<style>
+.app{width:1440px;height:900px}
+/* mini mobile screens inside boards (project content, not Easel chrome) */
+.scr{position:absolute;inset:0;background:#fff;display:flex;flex-direction:column;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#10213a}
+.scr .hd{height:30px;display:flex;align-items:center;justify-content:flex-end;padding:0 10px;font-weight:700;font-size:11px;color:#2b59c3;flex:none}
+.scr .bd{flex:1;padding:4px 10px;display:flex;flex-direction:column;gap:6px;overflow:hidden}
+.scr .h{font-size:14px;font-weight:700;line-height:1.2}
+.scr .p{font-size:11px;line-height:1.35;color:#5a6577}
+.scr .ft{padding:8px 10px 14px;display:flex;flex-direction:column;gap:4px;align-items:center;flex:none}
+.scr .cta{width:100%;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;background:#2b59c3}
+.scr .art{height:84px;border-radius:10px;background:linear-gradient(160deg,#dfe7fb,#b9cbf4)}
+.scr .opt{height:26px;border-radius:7px;border:1px solid #d9e0ee;flex:none}
+.scr .opt.on{border-color:#2b59c3;background:#eef3fd}
+.scr .in{height:26px;border-radius:7px;background:#f2f4f8;flex:none}
+.scr .row-i{height:40px;border-bottom:1px solid #eef0f4;display:flex;flex-direction:column;justify-content:center;gap:4px;flex:none}
+.scr .row-i i{display:block;height:6px;border-radius:3px;background:#d6dbe4;width:70%}.scr .row-i i+i{width:45%;background:#e8ebf0}
+.composer textarea{height:72px}
+.scr .plans{display:flex;gap:4px;flex:none}.scr .plans i{flex:1;height:36px;border-radius:6px;border:1px solid #d9e0ee;background:#fff}.scr .plans i.on{border-color:#2b59c3;background:#eef3fd}
+</style>
+</head>
+<body class="">
+<div class="app"><header class="toolbar">
+  <div class="tb-zone tb-left">
+    <button class="icon-btn on" title="Left panel"><svg class="ic" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM15 5v14"/></svg></button>
+    <div class="tool-group" role="radiogroup"><button class="icon-btn tool on" title="select"><svg class="ic" viewBox="0 0 24 24"><path d="M5 3l13 8-6 1.5L9.5 19z"/></svg></button><button class="icon-btn tool" title="hand"><svg class="ic" viewBox="0 0 24 24"><path d="M8 12V6.5a1.5 1.5 0 0 1 3 0V11m0-5.5V5a1.5 1.5 0 0 1 3 0v6m0-4.5a1.5 1.5 0 0 1 3 0V13a7 7 0 0 1-7 7h-.5a6 6 0 0 1-5-2.7L3.3 14a1.5 1.5 0 0 1 2.4-1.8L8 15"/></svg></button><button class="icon-btn tool" title="board"><svg class="ic" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg></button><button class="icon-btn tool" title="title"><svg class="ic" viewBox="0 0 24 24"><path d="M5 6h14M12 6v13M9 19h6"/></svg></button><button class="icon-btn tool" title="sticky"><svg class="ic" viewBox="0 0 24 24"><path d="M5 4h14v10l-5 6H5zM14 20v-6h5"/></svg></button></div>
+    <div class="tool-group"><button class="icon-btn " title="rect"><svg class="ic" viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/></svg></button><button class="icon-btn " title="oval"><svg class="ic" viewBox="0 0 24 24"><path d="M12 19c4.4 0 8-3.1 8-7s-3.6-7-8-7-8 3.1-8 7 3.6 7 8 7z"/></svg></button><button class="icon-btn " title="line"><svg class="ic" viewBox="0 0 24 24"><path d="M5 19L19 5"/></svg></button><button class="icon-btn " title="arrow"><svg class="ic" viewBox="0 0 24 24"><path d="M5 19L19 5M10 5h9v9"/></svg></button><button class="icon-btn " title="pen"><svg class="ic" viewBox="0 0 24 24"><path d="M4 20l1-4L16.5 4.5l3 3L8 19zM14 7l3 3"/></svg></button><button class="icon-btn " title="image"><svg class="ic" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 15l4-4 4 4 3-3 5 5M15 9h.01"/></svg></button></div>
+    <div class="tool-group undo-split"><button class="icon-btn " title="undo"><svg class="ic" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button><button class="icon-btn caret-btn" title="History"><svg class="ic s" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button><button class="icon-btn " title="redo"><svg class="ic" viewBox="0 0 24 24"><path d="M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3"/></svg></button></div>
+    <button class="new-board"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> New board <svg class="ic s" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+  </div>
+  <div class="tb-zone tb-center"><span class="app-title muted" style="font-weight:500">relay</span></div>
+  <div class="tb-zone tb-right">
+    <div class="tool-group"><button class="icon-btn" title="Zoom out"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button><span class="zoom">72%</span><button class="icon-btn " title="Zoom in"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button><button class="icon-btn " title="Fit all"><svg class="ic" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button></div>
+    <div class="share-wrap"><button class="share-btn"><svg class="ic s" viewBox="0 0 24 24"><path d="M12 15V4M8 8l4-4 4 4M5 13v6h14v-6"/></svg> <span class="share-label">Share</span></button></div>
+    <div class="tool-group"><button class="ask-ai "><svg class="ic" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg> <span class="ask-ai-label">Ask AI</span></button><button class="icon-btn " title="View"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg></button></div>
+  </div>
+</header>
+<div class="main"><aside class="left">
+  <div class="left-tabs"><button class="on">Boards</button><button>Assets</button><button>Tokens</button></div>
+  <section class="left-pages">
+    <div class="sec-head"><span>Pages</span><button class="icon-btn sm"><svg class="ic s" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div>
+    <p class="empty">Viewing everything as one page. Use + to split it into pages.</p>
+  </section>
+  <section class="left-boards">
+    <div class="sec-head"><span>Boards 5</span></div>
+    <label class="search"><svg class="ic s" viewBox="0 0 24 24"><path d="M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14zM20 20l-4-4"/></svg><span>Find boards (⌘K)</span></label>
+    <ul class="board-list"><li><button class="row two-line" title="home.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Home</span><span class="row-file">home.html</span></span></button></li><li><button class="row two-line on" title="onboard-1-welcome.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Onboarding 1 · Welcome</span><span class="row-file">onboard-1-welcome.html</span></span><span class="idot occ-dot" style="background:var(--select)" title="You are editing"></span></button></li><li><button class="row two-line" title="onboard-2-goals.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Onboarding 2 · Goals</span><span class="row-file">onboard-2-goals.html</span></span></button></li><li><button class="row two-line" title="onboard-3-invite.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Onboarding 3 · Invite</span><span class="row-file">onboard-3-invite.html</span></span></button></li><li><button class="row two-line" title="inbox.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Inbox</span><span class="row-file">inbox.html</span></span></button></li></ul>
+  </section>
+</aside>
+<div class="canvas-wrap"><div class="canvas">
+<div class="board selected editing" style="left:230px;top:120px;width:281px;height:608px"><div class="board-label tagged"><span class="act-tags"><span class="occ-tag you"><span class="idot" style="background:var(--select)"></span><span class="act-tag-text">You · editing</span></span></span><span class="lab-row"><span class="board-title">Onboarding 1 · Welcome</span><span class="board-file">onboard-1-welcome.html</span></span></div>
+  <div class="board-frame"><div style="position:absolute;left:0;top:0;width:152px;height:329px;transform:scale(1.8487);transform-origin:0 0"><div class="scr"><div class="hd">Skip</div><div class="bd"><div class="art"></div><div class="h">Hand off work, not the whole thread.</div><div class="p">Relay keeps the context.</div></div><div class="ft"><div class="cta">Get started</div></div></div></div></div></div>
+<div class="board-resize" style="left:506px;top:723px"></div>
+<div class="board" style="left:570px;top:120px;width:281px;height:608px"><div class="board-label"><span class="lab-row"><span class="board-title">Onboarding 2 · Goals</span></span></div>
+  <div class="board-frame"><div style="position:absolute;left:0;top:0;width:152px;height:329px;transform:scale(1.8487);transform-origin:0 0"><div class="scr"><div class="hd">Skip</div><div class="bd"><div class="h">What will you relay?</div><div class="opt on"></div><div class="opt"></div><div class="opt on"></div><div class="opt"></div></div><div class="ft"><div class="cta">Continue</div></div></div></div></div></div>
+<div class="overlay" style="z-index:6"><div class="box sel" style="left:248px;top:651px;width:244px;height:52px"></div><div class="el-move" style="left:248px;top:631px"><svg class="ic s" viewBox="0 0 24 24"><path d="M8 12V6.5a1.5 1.5 0 0 1 3 0V11m0-5.5V5a1.5 1.5 0 0 1 3 0v6m0-4.5a1.5 1.5 0 0 1 3 0V13a7 7 0 0 1-7 7h-.5a6 6 0 0 1-5-2.7L3.3 14a1.5 1.5 0 0 1 2.4-1.8L8 15"/></svg></div><div class="el-resize" style="left:488px;top:673px"></div><div class="el-resize" style="left:366px;top:699px"></div><div class="el-resize" style="left:488px;top:699px"></div></div>
+<div class="etb" style="left:136px;top:587px">
+  <span class="etb-item"><button><svg class="ic s" viewBox="0 0 24 24"><path d="M5 6h14M12 6v13M9 19h6"/></svg> Text <svg class="ic s" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></span>
+  <span class="etb-item"><button class="on" title="Fill"><span class="sw" style="background:#2b59c3"></span><svg class="ic s" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></span>
+  <span class="etb-item"><button><svg class="ic s" viewBox="0 0 24 24"><path d="M5 19V11a6 6 0 0 1 6-6h8"/></svg> Radius</button></span>
+  <span class="etb-item"><button><svg class="ic s" viewBox="0 0 24 24"><path d="M4 4v16M20 4v16M8 12h8M8 12l2-2M8 12l2 2M16 12l-2-2M16 12l-2 2"/></svg> Spacing</button></span>
+  <span class="etb-item"><span class="sep"></span><button class="accent"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg> Ask AI</button></span>
+  <span class="etb-item"><button><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg> Comment</button></span>
+</div>
+<div class="menu pop" style="left:214px;bottom:273px">
+  <div class="fill-picker">
+    <div class="pop-top"><strong>Fill</strong><span class="muted">Blue · token</span></div>
+    <span class="pop-h">Tokens</span>
+    <div class="tok-row"><span class="tok on"><i style="background:#2b59c3"></i><span>Blue</span></span><span class="tok"><i style="background:#dfe7fb"></i><span>Sky</span></span><span class="tok"><i style="background:#10213a"></i><span>Ink</span></span><span class="tok"><i style="background:#5a6577"></i><span>Slate</span></span><span class="tok"><i style="background:#f2f4f8"></i><span>Mist</span></span><span class="tok"><i style="background:#c94f0c"></i><span>Ember</span></span></div>
+    <div class="pop-sep"></div>
+    <div class="custom-row"><span>Custom…</span></div>
+    <div class="hex"><input type="color" class="sw" value="#2b59c3"><input class="num" value="#2B59C3"></div>
+  </div>
+</div>
+<div class="canvas-hint">Click selects · Double-click edits text · Esc deselects</div>
+</div>
+<div class="minimap"><svg width="200" height="130">
+  <rect x="14" y="24" width="24" height="52" class="mm-board"/><rect x="44" y="24" width="24" height="52" class="mm-sel"/><rect x="74" y="24" width="24" height="52" class="mm-board"/><rect x="104" y="24" width="24" height="52" class="mm-board"/><rect x="134" y="24" width="24" height="52" class="mm-board"/>
+  <rect x="8" y="10" width="164" height="96" class="mm-view"/></svg></div>
+</div><aside class="right">
+  <div class="right-tabs"><button class="on">Properties</button><button>AI <kbd>⌘J</kbd></button></div>
+  <div class="inspector">
+    <section>
+      <h3>onboard-1-welcome.html</h3>
+      <div class="sel-name"><strong>Button</strong><span class="sel-label"> · Get started</span></div>
+      <nav class="crumb"><button class="btn link">Onboarding 1 · Welcome</button><span>›</span><span>…</span><span class="crumb-step"><span>›</span><button class="btn link">Container .scr</button></span><span class="crumb-step"><span>›</span><button class="btn link">Container .ft</button></span><span>›</span><b>Button "Get started"</b></nav>
+      <div class="btn-row"><button class="btn">Copy</button><button class="btn">Parent</button><button class="btn">Screenshot</button></div>
+    </section>
+    <section class="collapsible "><button class="collapsible-toggle"><svg class="ic s chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg><span>Token check</span></button></section>
+    <section class="collapsible "><button class="collapsible-toggle"><svg class="ic s chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg><span>Accessibility</span><span class="collapsible-count">1</span></button></section>
+    <section class="props">
+      <h3>Properties</h3>
+      <div class="pg">
+        <div class="pg-h prow-h">Fill <code>background</code></div>
+        <button class="fillv on"><span class="sw" style="background:#2b59c3"></span><span class="fillv-name">Blue</span><span class="muted">#2B59C3</span></button>
+        <div class="contrast ok">Contrast 6.3:1 with white text · AA</div>
+      </div>
+      <div class="pg">
+        <div class="pg-h">Text</div>
+        <label class="prow"><span>Font <code>font-family</code></span><input placeholder="System UI"></label>
+        <label class="prow"><span>Size <code>font-size</code></span><input placeholder="11"></label>
+        <label class="prow"><span>Weight <code>font-weight</code></span><select><option>(Bold · 700)</option></select></label>
+        <label class="prow"><span>Color <code>color</code></span><button class="fillv"><span class="sw" style="background:#ffffff"></span><span class="fillv-name">#FFFFFF</span></button></label>
+      </div>
+      <div class="pg">
+        <label class="prow hover"><span class="pg-h">Corner radius <code>border-radius</code></span><input value="20"></label>
+        <label class="prow"><span class="pg-h">Padding <code>padding</code></span><input placeholder="0"></label>
+        <label class="prow"><span class="pg-h">Gap <code>gap</code></span><input placeholder=""></label>
+      </div>
+      <div class="align-row"><button class="icon-btn sm"><span class="glyph">⇤</span></button><button class="icon-btn sm"><span class="glyph">↔</span></button><button class="icon-btn sm"><span class="glyph">⇥</span></button><button class="icon-btn sm"><span class="glyph">⤒</span></button><button class="icon-btn sm"><span class="glyph">↕</span></button><button class="icon-btn sm"><span class="glyph">⤓</span></button></div>
+      <div class="btn-row"><button class="btn" disabled>Wrap in flex</button><button class="btn" disabled>Wrap in grid</button></div>
+      <div class="btn-row"><button class="btn">Duplicate</button><button class="btn">Delete</button></div>
+      <section class="collapsible "><button class="collapsible-toggle"><svg class="ic s chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg><span>More (CSS)</span></button></section>
+    </section>
+  </div>
+</aside>
+</div></div></body>
+</html>

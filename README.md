@@ -49,7 +49,7 @@ npx easel-canvas --dir ./designs  # any folder of screens/*.html
     <td colspan="2"><img src="docs/screenshots/overview.png" alt="Easel showing a habit tracker app: five mobile screens on an infinite canvas with notes, flow arrows, a board list and a properties panel with token and accessibility checks"></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/screenshots/edit-mode.png" alt="An element selected inside a mobile screen with handles, and the properties panel"></td>
+    <td width="50%"><img src="docs/screenshots/select.png" alt="A card selected inside a mobile screen with its element toolbar (Text, Fill, Radius, Spacing, Ask AI, Comment) and the Properties panel with the breadcrumb, Fill, Text, Corner radius, Padding and Gap"></td>
     <td width="50%"><img src="docs/screenshots/ai-chat.png" alt="AI chat panel: a streamed reply from Claude Code with Read and Edit tool lines, and the edited Stats screen on the canvas"></td>
   </tr>
   <tr>
@@ -57,7 +57,7 @@ npx easel-canvas --dir ./designs  # any folder of screens/*.html
     <td><b>Chat with your agent.</b> Pick Claude Code or Codex, send the selection, boards and comments as context, watch the edit stream in, ask for N variants side by side.</td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/screenshots/dark-mode.png" alt="Dark mode with a board context menu: Edit, Play in place, Ask AI for a review, Focus view, Rename, Duplicate, Bring to front, Delete"></td>
+    <td width="50%"><img src="docs/screenshots/dark-mode.png" alt="Dark mode with a board context menu: Select inside, Ask AI for a review, Focus view, Ask AI, Go to board, Rename, Rename file, Duplicate, Bring to front, Send to back, Delete"></td>
     <td width="50%">
       <b>Everything a canvas should do.</b>
       <ul>
