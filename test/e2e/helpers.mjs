@@ -81,22 +81,34 @@ export async function startEnv() {
 
 export const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/** Zooms to one board and optionally enters edit mode */
-export async function openBoard(page, url, file, { edit = false } = {}) {
+/** Selects one board by its title row and zooms to it */
+export async function openBoard(page, url, file) {
   if (!page.url().startsWith(url)) {
     await page.goto(url);
     await page.waitForSelector(".board");
   }
   await page.evaluate((f) => {
-    document.querySelector(`.board[data-file="${f}"] .board-frame`).dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, pointerId: 1 }));
+    const label = document.querySelector(`.board[data-file="${f}"] .board-label`);
+    for (const type of ["pointerdown", "pointerup"]) label.dispatchEvent(new PointerEvent(type, { bubbles: true, button: 0, pointerId: 1 }));
   }, file);
   await wait(100);
   await page.keyboard.press("Shift+Digit2"); // Zoom to the selected board
   await page.waitForSelector(`.board[data-file="${file}"] iframe`);
   await wait(600);
-  if (edit) {
-    await page.dispatchEvent(`.board[data-file="${file}"] .board-frame`, "dblclick");
-    await wait(800);
-  }
   return page.frameLocator(`.board[data-file="${file}"] iframe`);
+}
+
+/** Where an element inside a board is on the page (the board's iframe never takes the pointer: clicks land on the canvas) */
+export async function pointOf(page, file, selector) {
+  const b = await page.frameLocator(`.board[data-file="${file}"] iframe`).locator(selector).first().boundingBox();
+  return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+}
+
+/** Clicks (or double-clicks) an element on a board the way a person does: the canvas picks the element under the pointer */
+export async function clickIn(page, file, selector, { double = false, shift = false } = {}) {
+  const { x, y } = await pointOf(page, file, selector);
+  if (shift) await page.keyboard.down("Shift");
+  if (double) await page.mouse.dblclick(x, y);
+  else await page.mouse.click(x, y);
+  if (shift) await page.keyboard.up("Shift");
 }

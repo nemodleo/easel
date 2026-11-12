@@ -1,5 +1,5 @@
 // AI-generated with Claude Code, 2026-10-09, reviewed by Hyun Park
-// Edit mode: paths, rects and styles of elements inside the (same-origin) iframe. PLAN.md sections 3 and 5.
+// Elements inside a board: paths, rects and styles in the (same-origin) iframe. PLAN.md sections 3 and 5.
 
 /** Joins element-child indexes with "/", starting from <body>'s children (same rule as the server's parse5) */
 export function pathOf(el: Element): string | null {
@@ -39,6 +39,7 @@ export const STYLE_PROPS = [
   "padding",
   "margin",
   "gap",
+  "font-family",
   "font-size",
   "font-weight",
   "color",

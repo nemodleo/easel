@@ -65,7 +65,7 @@ export function UseButton({ file, group, busy, open, onOpen }: { file: string; g
   const label = group.kind === "variant" ? strings.occupancy.useThis : strings.occupancy.useThisOne;
   return (
     <button
-      className={`icon-btn sm edit-pill use-btn ${busy ? "" : "ready"} ${open ? "pressed" : ""}`}
+      className={`icon-btn sm use-btn ${busy ? "" : "ready"} ${open ? "pressed" : ""}`}
       data-use={file}
       aria-disabled={busy ? true : undefined}
       aria-haspopup="dialog"
@@ -79,7 +79,7 @@ export function UseButton({ file, group, busy, open, onOpen }: { file: string; g
       }}
     >
       <Icon name="check" size={14} />
-      <span className="edit-pill-label">{label}</span>
+      <span className="use-label">{label}</span>
     </button>
   );
 }

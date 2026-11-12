@@ -300,7 +300,7 @@ export async function createServer({ dir, port, dev = true, extraRoutes = [], au
     const conn = `w${++conns}`;
     c.send(JSON.stringify({ type: "hello", boot: ctx.boot }));
     c.send(JSON.stringify({ type: "occupancy", boards: occupancy.snapshot() }));
-    // The app says which board this tab is editing (Edit mode on, off); a closed tab leaves it
+    // The app says which board this tab is editing (an element selected on it, or none); a closed tab leaves it
     c.on("message", (data) => {
       let m;
       try {

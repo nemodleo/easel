@@ -1,7 +1,7 @@
 // AI-generated with Claude Code, 2026-11-12, reviewed by Hyun Park
 // Who is on which board right now, kept in memory only (nothing is written to the project). An agent holds a board from its first
 // write: an in-app chat run until the run ends, an MCP client until QUIET_MS pass without another write or until it disconnects;
-// then it shows as done for DONE_MS. A person holds a board while a browser has it in Edit mode (closing the tab releases it).
+// then it shows as done for DONE_MS. A person holds a board while a browser has an element selected on it (closing the tab releases it).
 
 /** An MCP client that has not written for this long is no longer editing */
 export const QUIET_MS = 45000;
@@ -107,7 +107,7 @@ export function createOccupancy({ quietMs = QUIET_MS, doneMs = DONE_MS, onChange
         }
   }
 
-  /** A browser (WebSocket conn) entered Edit mode on file, or left it (file null); who: { client, person } */
+  /** A browser (WebSocket conn) selected an element on file, or let go (file null); who: { client, person } */
   function personEdit(conn, file, who = {}) {
     const cur = conns.get(conn);
     if (cur?.file === file) return;

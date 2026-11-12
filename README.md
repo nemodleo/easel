@@ -24,7 +24,7 @@ Easel turns a folder of plain HTML files into a design canvas. Claude Code or Co
 npx easel-canvas --demo
 ```
 
-That copies the "Tidy" habit tracker demo to `./easel-demo` and opens it at http://localhost:4317. Open the **AI** tab (⌘J) and ask Claude Code or Codex for a change, or double-click a screen and start editing.
+That copies the "Tidy" habit tracker demo to `./easel-demo` and opens it at http://localhost:4317. Open the **AI** tab (⌘J) and ask Claude Code or Codex for a change, or click anything on a screen and start editing.
 
 Already have HTML screens? Run it in your project:
 
@@ -49,7 +49,7 @@ npx easel-canvas --dir ./designs  # any folder of screens/*.html
     <td colspan="2"><img src="docs/screenshots/overview.png" alt="Easel showing a habit tracker app: five mobile screens on an infinite canvas with notes, flow arrows, a board list and a properties panel with token and accessibility checks"></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/screenshots/edit-mode.png" alt="Edit mode: an element selected inside a mobile screen with handles, and a properties panel with token chips"></td>
+    <td width="50%"><img src="docs/screenshots/edit-mode.png" alt="An element selected inside a mobile screen with handles, and the properties panel"></td>
     <td width="50%"><img src="docs/screenshots/ai-chat.png" alt="AI chat panel: a streamed reply from Claude Code with Read and Edit tool lines, and the edited Stats screen on the canvas"></td>
   </tr>
   <tr>
@@ -172,8 +172,8 @@ npm run design           # http://localhost:4317
 | Board options | Right "Properties": position, size, Radius, No frame, Interactive (Play), Stretch to window, Open as launch screen, Layout guides (Columns · Rows · Grid, up to 6, ⌃G), Adjustable values |
 | View | Focus view (F, ←→), Play in place (P or ▶, Esc), Play full screen (right-click) |
 | Notes and shapes | Title (T), sticky note (N, 8 colors, size, bold, italic), Rectangle (R), Oval (O), Line (L), Arrow (A), Pen (P when no board is selected), image (Assets or paste) |
-| Edit mode | Double-click or E. Click or Shift, Esc for parent, Enter for child, ↑↓ for siblings, Option+↑↓ to reorder, ⌘A for all siblings, ⌘G Wrap in flex |
-| Direct editing | Move with handles (Alt drops inside a box) and resize, 6 align options, double-click text (Shift+Enter for a line break), Properties panel (token chips, ⚠, contrast ratio), Replace image, ⌘C/⌘V to paste into another board |
+| Select elements | No mode to enter: click anything on a board (drag the board to move it). Shift-click or Shift-drag for several, Esc lets go (then of the board), ↑ parent, ↓ or Enter first child, ←→ siblings, Option+↑↓ to reorder, ⌘A for all siblings, ⌘G Wrap in flex, Tab into the element toolbar |
+| Direct editing | A toolbar over the selection: Text (size, weight), Fill (your tokens first, written as a CSS variable, then Custom), Radius, Spacing (padding, gap), Ask AI, Comment. Double-click text to edit it (Shift+Enter for a line break). Move with handles (Alt drops inside a box) and resize, 6 align options, Properties panel in design words with the breadcrumb (CSS names on hover, everything else under More (CSS), ⚠, contrast), Replace image, ⌘C/⌘V to paste into another board |
 | Undo | ⌘Z / ⌘⇧Z. Canvas actions, HTML edits and board create/delete share one history (100 entries). The ▾ next to Undo lists it newest first (who, what, when; Now marks where you are): Go back to here undoes or redoes step by step to that entry, and Redo brings the rest back. The history lasts until Easel restarts |
 | Who changed what | A board changed by someone else (an agent over MCP or the in-app chat, a file edited outside Easel, another browser) gets a tag above its title, e.g. "Codex · 2m · 1 change", in that author's colour, and the changed element is outlined. Click the tag: the change ("Get started" → "Start free"), Before / After, and Undo (only that change; asks first if one of its boards changed since). Tags fade once you open them or select the board, and clear a day later |
 | Design system | Register tokens (`tokens.json`) and themes in the left "Tokens" tab, Theme menu in the toolbar, Token check and Accessibility lists on the right |

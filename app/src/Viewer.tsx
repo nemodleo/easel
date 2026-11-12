@@ -234,7 +234,6 @@ export function Viewer({ data }: { data: ExportData }) {
             onMoveNote={() => {}}
             onDeleteNote={() => {}}
             onPlay={(f) => setPlayFile(f)}
-            onEdit={() => {}}
             onRename={() => {}}
             onCreateBoard={() => {}}
             onCreateNote={() => {}}

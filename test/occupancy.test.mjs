@@ -69,7 +69,7 @@ test("occupancy: an MCP client holds a board until it goes quiet or disconnects;
   occ.close();
 });
 
-test("occupancy: a person holds a board while a tab has it in Edit mode; leaving, switching or closing the tab releases it", () => {
+test("occupancy: a person holds a board while a tab has an element selected on it; letting go, switching or closing the tab releases it", () => {
   const occ = createOccupancy();
   occ.personEdit("w1", "a.html", { client: "b1", person: "Hyun" });
   occ.personEdit("w2", "a.html", { client: "b1", person: "Hyun" });
@@ -187,7 +187,7 @@ after(async () => {
   if (dir) await fs.rm(dir, { recursive: true, force: true });
 });
 
-test("a browser that connects gets the occupancy right away; Edit mode reported over the WebSocket shows, and closing the tab releases it", { skip }, async () => {
+test("a browser that connects gets the occupancy right away; a selection reported over the WebSocket shows, and closing the tab releases it", { skip }, async () => {
   assert.ok(events.some((e) => e.type === "occupancy"), "sent on connect");
   ws.send(JSON.stringify({ type: "editing", file: "b.html", client: "browser-1", person: "Hyun" }));
   ws.send(JSON.stringify({ type: "editing", file: "../board.json", client: "browser-1" })); // ignored

@@ -122,11 +122,17 @@ test("the web folder from a static host under a sub-path: boards, pages, Play, a
     await page.waitForFunction(() => !!document.querySelector(".play-frame")?.contentDocument?.body?.children.length);
     await page.keyboard.press("Escape");
     await page.waitForSelector(".play", { state: "detached" });
-    // Read-only: no toolbar, no edit pills, no inspector or chat, nothing editable
-    assert.equal(await page.locator(".toolbar, .edit-pill, .ask-ai, .chat, .board-resize, [contenteditable=true], .share-btn").count(), 0);
+    // Read-only: no toolbar, no element toolbar, no inspector or chat, nothing editable
+    assert.equal(await page.locator(".toolbar, .etb, .ask-ai, .chat, .board-resize, [contenteditable=true], .share-btn").count(), 0);
     await page.dblclick('.board[data-file="scr-32.html"] .board-frame');
     await wait(200);
     assert.equal(await page.locator(".board.editing, [contenteditable=true]").count(), 0);
+    // No element selection at all: a click or hover on a board draws no outline and no element toolbar
+    const fb = await page.locator('.board[data-file="scr-32.html"] .board-frame').boundingBox();
+    await page.mouse.move(fb.x + fb.width / 2, fb.y + 120);
+    await page.mouse.click(fb.x + fb.width / 2, fb.y + 120);
+    await wait(200);
+    assert.equal(await page.locator(".box.hover, .box.sel, .etb, .el-move").count(), 0);
     // Dragging a board pans the view instead of moving it
     const before = await page.locator('.board[data-file="scr-32.html"]').getAttribute("style");
     const box = await page.locator('.board[data-file="scr-32.html"] .board-frame').boundingBox();

@@ -207,7 +207,7 @@ export function forkRoutes() {
   ];
 }
 
-/** The calling agent holds file (a claim, or a write that changed nothing); people hold boards through Edit mode instead */
+/** The calling agent holds file (a claim, or a write that changed nothing); people hold boards by selecting an element on them instead */
 function holdForCaller(ctx, file, before) {
   const s = requestScope.getStore();
   if (s?.agent) ctx.occupancy.agentWrite(file, s.agent, { run: s.run && ctx.history.running(s.run) ? s.run : undefined, client: s.client, before });

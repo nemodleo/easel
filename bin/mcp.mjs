@@ -145,7 +145,7 @@ tool(
   "get_selection",
   {
     description:
-      "What the user is looking at right now: selection (the element clicked in edit mode: file, path as element indexes from the children of <body>, tag, kind and label, text, source outerHTML up to 4KB, hash, computed styles), mode (canvas, edit, focus, play), page and pageName, visibleArtboards (boards visible on screen), selectedArtboards, dirty (pending saves), edits (recent edit history), erroredArtboards and firstError (boards with errors). Use it for requests like 'fix the selected element' or 'this screen'.",
+      "What the user is looking at right now: selection (the element the user clicked on a board: file, path as element indexes from the children of <body>, tag, kind and label, text, source outerHTML up to 4KB, hash, computed styles), mode (canvas, edit = an element is selected, focus, play), page and pageName, visibleArtboards (boards visible on screen), selectedArtboards, dirty (pending saves), edits (recent edit history), erroredArtboards and firstError (boards with errors). Use it for requests like 'fix the selected element' or 'this screen'.",
     inputSchema: {},
   },
   async () => {

@@ -51,6 +51,9 @@ const P: Record<string, string> = {
   compare: "M4 5h7v14H4zM13 5h7v14h-7",
   restore: "M4 12a8 8 0 1 0 3-6.2M4 4v4h4",
   link: "M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1",
+  radius: "M5 19V11a6 6 0 0 1 6-6h8",
+  spacing: "M4 4v16M20 4v16M8 12h8M8 12l2-2M8 12l2 2M16 12l-2-2M16 12l-2 2",
+  minus: "M5 12h14",
 };
 
 export type IconName = keyof typeof P;

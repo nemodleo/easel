@@ -117,11 +117,6 @@ kbd {
 .spacer { flex: 1; }
 .zoom { min-width: 56px; justify-content: center; border-color: transparent; background: transparent; font-variant-numeric: tabular-nums; color: var(--muted); padding: 0 4px; }
 .warn { color: var(--warn); white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
-.editing-chip {
-  display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 4px 0 12px; border-radius: 16px;
-  background: var(--select-weak); color: var(--select); font-weight: 600; white-space: nowrap;
-}
-.editing-chip .icon-btn { color: var(--select); }
 
 .main { flex: 1; display: flex; min-height: 0; }
 .canvas-wrap { position: relative; flex: 1; min-width: 0; display: flex; }
@@ -163,17 +158,11 @@ kbd {
 .board.frameless .board-frame { box-shadow: none; background: transparent; }
 .board:hover:not(.selected) .board-frame { box-shadow: 0 0 0 2px var(--line-strong); }
 .board.selected .board-frame { box-shadow: 0 0 0 3px var(--select); }
-.board:not(.editing):not(.playing) .board-frame { cursor: grab; }
-.board.selected:not(.editing):not(.playing) .board-frame { cursor: move; }
-.board.editing .board-frame { box-shadow: 0 0 0 4px var(--select), 0 0 0 10px var(--select-weak); }
-/* Edit mode: everything but the edited board steps back */
-.canvas.editing .board:not(.editing), .canvas.editing .shape, .canvas.editing .note { opacity: 0.35; transition: opacity 160ms; }
-.canvas.editing .board.editing { z-index: 5; }
-/* Hover "Edit" pill on boards */
-.board-btns .edit-pill { width: auto; padding: 0 6px; gap: 4px; }
-.board-btns .edit-pill-label { font-size: 11px; font-weight: 600; }
-.board.selected .board-btns .edit-pill { background: var(--select); border-color: var(--select); color: var(--select-text); }
-.board.editing .board-btns .edit-pill { background: var(--select-weak); border-color: transparent; color: var(--select); }
+/* A click on a board selects the element under the pointer (the frame never shows a move cursor); the title row drags the board */
+.board:not(.playing) .board-frame { cursor: default; user-select: none; -webkit-user-select: none; } /* a double-click must not select the frame itself */
+/* The board an element is selected on: a quiet frame, so the element's outline leads */
+.board.editing .board-frame { box-shadow: 0 0 0 1px var(--select); }
+.board.editing { z-index: 5; }
 .board-frame iframe { width: 100%; height: 100%; border: 0; display: block; background: #fff; }
 .board-placeholder, .board-missing {
   width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
@@ -321,9 +310,10 @@ button.link:hover:not(:disabled) { background: none; text-decoration: underline;
 /* Edit overlay */
 .overlay { position: absolute; inset: 0; pointer-events: none; }
 .box { position: absolute; pointer-events: none; }
-.box.hover { outline: 1px solid var(--select); background: color-mix(in srgb, var(--select) 6%, transparent); }
-.box.sel { outline: 2px solid var(--select); }
-.box.marquee-el { outline: 1px solid var(--select); background: color-mix(in srgb, var(--select) 8%, transparent); }
+/* Hover and selection: the selection colour, edge on (no offset), the same width on screen at any zoom; a change by someone else is drawn apart from these (author colour, set off from the element) */
+.box.hover { outline: var(--px, 1px) solid var(--select); background: color-mix(in srgb, var(--select) 6%, transparent); }
+.box.sel { outline: calc(var(--px, 1px) * 2) solid var(--select); }
+.box.marquee-el { outline: var(--px, 1px) solid var(--select); background: color-mix(in srgb, var(--select) 8%, transparent); }
 .pin {
   position: absolute; width: 24px; height: 24px; border-radius: 12px 12px 12px 2px; background: var(--accent); color: #fff;
   font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; transform-origin: 0 100%;
@@ -849,9 +839,10 @@ button.danger { color: var(--warn); }
 .lab-row:has(.board-btns.pinned) .board-file { display: none; }
 .lab-row:has(.board-btns.pinned) .board-title { min-width: 3em; flex: 1 1 auto; }
 .board:not(:hover):not(.selected):not(.editing) .board-btns.pinned > :not(.use-btn) { display: none; }
-.board-btns .edit-pill.use-btn, .board.selected .board-btns .edit-pill.use-btn, .board.editing .board-btns .edit-pill.use-btn { width: auto; padding: 0 8px; gap: 4px; background: var(--panel); border-color: var(--line); color: var(--text); }
-.board-btns .edit-pill.use-btn.ready { border-color: var(--line-strong); }
-.board-btns .edit-pill.use-btn.pressed { background: var(--pressed); border-color: var(--line-strong); }
+.board-btns .use-btn { width: auto; padding: 0 8px; gap: 4px; background: var(--panel); border-color: var(--line); color: var(--text); }
+.board-btns .use-label { font-size: 11px; font-weight: 600; }
+.board-btns .use-btn.ready { border-color: var(--line-strong); }
+.board-btns .use-btn.pressed { background: var(--pressed); border-color: var(--line-strong); }
 .board-btns .use-btn[aria-disabled="true"] { opacity: 0.45; cursor: default; }
 .board-btns .use-btn[aria-disabled="true"]:hover { background: var(--panel); border-color: var(--line); }
 .fork-link { position: absolute; left: 0; top: 0; pointer-events: none; }
@@ -865,3 +856,70 @@ button.danger { color: var(--warn); }
 .confirm .c-body { margin: 0; font-size: 12px; line-height: 1.45; color: var(--muted); overflow-wrap: anywhere; }
 .confirm .btn-row { margin-top: 6px; gap: 6px; }
 .confirm .btn-row button { height: 28px; padding: 0 10px; font-size: 12px; }
+
+/* Select and edit without a mode: the element toolbar and its popovers, the hint under the canvas, the breadcrumb and the Properties
+   panel in design words (CSS name on hover and focus). Class names as on the proposal board (proposal-direct-select) */
+.etb { position: absolute; z-index: 12; display: flex; align-items: center; gap: 2px; height: 36px; padding: 0 4px; background: var(--panel); border-radius: var(--r); box-shadow: var(--shadow-2); white-space: nowrap; }
+.etb-item { display: contents; }
+.etb button { height: 28px; display: inline-flex; align-items: center; gap: 4px; padding: 0 8px; border: 1px solid transparent; border-radius: var(--r-sm); background: transparent; color: var(--text); font-size: 12px; font-weight: 500; }
+.etb button:hover:not(:disabled) { background: var(--hover); border-color: transparent; }
+.etb button svg { color: var(--muted); }
+.etb button.on { background: var(--pressed); }
+.etb .sw { width: 18px; height: 18px; border-radius: var(--r-sm); border: 1px solid rgba(0, 0, 0, 0.15); display: inline-block; }
+.etb .sep { width: 1px; height: 20px; background: var(--line); margin: 0 4px; }
+.etb .accent, .etb .accent svg { color: var(--accent); }
+.etb .accent { font-weight: 600; }
+.menu.pop { position: absolute; z-index: 13; width: 272px; min-width: 0; padding: 10px; display: flex; flex-direction: column; gap: 10px; }
+.pop-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.pop-top .muted { font-size: 12px; }
+.pop-h { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.fill-picker { display: flex; flex-direction: column; gap: 10px; }
+.tok-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.tok { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 38px; height: auto; padding: 0; border: 0; background: none; font-size: 10px; color: var(--muted); }
+.tok:hover:not(:disabled) { background: none; color: var(--text); }
+.tok i { width: 30px; height: 30px; border-radius: var(--r-sm); border: 1px solid rgba(0, 0, 0, 0.12); display: block; }
+.tok span { max-width: 38px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tok.on i { outline: 2px solid var(--accent); outline-offset: 1px; }
+.tok.on { color: var(--text); font-weight: 600; }
+.pop-sep { height: 1px; background: var(--line); }
+.custom-row { display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 600; }
+.hex { display: flex; gap: 6px; align-items: center; }
+.hex .num { flex: 1; min-width: 0; font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.hex .sw { width: 28px; height: 28px; padding: 0; border-radius: var(--r-sm); border: 1px solid var(--line); background: none; cursor: pointer; }
+.pop-field { display: flex; flex-direction: column; gap: 6px; }
+.pop-field select { width: 100%; }
+.stepper { display: flex; align-items: center; gap: 4px; }
+.stepper input { flex: 1; min-width: 0; text-align: center; font-variant-numeric: tabular-nums; }
+.stepper .icon-btn { border-color: var(--line); }
+.pop .chips-row { grid-column: auto; }
+.canvas-hint { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); font-size: 12px; color: var(--muted); white-space: nowrap; pointer-events: none; z-index: 4; }
+.crumb { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); flex-wrap: wrap; min-width: 0; }
+.crumb b { font-weight: 500; color: var(--text); overflow-wrap: anywhere; }
+.crumb button.link { color: var(--muted); align-self: auto; }
+.crumb button.link:hover:not(:disabled) { color: var(--text); }
+.crumb-step { display: inline-flex; gap: 4px; }
+.inspector section.props { gap: 12px; }
+.pg { display: flex; flex-direction: column; gap: 6px; }
+.pg-h { font-size: 12px; font-weight: 600; color: var(--text); }
+.pg-h code, .prow > span code { font-size: 10px; font-weight: 400; color: var(--muted); opacity: 0; transition: opacity 80ms; }
+.pg:hover > .prow-h code, .pg:focus-within > .prow-h code { opacity: 1; }
+.prow { display: grid; grid-template-columns: 1fr 136px; align-items: center; gap: 8px; min-height: 28px; margin: 0 -6px; padding: 0 6px; border-radius: var(--r-sm); }
+.prow > span { color: var(--muted); display: flex; align-items: baseline; gap: 6px; white-space: nowrap; min-width: 0; }
+.prow > span.pg-h { color: var(--text); }
+.prow:hover, .prow:focus-within { background: var(--hover); }
+.prow:hover > span, .prow:focus-within > span { color: var(--text); }
+.prow:hover > span code, .prow:focus-within > span code { opacity: 1; }
+.prow input, .prow select { width: 100%; min-width: 0; height: 28px; }
+.prow .fillv { width: 100%; }
+.prow .fillv .muted { display: none; }
+.fillv { display: flex; align-items: center; justify-content: flex-start; gap: 8px; width: 100%; height: 28px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--panel); font-weight: 500; }
+.fillv.on { border-color: var(--select); }
+.fillv .sw { width: 16px; height: 16px; flex: none; border-radius: 3px; border: 1px solid rgba(0, 0, 0, 0.12); }
+.fillv-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fillv .muted { margin-left: auto; font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.pg .fill-picker { padding: 10px; border: 1px solid var(--line); border-radius: var(--r); }
+.contrast { font-size: 11px; font-weight: 600; }
+.contrast.ok { color: var(--ok); }
+.contrast.mid { color: #9a6700; }
+.contrast.bad { color: var(--warn); }
+.more-css { display: flex; flex-direction: column; gap: 8px; }

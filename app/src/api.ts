@@ -56,7 +56,7 @@ export type ServerEvent =
 
 let socket: WebSocket | null = null;
 let editing: string | null = null;
-/** This tab's Edit mode for the server's "who is on which board": sent now, and again after a reconnect (a restarted server forgot it) */
+/** The board this tab has an element selected on, for the server's "who is on which board": sent now, and again after a reconnect (a restarted server forgot it) */
 export function reportEditing(file: string | null) {
   editing = file;
   if (socket?.readyState === 1) socket.send(JSON.stringify({ type: "editing", file, client: browserId, person: authorName || undefined }));
