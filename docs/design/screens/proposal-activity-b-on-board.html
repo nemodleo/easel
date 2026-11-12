@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="board-size" content="1440x900">
+<title>Proposal · Activity B · On the board</title>
+<link rel="stylesheet" href="/assets/easel.css">
+<style>
+.app{width:1440px;height:900px}
+.board-title{min-width:0;overflow:hidden;text-overflow:ellipsis}
+/* proposal marker, outside the app frame */
+.proposal-tag{position:absolute;left:252px;top:60px;z-index:1000;height:20px;display:flex;align-items:center;padding:0 8px;font-size:11px;font-weight:600;line-height:1;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:var(--r-sm)}
+/* project screens drawn at real size (390x844) and scaled by the canvas zoom */
+.rs{position:absolute;left:0;top:0;width:390px;height:844px;transform-origin:0 0;background:#fff;display:flex;flex-direction:column;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#10213a}
+.rs .hd{height:64px;display:flex;align-items:center;justify-content:flex-end;padding:0 24px;font-weight:700;font-size:16px;color:#2b59c3;flex:none}
+.rs .hd.l{justify-content:flex-start;color:#10213a;font-size:18px}
+.rs .bd{flex:1;padding:8px 24px;display:flex;flex-direction:column;gap:16px;overflow:hidden}
+.rs .art{height:260px;border-radius:24px;background:linear-gradient(160deg,#dfe7fb,#b9cbf4);position:relative;flex:none}
+.rs .art i{position:absolute;width:96px;height:96px;border-radius:48px;background:#2b59c3;left:50%;top:50%;margin:-48px 0 0 -48px;opacity:.85}
+.rs .h{font-size:30px;font-weight:700;line-height:1.15;letter-spacing:-.01em}
+.rs .p{font-size:17px;line-height:1.45;color:#5a6577}
+.rs .ft{padding:16px 24px 36px;display:flex;flex-direction:column;gap:12px;align-items:center;flex:none}
+.rs .cta{width:100%;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;background:#2b59c3;flex:none}
+.rs .lnk{font-size:16px;line-height:22px;color:#2b59c3;font-weight:600}
+.rs .opt{height:60px;border-radius:16px;border:2px solid #d9e0ee;display:flex;align-items:center;padding:0 18px;font-size:17px;font-weight:600;gap:12px;flex:none}
+.rs .opt.on{border-color:#2b59c3;background:#eef3fd;color:#2b59c3}
+.rs .opt b{width:20px;height:20px;border-radius:5px;border:2.5px solid currentColor;flex:none}
+.rs .in{height:56px;border-radius:16px;background:#f2f4f8;display:flex;align-items:center;padding:0 18px;font-size:17px;color:#7a8597;flex:none}
+.rs .dots{display:flex;gap:8px;justify-content:center;padding-top:4px}.rs .dots i{width:10px;height:10px;border-radius:5px;background:#d0d7e5}.rs .dots i.on{background:#2b59c3;width:26px}
+.rs .row-i{height:84px;border-bottom:2px solid #eef0f4;display:flex;flex-direction:column;justify-content:center;gap:10px;flex:none}
+.rs .row-i i{display:block;height:14px;border-radius:7px;background:#d6dbe4;width:70%}.rs .row-i i+i{width:45%;background:#e8ebf0}
+.rs .plan{border:2px solid #d9e0ee;border-radius:20px;padding:18px 20px;display:flex;flex-direction:column;gap:4px;flex:none}
+.rs .plan.on{border-color:#2b59c3;background:#eef3fd}
+.rs .plan b{font-size:19px}.rs .plan .price{font-size:30px;font-weight:700}.rs .plan span{font-size:15px;color:#5a6577}
+/* segmented control and switch, built from existing tokens */
+.seg{display:flex;padding:2px;gap:2px;border-radius:var(--r);background:var(--panel-2);border:1px solid var(--line)}
+.seg button{flex:1;height:28px;padding:0 8px;border:0;border-radius:6px;background:transparent;font:inherit;font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap}
+.seg button.on{background:var(--panel);color:var(--text);box-shadow:var(--shadow-1)}
+.switch{width:32px;height:18px;border-radius:9px;background:var(--line-strong);position:relative;flex:none}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:7px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.switch.on{background:var(--accent)}.switch.on::after{left:16px}
+/* who-did-it chips */
+.who-chip{display:inline-flex;align-items:center;gap:6px;height:20px;padding:0 8px 0 6px;border-radius:10px;background:var(--panel-2);border:1px solid var(--line);font-size:11px;font-weight:600;color:var(--text);white-space:nowrap;flex:none}
+.who-chip .dot{width:8px;height:8px}
+.who-chip.person{background:var(--select-weak);border-color:transparent;color:var(--select)}
+.who-chip.person .dot{background:var(--select)}
+.diff-old{color:var(--warn);text-decoration:line-through;font-weight:600}
+.diff-new{color:var(--ok);font-weight:600}
+
+/* board label with an activity tag stacked above the title */
+.board-label.tagged{height:52px;flex-direction:column;align-items:flex-start;justify-content:flex-end;gap:4px}
+.board-label.tagged .lab-row{display:flex;align-items:center;gap:4px;width:100%;height:24px}
+.act-tag{display:inline-flex;align-items:center;gap:6px;height:20px;padding:0 8px 0 6px;border-radius:10px;background:var(--panel);box-shadow:var(--shadow-1);font-size:11px;font-weight:600;color:var(--text);white-space:nowrap}
+.act-tag .dot{width:8px;height:8px}
+.act-tag.seen{opacity:.45;box-shadow:none;background:transparent;border:1px dashed var(--line-strong)}
+.callout{position:absolute;z-index:30;width:268px;background:var(--panel);border-radius:var(--r);box-shadow:var(--shadow-2);padding:10px 12px;display:flex;flex-direction:column;gap:8px;border-top:3px solid #10A37F}
+.callout-top{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600}
+.callout-top .muted{font-weight:400}
+.callout .seg{flex:1}
+.callout .btn{height:32px;font-size:12px}
+.leader{position:absolute;z-index:29;width:2px;background:#10A37F}
+.leader-dot{position:absolute;z-index:29;width:8px;height:8px;border-radius:4px;background:#10A37F;box-shadow:0 0 0 2px var(--panel)}
+.inset{position:absolute;z-index:30;display:flex;flex-direction:column;gap:6px}
+.inset-label{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+</style>
+</head>
+<body class="">
+<div class="app"><header class="toolbar">
+  <div class="tb-zone tb-left">
+    <button class="icon-btn on" title="Left panel"><svg class="ic" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM15 5v14"/></svg></button>
+    <div class="tool-group" role="radiogroup"><button class="icon-btn tool on" title="select"><svg class="ic" viewBox="0 0 24 24"><path d="M5 3l13 8-6 1.5L9.5 19z"/></svg></button><button class="icon-btn tool" title="hand"><svg class="ic" viewBox="0 0 24 24"><path d="M8 12V6.5a1.5 1.5 0 0 1 3 0V11m0-5.5V5a1.5 1.5 0 0 1 3 0v6m0-4.5a1.5 1.5 0 0 1 3 0V13a7 7 0 0 1-7 7h-.5a6 6 0 0 1-5-2.7L3.3 14a1.5 1.5 0 0 1 2.4-1.8L8 15"/></svg></button><button class="icon-btn tool" title="board"><svg class="ic" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg></button><button class="icon-btn tool" title="title"><svg class="ic" viewBox="0 0 24 24"><path d="M5 6h14M12 6v13M9 19h6"/></svg></button><button class="icon-btn tool" title="sticky"><svg class="ic" viewBox="0 0 24 24"><path d="M5 4h14v10l-5 6H5zM14 20v-6h5"/></svg></button></div>
+    <div class="tool-group"><button class="icon-btn " title="rect"><svg class="ic" viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/></svg></button><button class="icon-btn " title="oval"><svg class="ic" viewBox="0 0 24 24"><path d="M12 19c4.4 0 8-3.1 8-7s-3.6-7-8-7-8 3.1-8 7 3.6 7 8 7z"/></svg></button><button class="icon-btn " title="line"><svg class="ic" viewBox="0 0 24 24"><path d="M5 19L19 5"/></svg></button><button class="icon-btn " title="arrow"><svg class="ic" viewBox="0 0 24 24"><path d="M5 19L19 5M10 5h9v9"/></svg></button><button class="icon-btn " title="pen"><svg class="ic" viewBox="0 0 24 24"><path d="M4 20l1-4L16.5 4.5l3 3L8 19zM14 7l3 3"/></svg></button><button class="icon-btn " title="image"><svg class="ic" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 15l4-4 4 4 3-3 5 5M15 9h.01"/></svg></button></div>
+    <div class="tool-group"><button class="icon-btn " title="undo"><svg class="ic" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button><button class="icon-btn " title="redo"><svg class="ic" viewBox="0 0 24 24"><path d="M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3"/></svg></button></div>
+    <button class="new-board"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> New board <svg class="ic s" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+  </div>
+  <div class="tb-zone tb-center"><span class="app-title muted" style="font-weight:500" title="relay/docs/design">relay</span></div>
+  <div class="tb-zone tb-right">
+    <div class="tool-group"><button class="icon-btn" title="Zoom out"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button><span class="zoom">62%</span><button class="icon-btn " title="Zoom in"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button><button class="icon-btn " title="Fit all"><svg class="ic" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button></div>
+    <button class="ask-ai"><svg class="ic" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg> <span class="ask-ai-label">Ask AI</span></button>
+    <button class="icon-btn " title="View"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg></button>
+  </div>
+</header>
+<div class="main"><aside class="left">
+  <div class="left-tabs"><button class="on">Boards</button><button>Assets</button><button>Tokens</button></div>
+  <section class="left-pages">
+    <div class="sec-head"><span>Pages</span><button class="icon-btn sm"><svg class="ic s" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div>
+    <p class="empty">Viewing everything as one page. Use + to split it into pages.</p>
+  </section>
+  <section class="left-boards">
+    <div class="sec-head"><span>Boards 6</span></div>
+    <label class="search"><svg class="ic s" viewBox="0 0 24 24"><path d="M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14zM20 20l-4-4"/></svg><span>Find boards (⌘K)</span></label>
+    <ul class="board-list"><li><button class="row two-line" title="home.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Home</span><span class="row-file">home.html</span></span></button></li><li><button class="row two-line on" title="onboard-1-welcome.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Onboarding 1 · Welcome</span><span class="row-file">onboard-1-welcome.html</span></span></button></li><li><button class="row two-line" title="onboard-2-goals.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Onboarding 2 · Goals</span><span class="row-file">onboard-2-goals.html</span></span></button></li><li><button class="row two-line" title="onboard-3-invite.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Onboarding 3 · Invite</span><span class="row-file">onboard-3-invite.html</span></span></button></li><li><button class="row two-line" title="inbox.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Inbox</span><span class="row-file">inbox.html</span></span></button></li><li><button class="row two-line" title="pricing.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Pricing</span><span class="row-file">pricing.html</span></span></button></li></ul>
+  </section>
+</aside>
+<div class="canvas-wrap"><div class="canvas">
+<div class="board " style="left:40px;top:120px;width:242px;height:523px"><div class="board-label tagged"><span class="act-tag seen"><span class="dot" style="background:#D97757"></span>Claude Code · 1h · 1 change</span><span class="lab-row"><span class="board-title">Home</span></span></div><div class="board-frame"><div class="rs" style="transform:scale(0.62);color:#111"><div class="hd l" style="color:#111">Home</div><div class="bd"><div class="h" style="font-size:34px">Title</div><div class="p" style="color:#6b6b6b">Description</div></div><div class="ft"><div class="cta" style="background:#c94f0c">Next</div><div class="lnk">See pricing</div></div></div></div></div>
+<div class="board selected" style="left:300px;top:120px;width:242px;height:523px"><div class="board-label tagged"><span class="act-tag"><span class="dot" style="background:#10A37F"></span>Codex · 2m · 1 change</span><span class="lab-row"><span class="board-title">Onboarding 1 · Welcome</span></span></div><div class="board-frame"><div class="rs" style="transform:scale(0.62)"><div class="hd">Skip</div><div class="bd"><div class="art"><i></i></div><div class="h">Hand off work, not the whole thread.</div><div class="p">Relay keeps the context so the next person can just start.</div><div class="dots"><i class="on"></i><i></i><i></i></div></div><div class="ft"><div class="cta" style="outline:5px solid #10A37F;outline-offset:7px">Start free</div><div class="lnk">I have an account</div></div></div></div></div>
+<div class="board " style="left:560px;top:120px;width:242px;height:523px"><div class="board-label tagged"><span class="act-tag"><span class="dot" style="background:#D97757"></span>Claude Code · 1h · new board</span><span class="lab-row"><span class="board-title">Pricing</span></span></div><div class="board-frame"><div class="rs" style="transform:scale(0.62)"><div class="hd l">Pricing</div><div class="bd"><div class="h">Pick a plan</div><div class="plan"><b>Free</b><div class="price">$0</div><span>For one person</span></div><div class="plan on"><b>Team</b><div class="price">$8 <span>per person</span></div><span>Shared inbox and handoffs</span></div></div><div class="ft"><div class="cta">Choose Team</div></div></div></div></div>
+<div class="leader-dot" style="left:502px;top:602px"></div><div class="leader" style="left:505px;top:604px;height:60px"></div><div class="callout" style="left:305px;top:664px">
+  <div class="callout-top"><span class="dot" style="background:#10A37F"></span>Codex <span class="muted">· 2 min ago</span></div>
+  <div class="diff" style="font-size:12px;display:flex;gap:6px;align-items:center"><span class="diff-old">"Get started"</span> → <span class="diff-new">"Start free"</span></div>
+  <div style="display:flex;gap:8px;align-items:center"><div class="seg"><button>Before</button><button class="on">After</button></div><button class="btn"><svg class="ic s" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg> Undo</button></div>
+</div><div class="inset" style="left:40px;top:664px;width:230px"><span class="inset-label">Seen state</span><span class="muted" style="font-size:12px">Home's tag is faded: you already looked. Tags clear a day after that.</span></div></div>
+<div class="minimap" style="left:auto;right:12px"><svg width="200" height="130"><rect x="14" y="24" width="24" height="52" class="mm-board"/><rect x="44" y="24" width="24" height="52" class="mm-sel"/><rect x="74" y="24" width="24" height="52" class="mm-board"/><rect x="104" y="24" width="24" height="52" class="mm-board"/><rect x="134" y="24" width="24" height="52" class="mm-board"/><rect x="8" y="10" width="164" height="96" class="mm-view"/></svg></div>
+</div><aside class="right">
+  <div class="right-tabs"><button class="on">Properties</button><button>AI <kbd>⌘J</kbd></button></div>
+  <div class="inspector">
+    <section>
+      <h3>onboard-1-welcome.html</h3>
+      <p class="muted">Viewing · double-click the board to edit it</p>
+    </section>
+    <section>
+      <div class="sec-head"><span>Board</span></div>
+      <div class="title-btn">Onboarding 1 · Welcome</div>
+      <p class="muted">onboard-1-welcome.html</p>
+      <div class="two"><div class="num"><span>X</span>440</div><div class="num"><span>Y</span>0</div></div>
+      <div class="two"><div class="num"><span>Width</span>390</div><div class="num"><span>Height</span>844</div></div>
+      <label class="check"><i class="on"></i> Interactive (Play)</label>
+      <label class="check"><i></i> Frameless</label>
+      <div class="btn-row"><button class="icon-btn sm" title="focus"><svg class="ic" viewBox="0 0 24 24"><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5M9 9h6v6H9z"/></svg></button><button class="icon-btn sm" title="copy"><svg class="ic" viewBox="0 0 24 24"><path d="M8 8h11v11H8zM5 16V5h11"/></svg></button><button class="icon-btn sm" title="front"><svg class="ic" viewBox="0 0 24 24"><path d="M8 8h12v12H8zM4 4h12v4M4 4v12h4"/></svg></button><button class="icon-btn sm" title="back"><svg class="ic" viewBox="0 0 24 24"><path d="M4 4h12v12H4zM8 16v4h12V8h-4"/></svg></button><button class="icon-btn sm" style="color:var(--warn)"><svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button></div>
+    </section>
+    <section class="collapsible "><button class="collapsible-toggle"><svg class="ic s chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg><span>Tweaks</span></button></section>
+    <section class="collapsible "><button class="collapsible-toggle"><svg class="ic s chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg><span>Token check</span><span class="collapsible-count">1</span></button></section>
+    <section class="collapsible "><button class="collapsible-toggle"><svg class="ic s chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg><span>Accessibility</span></button></section>
+    <section>
+      <h3>Comments <span class="muted">1</span></h3>
+      <textarea placeholder="Comment on the board"></textarea>
+      <div class="btn-row"><button class="btn">Comment</button><button class="btn link">Author: Hyun Park</button><button class="btn link muted" style="margin-left:auto;color:var(--muted)">Board screenshot</button></div>
+      <div class="comment"><span class="who">Hyun Park <span class="when">· 11/10 11:20</span></span><span>Skip is hard to see on the blue art. Try the brand blue.</span><button class="btn link">Ask AI</button></div>
+    </section>
+  </div>
+</aside>
+</div><div class="proposal-tag">Proposal · Activity B · On the board</div></div></body>
+</html>

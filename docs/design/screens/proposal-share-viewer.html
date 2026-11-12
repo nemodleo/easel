@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="board-size" content="1440x900">
+<title>Proposal · Share · What the viewer sees</title>
+<link rel="stylesheet" href="/assets/easel.css">
+<style>
+.app{width:1440px;height:900px}
+.board-title{min-width:0;overflow:hidden;text-overflow:ellipsis}
+/* proposal marker, outside the app frame */
+.proposal-tag{position:absolute;left:252px;top:60px;z-index:1000;height:20px;display:flex;align-items:center;padding:0 8px;font-size:11px;font-weight:600;line-height:1;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:var(--r-sm)}
+/* project screens drawn at real size (390x844) and scaled by the canvas zoom */
+.rs{position:absolute;left:0;top:0;width:390px;height:844px;transform-origin:0 0;background:#fff;display:flex;flex-direction:column;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#10213a}
+.rs .hd{height:64px;display:flex;align-items:center;justify-content:flex-end;padding:0 24px;font-weight:700;font-size:16px;color:#2b59c3;flex:none}
+.rs .hd.l{justify-content:flex-start;color:#10213a;font-size:18px}
+.rs .bd{flex:1;padding:8px 24px;display:flex;flex-direction:column;gap:16px;overflow:hidden}
+.rs .art{height:260px;border-radius:24px;background:linear-gradient(160deg,#dfe7fb,#b9cbf4);position:relative;flex:none}
+.rs .art i{position:absolute;width:96px;height:96px;border-radius:48px;background:#2b59c3;left:50%;top:50%;margin:-48px 0 0 -48px;opacity:.85}
+.rs .h{font-size:30px;font-weight:700;line-height:1.15;letter-spacing:-.01em}
+.rs .p{font-size:17px;line-height:1.45;color:#5a6577}
+.rs .ft{padding:16px 24px 36px;display:flex;flex-direction:column;gap:12px;align-items:center;flex:none}
+.rs .cta{width:100%;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;background:#2b59c3;flex:none}
+.rs .lnk{font-size:16px;line-height:22px;color:#2b59c3;font-weight:600}
+.rs .opt{height:60px;border-radius:16px;border:2px solid #d9e0ee;display:flex;align-items:center;padding:0 18px;font-size:17px;font-weight:600;gap:12px;flex:none}
+.rs .opt.on{border-color:#2b59c3;background:#eef3fd;color:#2b59c3}
+.rs .opt b{width:20px;height:20px;border-radius:5px;border:2.5px solid currentColor;flex:none}
+.rs .in{height:56px;border-radius:16px;background:#f2f4f8;display:flex;align-items:center;padding:0 18px;font-size:17px;color:#7a8597;flex:none}
+.rs .dots{display:flex;gap:8px;justify-content:center;padding-top:4px}.rs .dots i{width:10px;height:10px;border-radius:5px;background:#d0d7e5}.rs .dots i.on{background:#2b59c3;width:26px}
+.rs .row-i{height:84px;border-bottom:2px solid #eef0f4;display:flex;flex-direction:column;justify-content:center;gap:10px;flex:none}
+.rs .row-i i{display:block;height:14px;border-radius:7px;background:#d6dbe4;width:70%}.rs .row-i i+i{width:45%;background:#e8ebf0}
+.rs .plan{border:2px solid #d9e0ee;border-radius:20px;padding:18px 20px;display:flex;flex-direction:column;gap:4px;flex:none}
+.rs .plan.on{border-color:#2b59c3;background:#eef3fd}
+.rs .plan b{font-size:19px}.rs .plan .price{font-size:30px;font-weight:700}.rs .plan span{font-size:15px;color:#5a6577}
+/* segmented control and switch, built from existing tokens */
+.seg{display:flex;padding:2px;gap:2px;border-radius:var(--r);background:var(--panel-2);border:1px solid var(--line)}
+.seg button{flex:1;height:28px;padding:0 8px;border:0;border-radius:6px;background:transparent;font:inherit;font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap}
+.seg button.on{background:var(--panel);color:var(--text);box-shadow:var(--shadow-1)}
+.switch{width:32px;height:18px;border-radius:9px;background:var(--line-strong);position:relative;flex:none}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:7px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.switch.on{background:var(--accent)}.switch.on::after{left:16px}
+/* who-did-it chips */
+.who-chip{display:inline-flex;align-items:center;gap:6px;height:20px;padding:0 8px 0 6px;border-radius:10px;background:var(--panel-2);border:1px solid var(--line);font-size:11px;font-weight:600;color:var(--text);white-space:nowrap;flex:none}
+.who-chip .dot{width:8px;height:8px}
+.who-chip.person{background:var(--select-weak);border-color:transparent;color:var(--select)}
+.who-chip.person .dot{background:var(--select)}
+.diff-old{color:var(--warn);text-decoration:line-through;font-weight:600}
+.diff-new{color:var(--ok);font-weight:600}
+
+.vbar{min-height:48px;flex:none;display:flex;align-items:center;gap:12px;padding:4px 12px;background:var(--panel);border-bottom:1px solid var(--line);z-index:10}
+.vbar .app-title{color:var(--text)}
+.page-tabs{display:flex;gap:2px;padding:2px;border-radius:var(--r);background:var(--panel-2);border:1px solid var(--line)}
+.page-tabs button{height:28px;padding:0 10px;border:0;border-radius:6px;background:transparent;font:inherit;font-weight:600;color:var(--muted)}
+.page-tabs button.on{background:var(--panel);color:var(--text);box-shadow:var(--shadow-1)}
+.play-btn{height:32px;padding:0 14px 0 12px;gap:6px;border-radius:16px;border:0;background:var(--accent);color:var(--accent-text);font:inherit;font-weight:600;display:inline-flex;align-items:center}
+.play-btn .ic{fill:currentColor}
+.stamp{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:14px;background:var(--panel-2);border:1px solid var(--line);font-size:12px;color:var(--muted);white-space:nowrap}
+.stamp code{color:var(--muted);font-size:11px}
+.pin{position:absolute;z-index:22;width:24px;height:24px;border-radius:12px 12px 12px 2px;background:var(--accent);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.pin.on{box-shadow:0 0 0 3px var(--panel),0 0 0 5px var(--accent)}
+.thread{position:absolute;z-index:30;width:280px;background:var(--panel);border-radius:var(--r);box-shadow:var(--shadow-2);padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.thread .comment{background:transparent;padding:0}
+.thread .reply{padding-left:10px;border-left:2px solid var(--line)}
+.thread-head{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--muted)}
+.c-list{display:flex;flex-direction:column;gap:8px}
+.c-item{display:flex;gap:8px;padding:8px;border-radius:var(--r);background:var(--panel-2);font-size:12px}
+.c-item.on{background:var(--accent-weak)}
+.c-item .pin{position:static;width:20px;height:20px;font-size:11px;flex:none;box-shadow:none}
+.c-item .body{display:flex;flex-direction:column;gap:2px;min-width:0}
+.c-item .where{color:var(--muted);font-size:11px}
+.note-sticky{position:absolute;background:var(--sticky);color:#111;padding:8px 10px;box-shadow:0 2px 6px rgba(0,0,0,.12);font-size:11px;line-height:1.45}
+.made{display:flex;align-items:center;gap:6px;padding:10px 12px;border-top:1px solid var(--line);font-size:11px;color:var(--muted);flex:none}
+.made a{color:var(--muted);text-decoration:underline;text-underline-offset:2px}
+</style>
+</head>
+<body class="">
+<div class="app"><header class="vbar">
+  <span class="app-title" title="relay">relay</span>
+  <div class="page-tabs"><button class="on">Onboarding</button><button>Inbox</button></div>
+  <span style="flex:1"></span>
+  <div class="tool-group" style="border-left:0"><button class="icon-btn" title="Zoom out"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button><span class="zoom">39%</span><button class="icon-btn " title="Zoom in"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button><button class="icon-btn " title="Fit all"><svg class="ic" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button></div>
+  <button class="play-btn"><svg class="ic" viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg> Play</button>
+  <span class="stamp"><svg class="ic s" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg> View only · exported Nov 10, 14:02 · <code>relay@6f9378a</code></span>
+</header>
+<div class="main"><aside class="left">
+  
+  <section class="left-boards">
+    <div class="sec-head"><span>Boards 4</span></div>
+    <label class="search"><svg class="ic s" viewBox="0 0 24 24"><path d="M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14zM20 20l-4-4"/></svg><span>Find boards (⌘K)</span></label>
+    <ul class="board-list"><li><button class="row two-line" title="home.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Home</span><span class="row-file">home.html</span></span></button></li><li><button class="row two-line" title="onboard-1-welcome.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Onboarding 1 · Welcome</span><span class="row-file">onboard-1-welcome.html</span></span></button></li><li><button class="row two-line" title="onboard-2-goals.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Onboarding 2 · Goals</span><span class="row-file">onboard-2-goals.html</span></span></button></li><li><button class="row two-line" title="onboard-3-invite.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Onboarding 3 · Invite</span><span class="row-file">onboard-3-invite.html</span></span></button></li></ul>
+  </section>
+  <div class="made"><a>Made with Easel</a></div>
+</aside>
+<div class="canvas-wrap"><div class="canvas">
+<div class="board " style="left:16px;top:96px;width:152px;height:329px"><div class="board-label"><span class="board-title">Home</span></div><div class="board-frame"><div class="rs" style="transform:scale(0.39);color:#111"><div class="hd l" style="color:#111">Home</div><div class="bd"><div class="h" style="font-size:34px">Title</div><div class="p" style="color:#6b6b6b">Description</div></div><div class="ft"><div class="cta" style="background:#c94f0c">Next</div></div></div></div></div>
+<div class="board " style="left:180px;top:96px;width:152px;height:329px"><div class="board-label"><span class="board-title">Onboarding 1 · Welcome</span></div><div class="board-frame"><div class="rs" style="transform:scale(0.39)"><div class="hd">Skip</div><div class="bd"><div class="art"><i></i></div><div class="h">Hand off work, not the whole thread.</div><div class="p">Relay keeps the context so the next person can just start.</div><div class="dots"><i class="on"></i><i></i><i></i></div></div><div class="ft"><div class="cta">Get started</div><div class="lnk">I have an account</div></div></div></div></div>
+<div class="board " style="left:344px;top:96px;width:152px;height:329px"><div class="board-label"><span class="board-title">Onboarding 2 · Goals</span></div><div class="board-frame"><div class="rs" style="transform:scale(0.39)"><div class="hd">Skip</div><div class="bd"><div class="h">What will you relay?</div><div class="opt on"><b></b>Design reviews</div><div class="opt"><b></b>Bug reports</div><div class="opt on"><b></b>Customer notes</div><div class="opt"><b></b>Weekly updates</div></div><div class="ft"><div class="cta">Continue</div></div></div></div></div>
+<div class="board " style="left:508px;top:96px;width:152px;height:329px"><div class="board-label"><span class="board-title">Onboarding 3 · Invite</span></div><div class="board-frame"><div class="rs" style="transform:scale(0.39)"><div class="hd">Skip</div><div class="bd"><div class="h">Invite your team</div><div class="in">name@company.com</div><div class="in">name@company.com</div></div><div class="ft"><div class="cta">Send invites</div><div class="lnk">Later</div></div></div></div></div>
+<div class="note-sticky" style="left:672px;top:96px;width:150px;height:118px">Step 2 needs fewer options. Ask Mina before cutting.</div><div class="pin on" style="left:302px;top:100px">1</div><div class="pin" style="left:460px;top:268px">2</div><div class="pin" style="left:610px;top:360px">3</div><div class="thread" style="left:332px;top:100px">
+  <div class="thread-head"><span>Onboarding 1 · Welcome</span><span>1 of 3</span></div>
+  <div class="comment"><span class="who">Hyun Park <span class="when">· 11/10 11:20</span></span><span>Skip is hard to see on the blue art. Try the brand blue.</span></div>
+  <div class="reply"><div class="comment"><span class="who">Mina <span class="when">· 11/10 12:02</span></span><span>Agree. It also needs a bigger tap area.</span></div></div>
+</div></div>
+<div class="minimap"><svg width="200" height="130"><rect x="14" y="24" width="24" height="52" class="mm-board"/><rect x="44" y="24" width="24" height="52" class="mm-board"/><rect x="74" y="24" width="24" height="52" class="mm-board"/><rect x="104" y="24" width="24" height="52" class="mm-board"/><rect x="8" y="10" width="134" height="96" class="mm-view"/></svg></div>
+</div><aside class="right">
+  <div class="right-tabs"><button class="on">Comments <span class="muted" style="font-weight:400">3</span></button></div>
+  <div class="inspector">
+    <div class="c-list">
+      <div class="c-item on"><span class="pin">1</span><span class="body"><span class="where">Onboarding 1 · Welcome · 1 reply</span><span><strong>Hyun Park</strong> Skip is hard to see on the blue art. Try the brand blue.</span></span></div>
+      <div class="c-item"><span class="pin">2</span><span class="body"><span class="where">Onboarding 2 · Goals</span><span><strong>Hyun Park</strong> Four options feel like a lot for step 2.</span></span></div>
+      <div class="c-item"><span class="pin">3</span><span class="body"><span class="where">Onboarding 3 · Invite</span><span><strong>Jo</strong> Can we prefill the company domain?</span></span></div>
+    </div>
+  </div>
+</aside>
+</div><div class="proposal-tag">Proposal · Share · What the viewer sees</div></div></body>
+</html>
