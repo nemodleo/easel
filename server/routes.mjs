@@ -3,11 +3,13 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import { closeBrowser, newPage } from "./browser.mjs";
 import { boardRoutes } from "./boards.mjs";
 import { chatRoutes } from "./chat.mjs";
 import { tokenRoutes } from "./tokens.mjs";
 import { snapshotRoutes } from "./snapshot.mjs";
 import { applyEdit, EditError } from "./edit.mjs";
+import { exportRoutes } from "./export.mjs";
 import { easelDir, rootOf, toPosix, writeAtomic } from "./fsutil.mjs";
 import { inspect, outline } from "./html.mjs";
 import { readBody, safeJoin, sendJson } from "./index.mjs";
@@ -46,51 +48,8 @@ async function writeComments(ctx, comments) {
 }
 
 /* ---------- Screenshots (when playwright is available) ---------- */
-let browserPromise = null;
-/** Close the Chromium used for screenshots/thumbnails when the server stops (otherwise it becomes an orphan process) */
-export async function closeBrowser() {
-  const b = await browserPromise?.catch(() => null);
-  browserPromise = null;
-  await b?.close().catch(() => {});
-}
-
-async function getBrowser() {
-  // A browser that exited behind our back (crash, killed, sleep) must not stay cached, or every thumbnail fails until a restart
-  const pending = browserPromise;
-  const cached = pending && (await pending.catch(() => null));
-  if (cached && !cached.isConnected() && browserPromise === pending) browserPromise = null;
-  if (!browserPromise) {
-    const p = (browserPromise = (async () => {
-      const { chromium } = await import("playwright").catch(() => {
-        throw Object.assign(new Error("Screenshots are unavailable because playwright is not installed (npm run design:install)"), { status: 501 });
-      });
-      // Fall back to the installed Chrome if no downloaded Chromium exists
-      const b = await chromium.launch().catch(() => chromium.launch({ channel: "chrome" }));
-      b.on("disconnected", () => {
-        if (browserPromise === p) browserPromise = null;
-      });
-      return b;
-    })());
-    p.catch(() => {
-      if (browserPromise === p) browserPromise = null;
-    });
-  }
-  return browserPromise;
-}
-
-/** New page on the shared browser; if the browser died since it was cached, launch a fresh one and try once more */
-export async function newPage(opts) {
-  const browser = await getBrowser();
-  try {
-    return await browser.newPage(opts);
-  } catch (e) {
-    if (browser.isConnected()) throw e;
-    return (await getBrowser()).newPage(opts); // getBrowser drops the dead one and launches again
-  }
-}
-
-/** For tests: the browser currently cached for screenshots, if any */
-export const cachedBrowser = () => browserPromise?.catch(() => null) ?? Promise.resolve(null);
+// The shared Chromium lives in browser.mjs (export uses it too); re-exported here for existing callers
+export { cachedBrowser, closeBrowser, newPage } from "./browser.mjs";
 
 /** Thumbnail sizes (long side, device px) the client may ask for; anything else snaps to the next one up. Matches THUMB_SIZES in Canvas.tsx */
 const THUMB_PX = [600, 1200, 2400];
@@ -220,6 +179,7 @@ export const extraRoutes = [
     },
   ],
   ...snapshotRoutes(),
+  ...exportRoutes(),
   // Assets: list and upload docs/design/assets/ (images, fonts). Screens reference them as ../assets/<name>
   [
     "GET",

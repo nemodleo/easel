@@ -16,6 +16,7 @@ import { Layers } from "./Layers";
 import { BoardOptions, FocusView, LeftPanel, Minimap } from "./panels";
 import { Play } from "./Play";
 import { Properties } from "./Properties";
+import { ShareButton } from "./share";
 import { ContextMenu, Dialog, useDialog, useToast, type MenuItem, type MenuState, Collapsible } from "./ui";
 import { useEditMode } from "./useEditMode";
 import type { Board, BoardItem, BoardResponse, LayoutGuide, Note, Shape, ShapeKind, Tool, View } from "./types";
@@ -1454,6 +1455,7 @@ export function App() {
               <Icon name="fit" />
             </button>
           </div>
+          <ShareButton pages={pages} currentPage={currentPage} selected={selected} />
           <div className="tool-group">
             <button className={`ask-ai ${rightTab === "chat" ? "on" : ""}`} aria-label={strings.toolbar.aiChat} aria-pressed={rightTab === "chat"} title={strings.toolbar.aiChatTitle(mod)} onClick={() => (rightTab === "chat" ? setRightTab("inspect") : openChat())}>
               <Icon name="comment" size={16} /> <span className="ask-ai-label">{strings.toolbar.askAi}</span>

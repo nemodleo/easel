@@ -14,7 +14,7 @@ import { rootOf, toPosix } from "./fsutil.mjs";
 import { createHistory, requestScope } from "./history.mjs";
 import { writeEntry } from "./registry.mjs";
 
-const MIME = {
+export const MIME = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
@@ -89,10 +89,11 @@ async function serveFile(res, file) {
   }
 }
 
-/** Rebuild if files under app/ are newer than dist/index.html */
+/** Rebuild if files under app/ are newer than dist/index.html, or the export viewer (dist/viewer) is missing */
 async function appIsStale(distDir) {
   const built = await fs.stat(path.join(distDir, "index.html")).catch(() => null);
   if (!built) return true;
+  if (existsSync(path.join(TOOL_ROOT, "app")) && !existsSync(path.join(distDir, "viewer", "viewer.js"))) return true;
   let newest = 0;
   const walk = async (d) => {
     for (const e of await fs.readdir(d, { withFileTypes: true })) {
@@ -162,6 +163,8 @@ export async function createServer({ dir, port, dev = true, extraRoutes = [], au
   if (dev && (await appIsStale(distDir))) {
     const { build } = await import("vite");
     await build({ root: path.join(TOOL_ROOT, "app"), configFile: path.join(TOOL_ROOT, "vite.config.mjs"), logLevel: "warn" });
+    // Second entry: the view-only viewer that Share › Export copies next to the screens (the first build empties dist/)
+    await build({ root: path.join(TOOL_ROOT, "app"), configFile: path.join(TOOL_ROOT, "vite.config.mjs"), logLevel: "warn", mode: "viewer" });
   }
   if (!existsSync(path.join(distDir, "index.html"))) throw new Error("No app build found (running with npm start creates it)");
 

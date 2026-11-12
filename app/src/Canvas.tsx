@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent as RMouse
 
 import { stickyBg } from "./drawing";
 import { Icon } from "./icons";
-import type { Board, BoardItem, Note, Tool, View } from "./types";
+import type { Board, BoardItem, Note, ScreenSource, Tool, View } from "./types";
 import { strings } from "./strings";
 
 // PLAN said 10%, but allow down to 4% to fit all 98 boards (about 17,700 tall) on one screen
@@ -18,6 +18,8 @@ export const LIVE_MIN_SCREEN_PX = 640;
 export const THUMB_SIZES = [600, 1200, 2400];
 export const thumbSize = (screenPx: number) => THUMB_SIZES.find((s) => s >= screenPx) ?? THUMB_SIZES[THUMB_SIZES.length - 1];
 const SNAP_PX = 6;
+/** The editor's boards: served by the canvas server, with zoomed-out thumbnails */
+export const SERVER_SCREENS: ScreenSource = { url: (f) => `/screens/${f}`, thumbs: true };
 
 export type Rect = { x: number; y: number; w: number; h: number };
 export type ContextTarget = { type: "board"; file: string } | { type: "note"; id: string } | { type: "canvas"; x: number; y: number };
@@ -57,6 +59,9 @@ type Props = {
   worldLayer?: ReactNode;
   iframeRef?: (f: string, el: HTMLIFrameElement | null) => void;
   onSize?: (s: { w: number; h: number }) => void;
+  /** View-only (exported viewer): dragging pans, a press selects, nothing moves, resizes or edits */
+  readOnly?: boolean;
+  screens?: ScreenSource;
 };
 
 export function Canvas(p: Props) {
@@ -144,7 +149,8 @@ export function Canvas(p: Props) {
     setDraft(r);
   };
 
-  const panning = space || p.tool === "hand";
+  const panning = space || p.tool === "hand" || !!p.readOnly;
+  const screens = p.screens ?? SERVER_SCREENS;
   const onBgDown = (e: RPointerEvent<HTMLDivElement>) => {
     if (e.target !== e.currentTarget && e.button !== 1) return;
     (e.currentTarget as Element).setPointerCapture(e.pointerId);
@@ -161,7 +167,7 @@ export function Canvas(p: Props) {
     }
     gesture.current = { kind: p.tool === "board" ? "draw" : "marquee", sx: w.x, sy: w.y, additive: e.shiftKey, moved: false };
   };
-  const onBgMove = (e: RPointerEvent<HTMLDivElement>) => {
+  const onBgMove = (e: RPointerEvent) => {
     const g = gesture.current;
     if (!g) return;
     if (g.kind === "pan") {
@@ -176,6 +182,8 @@ export function Canvas(p: Props) {
   const onBgUp = (e: RPointerEvent<HTMLDivElement>) => {
     const g = gesture.current;
     gesture.current = null;
+    // View-only: a click (no drag) on the background clears the selection
+    if (g?.kind === "pan" && p.readOnly && Math.abs(e.clientX - g.sx) + Math.abs(e.clientY - g.sy) < 4) p.onSelect([], "replace");
     if (!g || g.kind === "pan") return;
     const r = draftRef.current;
     setDraftBoth(null);
@@ -291,6 +299,7 @@ export function Canvas(p: Props) {
             zoom={view.zoom}
             id={id}
             selected={p.selectedNotes.includes(id)}
+            readOnly={p.readOnly}
             onSelect={(add) => p.onSelectNote(id, add)}
             onMove={(patch, done) => p.onMoveNote(id, patch, done)}
             onDelete={() => p.onDeleteNote(id)}
@@ -299,7 +308,7 @@ export function Canvas(p: Props) {
         ))}
         {p.visibleBoards.map((f) => {
           const b = p.board.boards[f];
-          const live = inView(b) && (view.zoom >= IFRAME_MIN_ZOOM || Math.max(b.w, b.h) * view.zoom >= LIVE_MIN_SCREEN_PX || p.editFile === f);
+          const live = inView(b) && (!screens.thumbs || view.zoom >= IFRAME_MIN_ZOOM || Math.max(b.w, b.h) * view.zoom >= LIVE_MIN_SCREEN_PX || p.editFile === f);
           const selected = p.selected.includes(f);
           return (
             <BoardView
@@ -310,7 +319,9 @@ export function Canvas(p: Props) {
               zoom={view.zoom}
               live={live}
               selected={selected}
-              single={selected && p.selected.length === 1}
+              single={selected && p.selected.length === 1 && !p.readOnly}
+              readOnly={p.readOnly}
+              screens={screens}
               editing={p.editFile === f}
               playing={p.playing === f}
               near={inView(b)}
@@ -318,6 +329,10 @@ export function Canvas(p: Props) {
               onPointerDownLabel={(e) => {
                 if (e.button !== 0) return;
                 e.stopPropagation();
+                if (p.readOnly) {
+                  p.onSelect([f], "replace");
+                  return startPanCapture(e);
+                }
                 if (e.shiftKey) {
                   p.onSelect([f], "toggle");
                   return;
@@ -325,8 +340,8 @@ export function Canvas(p: Props) {
                 if (!selected) p.onSelect([f], "replace");
                 startGroupDrag(e, f);
               }}
-              onPointerMoveLabel={(e) => moveGroupDrag(e)}
-              onPointerUpLabel={endGroupDrag}
+              onPointerMoveLabel={(e) => (p.readOnly ? onBgMove(e) : moveGroupDrag(e))}
+              onPointerUpLabel={(e) => (p.readOnly ? void (gesture.current = null) : endGroupDrag(e))}
               onResize={(patch, done) => p.onMoveBoards({ [f]: patch }, done)}
               onPlay={() => p.onPlay(f)}
               onEdit={() => p.onEdit(p.editFile === f ? null : f)}
@@ -378,6 +393,8 @@ function BoardView(props: {
   onContext: (e: RMouseEvent) => void;
   overlay?: ReactNode;
   iframeRef: (el: HTMLIFrameElement | null) => void;
+  readOnly?: boolean;
+  screens: ScreenSource;
 }) {
   const { item: b, zoom } = props;
   const resize = useDrag(zoom);
@@ -410,7 +427,7 @@ function BoardView(props: {
           className="board-title"
           onDoubleClick={(e) => {
             e.stopPropagation();
-            props.onRename();
+            if (!props.readOnly) props.onRename();
           }}
         >
           {title}
@@ -423,10 +440,10 @@ function BoardView(props: {
                 <Icon name="play" size={14} />
               </button>
             )}
-            <button className={`icon-btn sm edit-pill ${props.editing ? "on" : ""}`} aria-label={strings.canvas.editMode} title={strings.canvas.editTitle} onPointerDown={stop} onClick={(e) => { e.stopPropagation(); props.onEdit(); }}>
+            {!props.readOnly && <button className={`icon-btn sm edit-pill ${props.editing ? "on" : ""}`} aria-label={strings.canvas.editMode} title={strings.canvas.editTitle} onPointerDown={stop} onClick={(e) => { e.stopPropagation(); props.onEdit(); }}>
               <Icon name="edit" size={14} />
               {b.w * zoom >= 150 && <span className="edit-pill-label">{strings.canvas.editPill}</span>}
-            </button>
+            </button>}
           </span>
         )}
       </div>
@@ -434,7 +451,7 @@ function BoardView(props: {
         className="board-frame"
         style={{ borderRadius: b.radius ?? 0 }}
         onDoubleClick={(e) => {
-          if (!props.editing) {
+          if (!props.editing && !props.readOnly) {
             e.stopPropagation();
             props.onEdit();
           }
@@ -450,10 +467,10 @@ function BoardView(props: {
         {!props.exists ? (
           <div className="board-missing">{strings.canvas.fileMissing(props.file)}</div>
         ) : props.live ? (
-          <LiveFrame reloadKey={props.reloadKey} iframeRef={props.iframeRef} src={`/screens/${props.file}`} title={title} editing={props.editing || !!props.playing} />
+          <LiveFrame reloadKey={props.reloadKey} iframeRef={props.iframeRef} src={props.screens.url(props.file)} html={props.screens.html?.(props.file)} title={title} editing={props.editing || !!props.playing} />
         ) : (
           <div className={`board-placeholder ${props.near ? "loading" : "far"}`} style={{ fontSize: Math.min(64, 14 / zoom) }}>
-            {props.near && <Thumb file={props.file} v={props.reloadKey} px={thumbSize(Math.max(b.w, b.h) * zoom * (window.devicePixelRatio || 1))} />}
+            {props.near && props.screens.thumbs && <Thumb file={props.file} v={props.reloadKey} px={thumbSize(Math.max(b.w, b.h) * zoom * (window.devicePixelRatio || 1))} />}
             <span className="ph-title" data-hint={props.near ? "" : strings.canvas.notLoaded}>{title}</span>
             {props.near && <span className="ph-bar" style={{ height: 3 / Math.max(zoom, 0.05) }} aria-hidden="true" />}
           </div>
@@ -518,7 +535,8 @@ function Thumb({ file, v, px }: { file: string; v: number; px: number }) {
   );
 }
 
-function LiveFrame(props: { src: string; title: string; reloadKey: number; editing: boolean; iframeRef: (el: HTMLIFrameElement | null) => void }) {
+/** Inline HTML (single-file export) goes in srcdoc: the same origin as the viewer, as /screens/ is for the editor, so pins can find elements */
+function LiveFrame(props: { src: string; html?: string; title: string; reloadKey: number; editing: boolean; iframeRef: (el: HTMLIFrameElement | null) => void }) {
   const ref = useRef<HTMLIFrameElement | null>(null);
   const first = useRef(true);
   useEffect(() => {
@@ -559,14 +577,15 @@ function LiveFrame(props: { src: string; title: string; reloadKey: number; editi
         ref.current = el;
         props.iframeRef(el);
       }}
-      src={props.src}
+      src={props.html == null ? props.src : undefined}
+      srcDoc={props.html ?? undefined}
       title={props.title}
       style={{ pointerEvents: props.editing ? "auto" : "none" }}
     />
   );
 }
 
-function NoteView(props: { id: string; note: Note; zoom: number; selected: boolean; onSelect: (add: boolean) => void; onMove: (patch: Partial<Note>, done: boolean) => void; onDelete: () => void; onContext: (e: RMouseEvent) => void }) {
+function NoteView(props: { id: string; note: Note; zoom: number; selected: boolean; readOnly?: boolean; onSelect: (add: boolean) => void; onMove: (patch: Partial<Note>, done: boolean) => void; onDelete: () => void; onContext: (e: RMouseEvent) => void }) {
   const { note: n } = props;
   const drag = useDrag(props.zoom);
   const [editing, setEditing] = useState(false);
@@ -614,11 +633,11 @@ function NoteView(props: { id: string; note: Note; zoom: number; selected: boole
   if (n.kind === "title" && fs * props.zoom < 12) Object.assign(style, { transform: `scale(${12 / (fs * props.zoom)})`, transformOrigin: "0 0" });
   return (
     <div
-      className={`note note-${n.kind} ${props.selected ? "selected" : ""}`}
+      className={`note note-${n.kind} ${props.selected ? "selected" : ""} ${props.readOnly ? "read-only" : ""}`}
       data-note={props.id}
       style={style}
       onPointerDown={(e) => {
-        if (editing || e.button !== 0) return;
+        if (editing || e.button !== 0 || props.readOnly) return;
         e.stopPropagation();
         if (e.shiftKey) props.onSelect(true);
         else if (!props.selected) props.onSelect(false);
@@ -628,11 +647,12 @@ function NoteView(props: { id: string; note: Note; zoom: number; selected: boole
       onPointerUp={drag.end}
       onDoubleClick={(e) => {
         e.stopPropagation();
-        setEditing(true);
+        if (!props.readOnly) setEditing(true);
       }}
       onContextMenu={(e) => {
         e.preventDefault();
         e.stopPropagation();
+        if (props.readOnly) return;
         props.onSelect(false);
         props.onContext(e);
       }}

@@ -118,6 +118,21 @@ Then try:
 
 New files with `<meta name="board-size" content="390x844">` are placed on the canvas automatically at that size.
 
+## Share a view-only copy
+
+**Share** in the toolbar writes a static, read-only copy of the whole canvas, the current page or the selected boards to `<project>/easel-export/`: boards with their pages, notes and comments, Play, and a stamp with the export time and `repo@commit`. Nothing in it calls back to Easel, so any static host works (Vercel, GitHub Pages, a PR preview, under any sub-path), and `index.html` also opens straight from disk (comment pins then stack in their board's corner, because browsers keep `file://` frames apart). **Copy deploy command** gives you `npx vercel deploy easel-export`. Turn on **One .html file** for a single self-contained file to attach to Slack, email or a PR; its size shows before you save. **PDF** (one board per page) and **PNG** (one 2× image per board) need Playwright's Chromium.
+
+The same from the terminal, with no canvas running (it works in CI):
+
+```bash
+npx easel-canvas export                          # web folder in ./easel-export
+npx easel-canvas export --single-file            # one self-contained .html
+npx easel-canvas export --page Onboarding --pdf --png
+npx easel-canvas export --boards home.html,stats.html --out dist/design-preview
+```
+
+Exporting again replaces what the previous export of the same kind wrote there (a small `.easel-export.json` lists it) and leaves anything else in the folder alone; a non-empty folder Easel did not create is never cleared. Dot folders (`.easel/`, `.thumbs/`…) and files outside the design folder are never copied. A single file inlines the screens' images, fonts, CSS and scripts but not HTML embedded with `<iframe>`; the export lists what it skipped.
+
 ## Pin it in your project
 
 `npx easel-canvas` is all most projects need. To pin an exact version for your team, add it as a dev dependency (`npm i -D easel-canvas`, then `"design": "easel-canvas"` in your scripts) or as a git submodule. With your designs in `<project>/docs/design/screens/`:
@@ -162,6 +177,7 @@ npm run design           # http://localhost:4317
 | Undo | ⌘Z / ⌘⇧Z. Canvas actions, HTML edits and board create/delete share one history (100 entries) |
 | Design system | Register tokens (`tokens.json`) and themes in the left "Tokens" tab, Theme menu in the toolbar, Token check and Accessibility lists on the right |
 | Collaboration | Comments (Reply, Resolve, author), Snapshot menu (git-commits only the design folder) |
+| Share | Toolbar "Share": whole canvas, this page or the selected boards as a web folder or one .html file, PDF or PNG; Reveal, Copy deploy command, and the matching `npx easel-canvas export` line |
 | AI | Right "AI" tab (⌘J): Claude Code or Codex; selection, boards, visible boards, comments and references go along as context; N variants; Ask AI for a review |
 | Screen | F6 to move between regions, Tab to move between boards, ⌘\\ to hide panels, Appearance (System · Light · Dark) |
 

@@ -111,3 +111,24 @@ export type Selection = {
   label?: string;
   rect?: { x: number; y: number; w: number; h: number };
 };
+
+/** Where board iframes load from: the server (/screens/…) in the editor; relative URLs or inline HTML in an exported viewer */
+export type ScreenSource = {
+  url: (file: string) => string;
+  /** Inline HTML per board (single-file export): frames use srcdoc and Play follows links itself */
+  html?: (file: string) => string | undefined;
+  /** Zoomed-out thumbnails from the server (/api/thumb); without them boards stay live while in view */
+  thumbs?: boolean;
+};
+
+/** A view-only export, written by server/export.mjs as window.EASEL_EXPORT */
+export type ExportData = {
+  version: 1;
+  title: string;
+  stamp: { at: string; repo?: string; commit?: string };
+  board: Board;
+  files: string[];
+  comments: import("./Inspector").Comment[];
+  /** Single file only: each board's HTML with its assets inlined */
+  screens?: Record<string, string>;
+};
