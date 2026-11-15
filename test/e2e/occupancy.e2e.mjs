@@ -56,8 +56,8 @@ test("two agents on one board: fork beside it with the arrow and both labels →
   assert.equal(await board(page, "scr-15.html").locator(".occ-tag").textContent(), "Claude Code is editing…");
   assert.equal(await board(page, "scr-15-codex.html").locator(".occ-tag").textContent(), "Codex is editing…");
   assert.equal(await board(page, "scr-15-codex.html").locator(".board-title").textContent(), "SCR-15 채팅 목록 · Codex");
-  assert.equal(await page.locator('.left .row[title="scr-15.html"] .occ-dot').getAttribute("aria-label"), "Claude Code is editing");
-  assert.equal(await page.locator('.left .row[title="scr-15-codex.html"] .occ-dot').getAttribute("aria-label"), "Codex is editing");
+  assert.equal(await page.locator('.oc-left .row[title="scr-15.html"] .occ-dot').getAttribute("aria-label"), "Claude Code is editing");
+  assert.equal(await page.locator('.oc-left .row[title="scr-15-codex.html"] .occ-dot').getAttribute("aria-label"), "Codex is editing");
   const useFork = board(page, "scr-15-codex.html").locator(".use-btn");
   assert.equal(await useFork.getAttribute("aria-disabled"), "true", "waits while either is still editing");
   assert.equal(await useFork.getAttribute("title"), "Wait until Claude Code is done editing");
@@ -67,7 +67,7 @@ test("two agents on one board: fork beside it with the arrow and both labels →
   await codex.close();
   await board(page, "scr-15.html").locator(".occ-tag.done", { hasText: /^Claude Code · done \d\d:\d\d$/ }).waitFor({ timeout: 8000 });
   await board(page, "scr-15-codex.html").locator(".occ-tag.done", { hasText: /^Codex · done \d\d:\d\d$/ }).waitFor();
-  assert.equal(await page.locator(".left .occ-dot").count(), 0, "no dots once nobody is editing");
+  assert.equal(await page.locator(".oc-left .occ-dot").count(), 0, "no dots once nobody is editing");
   await page.waitForFunction(() => document.querySelector('.board[data-file="scr-15-codex.html"] .use-btn')?.getAttribute("aria-disabled") == null);
   await useFork.click();
   const dlg = page.getByRole("dialog", { name: 'Use "SCR-15 채팅 목록 · Codex" for SCR-15 채팅 목록?' });
@@ -94,7 +94,7 @@ test("two agents on one board: fork beside it with the arrow and both labels →
 
 test("variants from the chat land in a free row; Use this → confirm → toast → Undo; Keep all keeps them as ordinary boards", async () => {
   const { page } = env;
-  await page.locator('.left .row[title="scr-32.html"]').click();
+  await page.locator('.oc-left .row[title="scr-32.html"]').click();
   await page.keyboard.press("Meta+j");
   await page.getByLabel("Number of variants").selectOption("3");
   const box = page.getByRole("textbox", { name: "Message to AI" });

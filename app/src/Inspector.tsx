@@ -1,12 +1,14 @@
 // AI-generated with Claude Code, 2026-10-09, reviewed by Hyun Park
-// Right panel: selection info, copy, screenshot, comments. (Properties and layers attach here since M5)
-import { Children, useState, type ReactNode, type RefObject } from "react";
+// Inspector card body: what is selected (file, name, breadcrumb), the groups passed in (Properties, Checks, Layers), comments,
+// and the action footer pinned to the card's foot (Duplicate, Copy, Screenshot, Delete for an element; a board's icons otherwise).
+import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import { api } from "./api";
 import { Icon } from "./icons";
 import { describe } from "./editor";
 import type { Selection } from "./types";
 import { strings } from "./strings";
+import { snapWidths } from "./ui";
 
 export type Reply = { id: string; author: string; text: string; createdAt: string };
 export type Comment = { id: string; file: string; path: string; text: string; author: string; createdAt: string; resolved: boolean; replies?: Reply[] };
@@ -23,8 +25,11 @@ export function Inspector(props: {
   comments: Comment[];
   onSelectPath: (path: string) => void;
   onAskAI?: (c: Comment) => void;
-  /** Empty state: open the AI tab */
-  onAskAi?: () => void;
+  /** The selected element's Duplicate and Delete (the footer's first and last actions) */
+  onDuplicate?: () => void;
+  onDelete?: () => void;
+  /** The footer for anything that is not an element (a board's icons) */
+  footer?: ReactNode;
   author: string;
   onAuthor: () => void;
   children?: ReactNode;
@@ -35,6 +40,12 @@ export function Inspector(props: {
   const [copied, setCopied] = useState(false);
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [reply, setReply] = useState("");
+  const footRef = useRef<HTMLElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    snapWidths(footRef.current);
+    snapWidths(scrollRef.current, ".crumb button, .crumb span[aria-hidden], .oc-cmt button");
+  });
   const sendReply = async (id: string, resolve = false) => {
     if (!reply.trim()) return;
     await api.post("/api/comments", { action: "reply", id, text: reply, author: props.author, resolve });
@@ -43,7 +54,9 @@ export function Inspector(props: {
   };
   const when = (d: string) => new Date(d).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
   const sel = props.selection;
+  const onEl = !!sel && !!props.file && sel.file === props.file;
   const list = props.comments.filter((c) => !props.file || c.file === props.file);
+  const open = list.filter((c) => !c.resolved).length;
 
   const copy = async () => {
     if (!sel) return;
@@ -70,86 +83,72 @@ export function Inspector(props: {
   };
 
   return (
-    <aside className="inspector">
-      {!props.file ? (
-        Children.toArray(props.children).length ? props.children : (
-          <div className="inspector-empty">
-            <p className="empty-lead">{strings.inspector.emptyLead}</p>
-            {props.onAskAi && (
-              <button className="primary ask-ai-cta" onClick={props.onAskAi}>
-                <Icon name="comment" size={16} /> {strings.inspector.emptyAiCta}
-              </button>
-            )}
-            <p className="muted">{strings.inspector.pickBoard}</p>
-            <ul className="muted">
-              <li><kbd>B</kbd> {strings.inspector.hintDraw} · <kbd>T</kbd> {strings.inspector.hintTitle} · <kbd>N</kbd> {strings.inspector.hintNote}</li>
-              <li>{strings.inspector.hintClick} <kbd>F</kbd> {strings.inspector.hintFocus}</li>
-              <li>{strings.inspector.hintRightClick} · <kbd>⌘K</kbd> {strings.inspector.hintFind}</li>
-            </ul>
-          </div>
-        )
-      ) : (
-        <>
-          <section>
-            <h3>{props.file}</h3>
-            {!(sel && sel.file === props.file) && <p className="muted">{strings.canvas.hint}</p>}
-            {props.error && <p className="warn">{props.error}</p>}
-            {sel && sel.file === props.file && (
-              <div className="sel">
-                <div className="sel-name">
-                  <strong>{strings.inspector.kindName(sel.kind ?? sel.tag)}</strong>
-                  {sel.label && <span className="sel-label"> · {sel.label.slice(0, 40)}</span>}
-                  {props.multi > 1 && <span className="muted"> {strings.inspector.more(props.multi - 1)}</span>}
-                </div>
-                {props.crumbs}
-                {sel.text && !sel.label && <div className="sel-text">“{sel.text.slice(0, 120)}”</div>}
-                <div className="row">
-                  <button onClick={copy}>{copied ? strings.inspector.copied : strings.inspector.copy}</button>
-                  {sel.path.includes("/") && <button onClick={() => props.onSelectPath(sel.path.slice(0, sel.path.lastIndexOf("/")))}>{strings.inspector.parent}</button>}
-                  <button onClick={takeShot} disabled={busy}>
-                    {busy ? strings.inspector.capturing : strings.inspector.screenshot}
-                  </button>
-                </div>
-              </div>
-            )}
-            {shot && <p className="muted small">{shot}</p>}
-          </section>
-          {props.children}
-          <section>
-            <h3>{strings.comments.title} {list.filter((c) => !c.resolved).length > 0 && <span className="muted">{list.filter((c) => !c.resolved).length}</span>}</h3>
+    <div className="pp inspector">
+      <div className="pp-scroll" ref={scrollRef}>
+        {onEl && sel && (
+          <header className="pp-head">
+            <span className="pp-file">{sel.file}</span>
+            <h2 className="pp-name">
+              <span>
+                {strings.inspector.kindName(sel.kind ?? sel.tag)}
+                {sel.label && ` · ${sel.label.slice(0, 40)}`}
+                {props.multi > 1 && <span className="muted"> {strings.inspector.more(props.multi - 1)}</span>}
+              </span>
+            </h2>
+            <div className="pp-crumb">
+              {props.crumbs}
+              {sel.path.includes("/") && (
+                <button className="icon-btn pp-ib" aria-label={strings.menu.selectParent} title={strings.menu.selectParent} onClick={() => props.onSelectPath(sel.path.slice(0, sel.path.lastIndexOf("/")))}>
+                  <Icon name="parent" size={16} />
+                </button>
+              )}
+            </div>
+            {sel.text && !sel.label && <p className="pp-note sel-text">“{sel.text.slice(0, 120)}”</p>}
+          </header>
+        )}
+        {props.error && <p className="pp-note warn">{props.error}</p>}
+        {shot && <p className="pp-note muted shot">{shot}</p>}
+        {props.children}
+        {props.file && (
+          <section className="pp-group oc-cmt" aria-label={strings.comments.title}>
+            <h3 className="pp-group-h">
+              {strings.comments.title}
+              {open > 0 && <span className="oc-count">{open}</span>}
+            </h3>
             <textarea
               ref={props.commentRef}
               value={text}
-              placeholder={sel?.file === props.file ? strings.comments.placeholderElement(sel.path) : strings.comments.placeholderBoard}
+              aria-label={strings.comments.title}
+              placeholder={onEl && sel ? strings.comments.placeholderElement(sel.path) : strings.comments.placeholderBoard}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void addComment();
               }}
             />
-            <div className="row">
-              <button onClick={addComment} disabled={!text.trim()}>
+            <div className="oc-cmt-bar">
+              <button className="btn" onClick={addComment} disabled={!text.trim()}>
                 {strings.comments.add}
               </button>
-              <button className="link" onClick={props.onAuthor} title={strings.comments.authorTitle}>
+              <button className="btn oc-plain" onClick={props.onAuthor} title={strings.comments.authorTitle}>
                 {strings.comments.author(props.author)}
               </button>
-              {!sel && (
-                <button className="link shot-link" onClick={takeShot} disabled={busy} title={strings.inspector.boardScreenshotTitle}>
+              {!onEl && (
+                <button className="btn oc-plain shot-link" onClick={takeShot} disabled={busy} title={strings.inspector.boardScreenshotTitle}>
                   {busy ? strings.inspector.capturing : strings.inspector.boardScreenshot}
                 </button>
               )}
             </div>
             <ul className="comments">
               {list.map((c) => (
-                <li key={c.id} className={c.resolved ? "resolved" : ""}>
+                <li key={c.id} className={`oc-cmt-item ${c.resolved ? "resolved" : ""}`}>
                   <div className="c-head">
-                    <strong>{c.author}</strong>
+                    <span className="who">{c.author}</span>
                     {c.path && (
-                      <button className="link" onClick={() => props.onSelectPath(c.path)}>
+                      <button className="btn oc-plain c-path" onClick={() => props.onSelectPath(c.path)}>
                         {c.path}
                       </button>
                     )}
-                    <span className="muted">{new Date(c.createdAt).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                    <span className="when">{when(c.createdAt)}</span>
                   </div>
                   <div>{c.text}</div>
                   {(c.replies ?? []).length > 0 && (
@@ -157,8 +156,8 @@ export function Inspector(props: {
                       {c.replies!.map((r) => (
                         <li key={r.id}>
                           <div className="c-head">
-                            <strong>{r.author}</strong>
-                            <span className="muted">{when(r.createdAt)}</span>
+                            <span className="who">{r.author}</span>
+                            <span className="when">{when(r.createdAt)}</span>
                           </div>
                           <div>{r.text}</div>
                         </li>
@@ -179,27 +178,27 @@ export function Inspector(props: {
                           if (e.key === "Escape") setReplyTo(null);
                         }}
                       />
-                      <div className="row">
-                        <button onClick={() => void sendReply(c.id)} disabled={!reply.trim()}>
+                      <div className="oc-cmt-bar">
+                        <button className="btn" onClick={() => void sendReply(c.id)} disabled={!reply.trim()}>
                           {strings.comments.reply}
                         </button>
-                        <button onClick={() => void sendReply(c.id, true)} disabled={!reply.trim()}>
+                        <button className="btn" onClick={() => void sendReply(c.id, true)} disabled={!reply.trim()}>
                           {strings.comments.replyResolve}
                         </button>
                       </div>
                     </div>
                   )}
-                  <div className="row">
+                  <div className="oc-cmt-bar">
                     {replyTo !== c.id && (
-                      <button className="link" onClick={() => setReplyTo(c.id)}>
+                      <button className="btn oc-plain" onClick={() => setReplyTo(c.id)}>
                         {strings.comments.reply}
                       </button>
                     )}
-                    <button className="link" onClick={() => api.post("/api/comments", { action: "resolve", id: c.id, resolved: !c.resolved })}>
+                    <button className="btn oc-plain" onClick={() => api.post("/api/comments", { action: "resolve", id: c.id, resolved: !c.resolved })}>
                       {c.resolved ? strings.comments.reopen : strings.comments.resolve}
                     </button>
                     {!c.resolved && props.onAskAI && (
-                      <button className="link" onClick={() => props.onAskAI!(c)} title={strings.comments.sendToAITitle}>
+                      <button className="btn oc-plain" onClick={() => props.onAskAI!(c)} title={strings.comments.sendToAITitle}>
                         {strings.comments.sendToAI}
                       </button>
                     )}
@@ -208,8 +207,30 @@ export function Inspector(props: {
               ))}
             </ul>
           </section>
-        </>
+        )}
+      </div>
+      {onEl ? (
+        <footer className="pp-actions" aria-label={strings.inspector.actions} ref={footRef}>
+          {props.onDuplicate && (
+            <button className="btn" onClick={props.onDuplicate}>
+              {strings.properties.duplicate}
+            </button>
+          )}
+          <button className="btn" onClick={copy}>
+            {copied ? strings.inspector.copied : strings.inspector.copy}
+          </button>
+          <button className="btn" onClick={takeShot} disabled={busy} title={strings.inspector.screenshotTitle}>
+            {busy ? strings.inspector.capturing : strings.inspector.screenshot}
+          </button>
+          {props.onDelete && (
+            <button className="icon-btn pp-del" aria-label={strings.properties.delete} title={strings.boardOptions.deleteTitleKey} onClick={props.onDelete}>
+              <Icon name="trash" />
+            </button>
+          )}
+        </footer>
+      ) : (
+        props.footer
       )}
-    </aside>
+    </div>
   );
 }

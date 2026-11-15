@@ -13,7 +13,10 @@ function Spans({ c }: { c: Inline[] }) {
         x.t === "text" ? (
           x.v
         ) : x.t === "code" ? (
-          <code key={i}>{x.v}</code>
+          // A short span stays on one line; a long one may wrap so it never runs past the card
+          <code key={i} className={x.v.length > 24 ? "long" : undefined}>
+            {x.v}
+          </code>
         ) : x.t === "b" ? (
           <strong key={i}>
             <Spans c={x.c} />

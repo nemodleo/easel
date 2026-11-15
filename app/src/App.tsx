@@ -1,8 +1,10 @@
 // AI-generated with Claude Code, 2026-10-09, reviewed by Hyun Park
-// App shell: board.json state, toolbar, left (pages, boards) and right (inspector) panels, context menus, a single undo history. PLAN.md section 5.
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+// App shell: board.json state; the canvas fills the window and the tools float on it (direction A): the left card (project, pages,
+// boards), the navigation card (minimap, zoom), the inspector card (Share, Ask AI, View; Properties or AI), the dock (new board, tools,
+// undo) and the context line above it (hint or element toolbar). Context menus, a single undo history. PLAN.md section 5.
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
-import { BoardTags, ChangeOutline, HistoryMenu, TagPopover, authorColor, useActivity, type Step, type Tag } from "./activity";
+import { BoardTags, ChangeOutline, HistoryMenu, TagPopover, useActivity, type Step, type Tag } from "./activity";
 import { api, clientId, connectEvents, reportEditing, setAuthorName, type ServerEvent } from "./api";
 import { Canvas, clamp, fitView, isTyping, MAX_ZOOM, MIN_ZOOM, type ContextTarget, type Rect } from "./Canvas";
 import { AssetGrid, AssetPicker, uploadAssets, type Asset } from "./assets";
@@ -16,13 +18,13 @@ import { alignOps, EditHandles, type DropPlan } from "./elementDrag";
 import { elementAt, inlineStyles, pathOf, rectOf } from "./editor";
 import { Icon, type IconName } from "./icons";
 import { Inspector, type Comment } from "./Inspector";
-import { busyIn, choiceGroup, ForkLinks, holderColor, listDot, OccTags, shortTitle, UseButton, UseConfirm, writersOn, type Occupancy } from "./occupancy";
+import { busyIn, choiceGroup, ForkLinks, listDot, OccTags, shortTitle, UseButton, UseConfirm, writersOn, type Occupancy } from "./occupancy";
 import { Layers } from "./Layers";
-import { BoardOptions, FocusView, LeftPanel, Minimap } from "./panels";
+import { BoardActions, BoardOptions, FocusView, LeftPanel, Minimap } from "./panels";
 import { Play } from "./Play";
 import { Properties } from "./Properties";
 import { ShareButton } from "./share";
-import { ContextMenu, Dialog, useDialog, useToast, type MenuItem, type MenuState, Collapsible } from "./ui";
+import { ContextMenu, Dialog, snapWidths, useCentred, useDialog, useToast, type MenuItem, type MenuState, Collapsible } from "./ui";
 import { elementsInside, elementUnder, kindLabel, useElementSelect } from "./useElementSelect";
 import type { Board, BoardItem, BoardResponse, LayoutGuide, Note, Shape, ShapeKind, Tool, View } from "./types";
 import { strings } from "./strings";
@@ -89,15 +91,20 @@ export function App() {
   const [announce, setAnnounce] = useState("");
   const [focusFile, setFocusFile] = useState<string | null>(null);
   const [leftOpen, setLeftOpen] = useState(true);
-  /** Narrow window (under 1000px): the side panels become drawers over the canvas */
-  const [narrow, setNarrow] = useState(() => window.matchMedia("(max-width: 1000px)").matches);
+  /** The window: the cards, the dock and the context line are placed from it */
+  const [win, setWin] = useState(() => ({ w: window.innerWidth, h: window.innerHeight }));
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 1000px)");
-    const on = () => setNarrow(mq.matches);
-    mq.addEventListener("change", on);
-    return () => mq.removeEventListener("change", on);
+    const on = () => setWin({ w: window.innerWidth, h: window.innerHeight });
+    window.addEventListener("resize", on);
+    return () => window.removeEventListener("resize", on);
   }, []);
+  /** Narrow window (1000px or less): cards sit 8px from the edge and rest as their headers; the navigation card goes (zoom in View) */
+  const narrow = win.w <= 1000;
+  /** Phone width (480 or less): the canvas tools fold into one button and the inspector opens as a sheet from the foot */
+  const phone = win.w <= 480;
   const [minimapOpen, setMinimapOpen] = useState(true);
+  /** Narrow windows: the minimap is off unless switched on in View (it then floats under the left card's header) */
+  const [mapNarrow, setMapNarrow] = useState(false);
   const [menu, setMenu] = useState<MenuState>(null);
   const [hist, setHist] = useState({ canUndo: false, canRedo: false, undo: [] as string[], redo: [] as string[] });
   const [reloadKeys, setReloadKeys] = useState<Record<string, number>>({});
@@ -195,6 +202,15 @@ export function App() {
   const [useOpen, setUseOpen] = useState<{ file: string; busy: boolean } | null>(null);
   const [histBusy, setHistBusy] = useState(false);
   const caretRef = useRef<HTMLButtonElement>(null);
+  // Card rows with text buttons: widths rounded up so every control starts on a whole pixel
+  const leftTabsRef = useRef<HTMLDivElement>(null);
+  const rightTabsRef = useRef<HTMLDivElement>(null);
+  const rheadRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    snapWidths(leftTabsRef.current);
+    snapWidths(rightTabsRef.current);
+    snapWidths(rheadRef.current);
+  });
 
   useEffect(() => {
     void load();
@@ -469,7 +485,22 @@ export function App() {
   // Set: a file listed twice in board.json order must not render two boards with one key (React #185 loop)
   const visibleBoards = useMemo(() => (board ? [...new Set(board.order)].filter((f) => board.boards[f] && onPage(board.boards[f])) : []), [board, onPage]);
   const visibleNotes = useMemo(() => (board ? Object.keys(board.notes).filter((id) => onPage(board.notes[id])) : []), [board, onPage]);
-  const size = canvasSize ?? { w: window.innerWidth, h: window.innerHeight - 48 };
+  const size = canvasSize ?? win;
+  /** Decision c: boards run under the cards, but Fit all and zoom-to-selection keep to the clear area between them and above the
+   * context line (x 264 to 1140 at 1440 wide with both cards). The inspector's column counts even at rest: its header stands at the top */
+  const clearArea = (): Rect => {
+    const inset = narrow ? 8 : 12;
+    const x = !narrow && leftOpen ? inset + 240 + inset : 0;
+    const right = narrow ? size.w : size.w - inset - 288;
+    const y = narrow ? inset + 48 : 0;
+    const bottom = size.h - (narrow ? 64 : 68) - 36;
+    return { x, y, w: right - x, h: bottom - y };
+  };
+  /** Centre a board point in the clear area (minimap jumps) */
+  const centreOn = (x: number, y: number) => {
+    const a = clearArea();
+    setView((v) => ({ ...v, x: Math.round(a.x + a.w / 2 - x * v.zoom), y: Math.round(a.y + a.h / 2 - y * v.zoom) }));
+  };
 
   // First run: restore the saved view (zoom, position, page, panels) or fit all. Follows the launch setting if there is one
   useEffect(() => {
@@ -489,12 +520,12 @@ export function App() {
       const firstFile = board.order.find((f) => board.boards[f] && onPage(board.boards[f])) ?? board.order[0];
       const first = board.boards[firstFile];
       if (first) {
-        const v = fitView([first], canvasSize, 80);
+        const v = fitView([first], canvasSize, 80, clearArea());
         setView({ ...v, zoom: Math.min(v.zoom, 1) });
         setSelected([firstFile]);
         setFirstRunHint(true);
-      } else setView(fitView(Object.values(board.boards), canvasSize));
-    } else setView(fitView(Object.values(board.boards), canvasSize));
+      } else setView(fitView(Object.values(board.boards), canvasSize, 60, clearArea()));
+    } else setView(fitView(Object.values(board.boards), canvasSize, 60, clearArea()));
   }, [board, canvasSize]);
   // Remember view state
   useEffect(() => {
@@ -538,25 +569,26 @@ export function App() {
   useEffect(() => {
     if (!locate || !board || !locate.every((f) => board.boards[f])) return;
     setSelected(locate);
-    setView(fitView(locate.map((f) => board.boards[f]), size, 80));
+    setView(fitView(locate.map((f) => board.boards[f]), size, 80, clearArea()));
     setLocate(null);
   }, [locate, board]);
 
   const noteRect = (n: Note) => ({ x: n.x, y: n.y, w: n.w ?? n.maxW ?? 400, h: n.kind === "title" ? 90 : 200 });
   const fitAll = () => {
     if (!board) return;
-    setView(fitView([...visibleBoards.map((f) => board.boards[f]), ...visibleNotes.map((id) => noteRect(board.notes[id]))], size));
+    setView(fitView([...visibleBoards.map((f) => board.boards[f]), ...visibleNotes.map((id) => noteRect(board.notes[id]))], size, 60, clearArea()));
   };
   const goTo = (files: string[]) => {
     if (!board || !files.length) return;
-    setView(fitView(files.map((f) => board.boards[f]).filter(Boolean), size, 80));
+    setView(fitView(files.map((f) => board.boards[f]).filter(Boolean), size, 80, clearArea()));
   };
   const zoomBy = (k: number) =>
     setView((v) => {
       const z = clamp(v.zoom * k, MIN_ZOOM, MAX_ZOOM);
-      const cx = size.w / 2;
-      const cy = size.h / 2;
-      return { zoom: z, x: cx - ((cx - v.x) / v.zoom) * z, y: cy - ((cy - v.y) / v.zoom) * z };
+      const a = clearArea();
+      const cx = a.x + a.w / 2;
+      const cy = a.y + a.h / 2;
+      return { zoom: z, x: Math.round(cx - ((cx - v.x) / v.zoom) * z), y: Math.round(cy - ((cy - v.y) / v.zoom) * z) };
     });
   const zoomTo = (z: number) => zoomBy(z / view.zoom);
 
@@ -666,17 +698,19 @@ export function App() {
       toast({ tone: "error", text: String((e as Error).message) });
     }
   };
-  /** New board from a template at the center of the view */
+  /** New board from a template at the centre of the clear area */
   const createFromTemplate = (t: (typeof TEMPLATES)[number]) => {
-    const cx = (size.w / 2 - view.x) / view.zoom;
-    const cy = (size.h / 2 - view.y) / view.zoom;
-    void createBoard({ x: Math.round(cx - t.w / 2), y: Math.round(cy - t.h / 2), w: t.w, h: t.h }, t.id).then(() => setView(fitView([{ x: cx - t.w / 2, y: cy - t.h / 2, w: t.w, h: t.h }], size, 80)));
+    const a = clearArea();
+    const cx = (a.x + a.w / 2 - view.x) / view.zoom;
+    const cy = (a.y + a.h / 2 - view.y) / view.zoom;
+    void createBoard({ x: Math.round(cx - t.w / 2), y: Math.round(cy - t.h / 2), w: t.w, h: t.h }, t.id).then(() => setView(fitView([{ x: cx - t.w / 2, y: cy - t.h / 2, w: t.w, h: t.h }], size, 80, clearArea())));
   };
   const templateMenu = (at: { clientX: number; clientY: number }) =>
-    setMenu({ x: at.clientX, y: at.clientY, title: strings.menu.newBoard, items: TEMPLATES.map((t) => ({ label: `${t.label} · ${t.size}`, icon: t.id === "doc" ? ("page" as IconName) : ("board" as IconName), shortcut: t.id === "blank" ? strings.menu.drawWithB : undefined, run: () => createFromTemplate(t) })) });
+    setMenu({ x: at.clientX, y: at.clientY, up: true, title: strings.menu.newBoard, items: TEMPLATES.map((t) => ({ label: `${t.label} · ${t.size}`, icon: t.id === "doc" ? ("page" as IconName) : ("board" as IconName), shortcut: t.id === "blank" ? strings.menu.drawWithB : undefined, run: () => createFromTemplate(t) })) });
   /** Open chat (with an optional draft and attachments) */
   const openChat = (draft?: string, files?: string[]) => {
     setRightTab("chat");
+    setRightOpen(true); // a card closed by × or ⌘\ grows again
     if (files?.length) setSelected(files);
     if (draft != null) setChatDraft(draft);
     setTimeout(() => chatInputRef.current?.focus(), 0);
@@ -1050,9 +1084,9 @@ export function App() {
     setLeftOpen(!hide);
     setRightOpen(!hide);
   };
-  /** F6: cycle focus between toolbar → left panel → canvas → right panel */
+  /** F6: cycle focus between the dock → left card → canvas → inspector card */
   const cycleFocus = (back: boolean) => {
-    const regions = [".toolbar", ".left", ".canvas", ".right"].map((q) => document.querySelector<HTMLElement>(q)).filter(Boolean) as HTMLElement[];
+    const regions = [".oc-dock", ".oc-left", ".canvas", ".oc-right"].map((q) => document.querySelector<HTMLElement>(q)).filter(Boolean) as HTMLElement[];
     const cur = regions.findIndex((r) => r.contains(document.activeElement));
     const next = regions[(cur + (back ? -1 : 1) + regions.length) % regions.length];
     const target = next.matches(".canvas") ? next : next.querySelector<HTMLElement>("button:not([disabled]), input, select, textarea, [tabindex]");
@@ -1153,19 +1187,27 @@ export function App() {
     const t = window.setTimeout(run, 600);
     return () => window.clearTimeout(t);
   }, [lintTarget, frameTick, reloadKeys[lintTarget ?? ""], tokens?.minTarget, view.zoom >= 0.25]);
-  /** Compact shapes picker for narrow windows */
-  /** Under 480px every tool lives in one menu */
+  /** Menus that open from the dock rise 8px above it, from the button's left edge */
+  const fromDock = (e: { currentTarget: Element }) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const dock = e.currentTarget.closest(".oc-dock")?.getBoundingClientRect() ?? r;
+    return { clientX: r.left, clientY: dock.top - 8 };
+  };
+  /** Under 480px the five canvas tools fold into one button (Shapes keeps its own) */
   const toolsMenu = (at: { clientX: number; clientY: number }) =>
     setMenu({
       x: at.clientX,
       y: at.clientY,
+      up: true,
       title: strings.toolbar.canvasTools,
-      items: TOOLS.map((t) => ({ label: t.label, icon: t.icon, shortcut: t.key, check: tool === t.id, run: () => setTool(t.id) })),
+      items: TOOLS.slice(0, 5).map((t) => ({ label: t.label, icon: t.icon, shortcut: t.key, check: tool === t.id, run: () => setTool(t.id) })),
     });
+  /** Under 900px the shapes fold into one button; Insert image stays in its menu */
   const shapesMenu = (at: { clientX: number; clientY: number }) =>
     setMenu({
       x: at.clientX,
       y: at.clientY,
+      up: true,
       title: strings.toolbar.shapes,
       items: [
         ...TOOLS.slice(5).map((t) => ({ label: t.label, icon: t.icon, shortcut: t.key, check: tool === t.id, run: () => setTool(t.id) })),
@@ -1174,16 +1216,26 @@ export function App() {
       ],
     });
 
-  /** "View" menu: toggles and settings that don't need a toolbar button of their own */
+  /** "View" menu, from the inspector header: toggles and settings without a button of their own. In narrow windows the navigation
+   * card is gone, so its zoom row (and History) lead the menu */
   const viewMenu = (at: { clientX: number; clientY: number }) => {
     const themeNames = tokens ? Object.keys(tokens.themes) : [];
     setMenu({
-      x: Math.max(8, at.clientX - 240), // right-aligned under the button; ContextMenu clamps to the window
+      x: at.clientX,
       y: at.clientY,
+      right: true,
+      className: "view oc-menu",
       title: strings.toolbar.viewMenu,
+      head: narrow ? <ZoomRow zoom={view.zoom} onZoom={zoomBy} onZoom100={() => zoomTo(1)} onFit={fitAll} menu /> : undefined,
       items: [
+        ...(narrow
+          ? [
+              { label: strings.toolbar.history, icon: "clock" as IconName, run: () => openHist() },
+              "sep" as const,
+            ]
+          : []),
         { label: strings.toolbar.guides, icon: "grid", shortcut: "⌃G", check: guidesOn, run: () => setGuidesOn((v) => !v) },
-        { label: strings.toolbar.minimap, icon: "map", shortcut: "M", check: minimapOpen, run: () => setMinimapOpen((v) => !v) },
+        { label: strings.toolbar.minimap, icon: "map", shortcut: "M", check: narrow ? mapNarrow : minimapOpen, run: toggleMinimap },
         { label: strings.toolbar.leftPanel, icon: "panel", shortcut: `${mod}\\`, check: leftOpen, run: () => setLeftOpen((v) => !v) },
         "sep",
         { label: strings.toolbar.appearance(theme), icon: theme === "system" ? "system" : theme === "light" ? "sun" : "moon", run: () => setTheme((t) => (t === "system" ? "light" : t === "light" ? "dark" : "system")) },
@@ -1191,17 +1243,61 @@ export function App() {
           ? themeNames.map((n) => ({ label: strings.toolbar.themeOption(n), icon: "layers" as IconName, check: tokens!.active === n, run: () => void saveTokens({ ...tokens!, active: n }, strings.history.changeTheme) }))
           : []),
         "sep",
+        { label: strings.toolbar.snapshot, icon: "layers", run: () => void snapshotMenu(at, true) },
+      ],
+    });
+  };
+  const toggleMinimap = () => (narrow ? setMapNarrow((v) => !v) : setMinimapOpen((v) => !v));
+  /** The project button in the left card: the folder it serves (today's title tooltip), finding a board, a snapshot */
+  const projectMenu = (at: { clientX: number; clientY: number }) =>
+    setMenu({
+      x: at.clientX,
+      y: at.clientY,
+      title: data?.dir ?? board?.title,
+      items: [
+        { label: strings.boardList.search, icon: "search", shortcut: "⌘K", run: () => { setLeftTab("boards"); setLeftOpen(true); setTimeout(() => searchRef.current?.focus(), 0); } },
         { label: strings.toolbar.snapshot, icon: "layers", run: () => void snapshotMenu(at) },
+      ],
+    });
+  /** Boards that cannot be read: jump to one, ask the AI to fix them, or clean up missing files */
+  const errorsMenu = (at: { clientX: number; clientY: number }, files: string[]) => {
+    if (!board || !data) return;
+    setMenu({
+      x: at.clientX,
+      y: at.clientY,
+      title: strings.toolbar.erroredBoardsN(files.length),
+      items: [
+        ...files.slice(0, 12).map((f) => ({ label: `${board.boards[f]?.title ?? f} — ${(errors[f]?.[0]?.message ?? strings.menu.fileMissing).slice(0, 40)}`, icon: "warn" as IconName, run: () => { select([f]); goTo([f]); } })),
+        "sep" as const,
+        { label: strings.menu.askFixAll, icon: "comment" as IconName, run: () => askFix(files) },
+        ...(data.missing.length
+          ? [
+              {
+                label: strings.menu.cleanMissing(data.missing.length),
+                icon: "trash" as IconName,
+                danger: true,
+                run: () => {
+                  update((b) => {
+                    const boards = { ...b.boards };
+                    for (const f of data.missing) delete boards[f];
+                    return { ...b, boards, order: b.order.filter((f) => !data.missing.includes(f)) };
+                  }, strings.history.cleanMissing);
+                  toast({ text: strings.toast.cleanedUp(data.missing.length), action: undoAction });
+                },
+              },
+            ]
+          : []),
       ],
     });
   };
 
-  const snapshotMenu = async (at: { clientX: number; clientY: number }) => {
+  const snapshotMenu = async (at: { clientX: number; clientY: number }, right = false) => {
     const s = await api.get<{ git: boolean; branch?: string; changed: number; snapshots: { hash: string; author: string; when: string; subject: string }[] }>("/api/snapshots").catch(() => null);
-    if (!s?.git) return setMenu({ x: at.clientX, y: at.clientY, title: strings.menu.snapshot, items: [{ label: strings.menu.notGit, disabled: true, run: () => {} }] });
+    if (!s?.git) return setMenu({ x: at.clientX, y: at.clientY, right, title: strings.menu.snapshot, items: [{ label: strings.menu.notGit, disabled: true, run: () => {} }] });
     setMenu({
       x: at.clientX,
       y: at.clientY,
+      right,
       title: strings.menu.snapshotStatus(s.branch ?? "", s.changed),
       items: [
         {
@@ -1342,6 +1438,10 @@ export function App() {
     }
   };
   const closeHist = useCallback(() => setHistOpen(false), []);
+  const openHist = () => {
+    act.reload();
+    setHistOpen(true);
+  };
   // A tag that went away (undone, cleared) closes its popover
   useEffect(() => {
     if (tagPop && !tagOf(tagPop.file, tagPop.key)) setTagPop(null);
@@ -1474,7 +1574,7 @@ export function App() {
     }
     if (e.key === "F2" && one) return run(() => void renameBoard(one));
     if (k === "f" && one) return run(() => setFocusFile(one));
-    if (k === "m") return run(() => setMinimapOpen((v) => !v));
+    if (k === "m") return run(toggleMinimap);
     const t = TOOLS.find((x) => x.key.toLowerCase() === k);
     if (t) return run(() => setTool(t.id));
   };
@@ -1490,7 +1590,7 @@ export function App() {
     const doc = frames.current.get(f)?.contentDocument;
     const editing = editFile === f;
     const lg = guidesOn ? (board?.guides?.[f] ?? []).filter((g) => !g.hidden) : [];
-    // The newest unseen change by someone else, outlined in its author's colour while its tag is fresh
+    // The newest unseen change by someone else, outlined (dashed, set off) while its tag is fresh
     const changed = inlinePlay === f ? undefined : act.tagsOf(f).find((t) => t.paths.length && act.stateOf(t) === "fresh");
     const hov = hover?.file === f && inlinePlay !== f && !(editing && edit.state.paths.includes(hover.path)) ? hover : null;
     const mq = elMarquee?.file === f ? elMarquee.rect : null;
@@ -1499,7 +1599,7 @@ export function App() {
     const px = 1 / Math.max(view.zoom, 0.05);
     return (
       <div className="overlay">
-        {changed && <ChangeOutline frame={frames.current.get(f) ?? null} paths={changed.paths} color={authorColor(changed)} zoom={view.zoom} />}
+        {changed && <ChangeOutline frame={frames.current.get(f) ?? null} paths={changed.paths} zoom={view.zoom} />}
         {lg.length > 0 && board && <GuidesOverlay guides={lg} w={board.boards[f].w} h={board.boards[f].h} />}
         {hov && <Box r={hov.rect} cls="hover" px={px} />}
         {editing && edit.state.rects.map((r, i) => <Box key={i} r={r} cls="sel" px={px} />)}
@@ -1564,7 +1664,7 @@ export function App() {
     return visibleBoards.filter((f) => { const b = board.boards[f]; return b.x < vx + vw && b.x + b.w > vx && b.y < vy + vh && b.y + b.h > vy; }).length;
   })();
   const leftTabs = (
-    <div className="left-tabs" role="tablist" aria-label={strings.tabs.left}>
+    <div className="oc-tabs" role="tablist" aria-label={strings.tabs.left} ref={leftTabsRef}>
       <button role="tab" aria-selected={leftTab === "boards"} className={leftTab === "boards" ? "on" : ""} onClick={() => setLeftTab("boards")}>
         {strings.tabs.boards}
       </button>
@@ -1577,149 +1677,102 @@ export function App() {
     </div>
   );
   const rects = visibleBoards.map((f) => ({ file: f, ...board.boards[f] }));
-
-  return (
-    <div className="app">
-      <header className="toolbar" role="toolbar" aria-label={strings.toolbar.aria}>
-        <div className="tb-zone tb-left">
-          <button className={`icon-btn ${leftOpen ? "on" : ""}`} aria-label={strings.toolbar.leftPanel} aria-pressed={leftOpen} title={strings.toolbar.leftPanelTitle(mod)} onClick={() => setLeftOpen((v) => !v)}>
-            <Icon name="panel" style={{ transform: "scaleX(-1)" }} />
-          </button>
-          <button className="icon-btn tb-tools-compact" aria-label={strings.toolbar.canvasTools} aria-haspopup="menu" title={strings.toolbar.canvasTools} onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); toolsMenu({ clientX: r.left, clientY: r.bottom + 4 }); }}>
-            <Icon name={TOOLS.find((t) => t.id === tool)?.icon ?? "select"} />
-            <Icon name="chevronDown" size={12} />
-          </button>
-          <div className="tool-group tb-tools-full" role="radiogroup" aria-label={strings.toolbar.canvasTools}>
-            {TOOLS.slice(0, 5).map((t) => (
-              <button key={t.id} role="radio" aria-checked={tool === t.id} aria-label={strings.toolbar.tool(t.label, t.key)} title={strings.toolbar.tool(t.hint, t.key)} className={`icon-btn ${tool === t.id ? "on" : ""}`} onClick={() => setTool(t.id)}>
-                <Icon name={t.icon} />
-              </button>
-            ))}
-          </div>
-          <button className={`icon-btn tb-shapes-compact ${SHAPE_TOOLS.includes(tool) ? "on" : ""}`} aria-label={strings.toolbar.shapes} aria-haspopup="menu" title={strings.toolbar.shapes} onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); shapesMenu({ clientX: r.left, clientY: r.bottom + 4 }); }}>
-            <Icon name={TOOLS.find((t) => t.id === tool && SHAPE_TOOLS.includes(t.id))?.icon ?? "rect"} />
-            <Icon name="chevronDown" size={12} />
-          </button>
-          <div className="tool-group tb-shapes-full" role="radiogroup" aria-label={strings.toolbar.shapes}>
-            {TOOLS.slice(5).map((t) => (
-              <button key={t.id} role="radio" aria-checked={tool === t.id} aria-label={strings.toolbar.tool(t.label, t.key)} title={strings.toolbar.shapeToolTitle(t.hint, t.key)} className={`icon-btn ${tool === t.id ? "on" : ""}`} onClick={() => setTool(t.id)}>
-                <Icon name={t.icon} />
-              </button>
-            ))}
-            <button className="icon-btn" aria-label={strings.toolbar.insertImage} title={strings.toolbar.insertImageTitle} onClick={() => setPicker(() => (a: Asset) => { setPicker(null); addImageShape(a); })}>
-              <Icon name="image" />
+  const nothingPicked = !editFile && !selected.length && !selectedNotes.length && !selectedShapes.length;
+  /** Decision b: with nothing selected and the AI tab closed the inspector is only its header (closed with × or ⌘\ too) */
+  const rest = !rightOpen || (rightTab === "inspect" && nothingPicked);
+  /** Under 480 the open inspector is a sheet from the foot; the dock and the context line step aside while it is open */
+  const sheet = phone && !rest;
+  const inset = narrow ? 8 : 12;
+  /** The left card ends under its last row; a long list scrolls inside, above the navigation card (or above the dock) */
+  const leftMax = win.h - inset - (narrow ? 8 + 48 + 8 : 12 + 160 + 12);
+  const leftCls = `oc-card oc-left ${leftOpen ? "" : "is-collapsed"} ${leftOpen && leftTab !== "boards" ? "is-tall" : ""}`;
+  const leftHeader = (
+    <>
+      <div className="oc-head">
+        <button
+          className="oc-project"
+          title={data.dir ?? board.title}
+          aria-haspopup="menu"
+          onClick={(e) => {
+            const r = e.currentTarget.getBoundingClientRect();
+            projectMenu({ clientX: r.left, clientY: r.bottom + 8 });
+          }}
+        >
+          <strong className="app-title">{board.title}</strong>
+          <Icon name="chevronDown" size={16} />
+        </button>
+        <button className={`icon-btn oc-ib ${leftOpen ? "on" : ""}`} aria-label={strings.toolbar.leftPanel} aria-pressed={leftOpen} title={strings.toolbar.leftPanelTitle(mod)} onClick={() => setLeftOpen((v) => !v)}>
+          <Icon name="panel" />
+        </button>
+      </div>
+      {(erroredFiles.length > 0 || error) && (
+        <div className="oc-status">
+          {erroredFiles.length > 0 && (
+            <button className="err-chip" aria-haspopup="menu" title={strings.toolbar.erroredBoards} onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); errorsMenu({ clientX: r.left, clientY: r.bottom + 8 }, erroredFiles); }}>
+              <Icon name="warn" size={16} /> {strings.toolbar.errors(erroredFiles.length)}
             </button>
-          </div>
-          <div className="tool-group undo-split">
-            <button className="icon-btn" aria-label={strings.toolbar.undo} title={strings.toolbar.undoTitle(hist.undo.length ? hist.undo[hist.undo.length - 1] : undefined, mod)} disabled={!hist.canUndo} onClick={() => void undoRedo("undo")}>
-              <Icon name="undo" />
-            </button>
-            <button
-              ref={caretRef}
-              className={`icon-btn caret-btn ${histOpen ? "on" : ""}`}
-              aria-label={strings.activity.historyButton}
-              aria-haspopup="menu"
-              aria-expanded={histOpen}
-              title={strings.activity.historyButton}
-              onClick={() => {
-                if (!histOpen) act.reload();
-                setHistOpen((v) => !v);
-              }}
-            >
-              <Icon name="chevronDown" size={14} />
-            </button>
-            <button className="icon-btn" aria-label={strings.toolbar.redo} title={strings.toolbar.redoTitle(hist.redo.length ? hist.redo[hist.redo.length - 1] : undefined, mod)} disabled={!hist.canRedo} onClick={() => void undoRedo("redo")}>
-              <Icon name="redo" />
-            </button>
-          </div>
-          <button className="new-board" aria-haspopup="menu" title={strings.toolbar.newBoardTitle} onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); templateMenu({ clientX: r.left, clientY: r.bottom + 4 }); }}>
-            <Icon name="plus" size={16} /> <span className="tb-label">{strings.toolbar.newBoard}</span> <Icon name="chevronDown" size={14} />
-          </button>
-        </div>
-        <div className="tb-zone tb-center">
-          <strong className="app-title" title={data?.dir ?? board.title}>{board.title}</strong>
-        {erroredFiles.length > 0 && (
-          <button
-            className="err-chip"
-            aria-haspopup="menu"
-            title={strings.toolbar.erroredBoards}
-            onClick={(e) => {
-              const r = e.currentTarget.getBoundingClientRect();
-              setMenu({
-                x: r.left,
-                y: r.bottom + 4,
-                title: strings.toolbar.erroredBoardsN(erroredFiles.length),
-                items: [
-                  ...erroredFiles.slice(0, 12).map((f) => ({ label: `${board.boards[f]?.title ?? f} — ${(errors[f]?.[0]?.message ?? strings.menu.fileMissing).slice(0, 40)}`, icon: "warn" as IconName, run: () => { select([f]); goTo([f]); } })),
-                  "sep" as const,
-                  { label: strings.menu.askFixAll, icon: "comment" as IconName, run: () => askFix(erroredFiles) },
-                  ...(data.missing.length
-                    ? [
-                        {
-                          label: strings.menu.cleanMissing(data.missing.length),
-                          icon: "trash" as IconName,
-                          danger: true,
-                          run: () => {
-                            update((b) => {
-                              const boards = { ...b.boards };
-                              for (const f of data.missing) delete boards[f];
-                              return { ...b, boards, order: b.order.filter((f) => !data.missing.includes(f)) };
-                            }, strings.history.cleanMissing);
-                            toast({ text: strings.toast.cleanedUp(data.missing.length), action: undoAction });
-                          },
-                        },
-                      ]
-                    : []),
-                ],
-              });
-            }}
-          >
-            <Icon name="warn" size={14} /> {strings.toolbar.errors(erroredFiles.length)}
-          </button>
-        )}
+          )}
           {error && <span className="warn">{error}</span>}
         </div>
-        <div className="tb-zone tb-right">
-          <div className="tool-group">
-            <button className="icon-btn" aria-label={strings.toolbar.zoomOut} title={strings.toolbar.zoomOutTitle(mod)} onClick={() => zoomBy(1 / 2)}>
-              <span className="glyph">−</span>
-            </button>
-            <button className="zoom" aria-label={strings.toolbar.zoom100} title={strings.toolbar.zoom100Title(mod)} onClick={() => zoomTo(1)}>
-              {Math.round(view.zoom * 100)}%
-            </button>
-            <button className="icon-btn" aria-label={strings.toolbar.zoomIn} title={strings.toolbar.zoomInTitle(mod)} onClick={() => zoomBy(2)}>
-              <Icon name="plus" />
-            </button>
-            <button className="icon-btn" aria-label={strings.toolbar.fitAll} title={strings.toolbar.fitAllTitle} onClick={fitAll}>
-              <Icon name="fit" />
-            </button>
-          </div>
-          <ShareButton pages={pages} currentPage={currentPage} selected={selected} />
-          <div className="tool-group">
-            <button className={`ask-ai ${rightTab === "chat" ? "on" : ""}`} aria-label={strings.toolbar.aiChat} aria-pressed={rightTab === "chat"} title={strings.toolbar.aiChatTitle(mod)} onClick={() => (rightTab === "chat" ? setRightTab("inspect") : openChat())}>
-              <Icon name="comment" size={16} /> <span className="ask-ai-label">{strings.toolbar.askAi}</span>
-            </button>
-            <button className="icon-btn" aria-label={strings.toolbar.viewMenu} aria-haspopup="menu" title={strings.toolbar.viewMenuTitle} onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); viewMenu({ clientX: r.right, clientY: r.bottom + 4 }); }}>
-              <Icon name="more" />
-            </button>
-          </div>
-        </div>
-      </header>
-      <div className="main">
-        {leftOpen && (
-          leftTab === "tokens" ? (
-            <aside className="left" aria-label={strings.app.tokensAside}>
-              {leftTabs}
-              {tokens ? <TokenPanel tokens={tokens} onSave={(t, label) => void saveTokens(t, label)} /> : <p className="empty">{strings.app.loading}</p>}
-            </aside>
-          ) : leftTab === "assets" ? (
-            <aside className="left" aria-label={strings.app.assetsAside}>
-              {leftTabs}
-              <AssetGrid version={assetsVersion} onError={(m) => toast({ tone: "error", text: m })} onUploaded={(a) => toast({ tone: "ok", text: strings.toast.uploaded(a.map((x) => x.name).join(", ")) })} />
-            </aside>
-          ) : (
+      )}
+      {leftOpen && leftTabs}
+    </>
+  );
+  // The element toolbar takes the context line when exactly one element is selected (and it is not being typed in or played)
+  const etbSel = edit.state.selection;
+  const etbOn = !!editFile && !!board.boards[editFile] && !!etbSel && etbSel.file === editFile && edit.state.paths.length === 1 && !typing && tool === "select" && inlinePlay !== editFile;
+  /** A menu from the dock (History, New board, tools, shapes) takes the slot above the dock: the context line is empty meanwhile */
+  const dockMenu = histOpen || !!menu?.up;
+  const hintOn = !etbOn && tool === "select" && !typing && !dockMenu && !(one && inlinePlay === one);
+  /** The sheet's top: 8px under the selection's handles, so what you picked stays in view above it */
+  const sheetTop = (() => {
+    if (!sheet) return 0;
+    const b = editFile ? board.boards[editFile] : one ? board.boards[one] : null;
+    const r = editFile ? edit.state.rects[0] : null;
+    const bottom = b ? view.y + (b.y + (r ? r.y + r.h : b.h)) * view.zoom + 4 : 0;
+    // The chat needs its head, a few lines of thread and the composer: it keeps 480px when the window allows
+    return Math.round(clamp(bottom + 8, inset + 48 + inset, win.h - (rightTab === "chat" ? 480 : 280)));
+  })();
+  const elSel = editFile && edit.state.selection?.file === editFile ? edit.state.selection : null;
+  const checks = lintTarget && board.boards[lintTarget] && (
+    <section className="pp-group">
+      <h3 className="pp-group-h">{strings.sections.checks}</h3>
+      {tokens && !tokens.registered ? (
+        <Collapsible variant="row" id="token-check" title={strings.sections.tokenCheck} count={strings.checks.off}>
+          <TokenCheckOff onSetUp={() => { setLeftTab("tokens"); setLeftOpen(true); }} />
+        </Collapsible>
+      ) : (
+        <Collapsible variant="row" id="token-check" title={strings.sections.tokenCheck} count={lint?.length ?? 0}>
+          <CheckList title={strings.checks.tokenCheck(tokens?.active ?? "")} items={lint} empty={strings.checks.noOffToken} onPick={(p) => pickPath(lintTarget, p)} onAskAI={() => openChat(strings.prompts.fixTokens((lint ?? []).slice(0, 12).map((x) => `- ${x.path ?? strings.prompts.line + x.line}: ${x.message}`).join("\n")), [lintTarget])} />
+        </Collapsible>
+      )}
+      <Collapsible variant="row" id="a11y" title={strings.sections.a11y} count={a11y?.length ?? 0}>
+        <CheckList title={strings.checks.a11y} items={a11y} empty={strings.checks.a11yOk} onPick={(p) => pickPath(lintTarget, p)} onAskAI={() => openChat(strings.prompts.fixA11y((a11y ?? []).slice(0, 12).map((x) => `- ${x.path}: ${x.message}`).join("\n")), [lintTarget])} />
+      </Collapsible>
+    </section>
+  );
+
+  return (
+    <div className={`app oc ${narrow ? "oc-n" : ""} ${win.w <= 760 ? "narrow" : ""} ${phone ? "oc-phone" : ""}`}>
+      {leftOpen && leftTab === "tokens" ? (
+        <aside className={leftCls} style={{ maxHeight: leftMax }} aria-label={strings.app.tokensAside}>
+          {leftHeader}
+          {tokens ? <TokenPanel tokens={tokens} onSave={(t, label) => void saveTokens(t, label)} /> : <p className="oc-empty">{strings.app.loading}</p>}
+        </aside>
+      ) : leftOpen && leftTab === "assets" ? (
+        <aside className={leftCls} style={{ maxHeight: leftMax }} aria-label={strings.app.assetsAside}>
+          {leftHeader}
+          <AssetGrid version={assetsVersion} onError={(m) => toast({ tone: "error", text: m })} onUploaded={(a) => toast({ tone: "ok", text: strings.toast.uploaded(a.map((x) => x.name).join(", ")) })} />
+        </aside>
+      ) : !leftOpen ? (
+        <aside className={leftCls} aria-label={strings.boardList.aria}>
+          {leftHeader}
+        </aside>
+      ) : (
           <LeftPanel
-            header={leftTabs}
+            className={leftCls}
+            style={{ maxHeight: leftMax }}
+            header={leftHeader}
             ref={searchRef}
             board={board}
             pages={pages}
@@ -1772,8 +1825,7 @@ export function App() {
               setMenu({ x: at.clientX, y: at.clientY, title: board.boards[f]?.title ?? f, items: boardMenuItems(f) });
             }}
           />
-          )
-        )}
+      )}
         <div
           className="canvas-wrap"
           onDragOver={(e) => {
@@ -1894,10 +1946,7 @@ export function App() {
               const g = choiceGroup(board, f);
               return g ? <UseButton file={f} group={g} busy={busyIn(occ, g)} open={useOpen?.file === f} onOpen={() => setUseOpen((c) => (c?.file === f ? null : { file: f, busy: false }))} /> : null;
             }}
-            boardRing={(f) => {
-              const w = writersOn(occ, f)[0];
-              return w ? holderColor(w) : null;
-            }}
+            boardRing={(f) => (writersOn(occ, f).length ? "var(--line-strong)" : null)}
             worldLayer={
               <>
               <ForkLinks board={board} files={visibleBoards} zoom={view.zoom} />
@@ -1951,43 +2000,6 @@ export function App() {
             }}
           />
           {SHAPE_TOOLS.includes(tool) && <ShapeDrawer tool={tool as ShapeKind} view={view} onDone={(sh) => addShape(sh)} />}
-          {(() => {
-            // The element toolbar: over the selected element on screen, following zoom, pan, board moves and scrolling inside the board
-            const sel = edit.state.selection;
-            const r = edit.state.rects[0];
-            const b = editFile ? board.boards[editFile] : null;
-            if (!editFile || !b || !sel || sel.file !== editFile || edit.state.paths.length !== 1 || !r || typing || tool !== "select" || inlinePlay === editFile) return null;
-            const anchor = { x: view.x + (b.x + r.x) * view.zoom, y: view.y + (b.y + r.y) * view.zoom, w: r.w * view.zoom, h: r.h * view.zoom };
-            // Narrow windows: the open right drawer covers the canvas' right side, so the toolbar keeps left of it
-            const bounds = { w: size.w - (narrow && rightOpen ? Math.min(340, window.innerWidth - 48) : 0), h: size.h, top: view.y + b.y * view.zoom };
-            if (anchor.x > bounds.w || anchor.y > bounds.h || anchor.x + anchor.w < 0 || anchor.y + anchor.h < 0) return null;
-            const doc = frames.current.get(editFile)?.contentDocument;
-            const el = doc ? elementAt(doc, sel.path) : null;
-            return (
-              <ElementBar
-                anchor={anchor}
-                bounds={bounds}
-                selection={sel}
-                inline={el ? inlineStyles(el) : {}}
-                tokens={tokens}
-                vars={vars}
-                onStyle={setElementStyle}
-                onAskAi={() => openChat()}
-                onComment={() => {
-                  setRightTab("inspect");
-                  setRightOpen(true);
-                  setTimeout(() => commentRef.current?.focus(), 0);
-                }}
-              />
-            );
-          })()}
-          {tool === "select" && !narrow && (editFile || (one && board.boards[one] && !inlinePlay)) && !typing && <div className="canvas-hint" aria-hidden="true">{strings.canvas.hint}</div>}
-          {firstRunHint && visibleBoards.length > 0 && (
-            <div className="first-run" role="status">
-              <div className="first-run-line"><Icon name="select" size={16} /> {strings.app.firstRunEdit}</div>
-              <div className="first-run-line"><Icon name="comment" size={16} /> {strings.app.firstRunAi(mod)}</div>
-            </div>
-          )}
           {visibleBoards.length === 0 && visibleNotes.length === 0 && visibleShapes.length === 0 && (
             <div className="canvas-empty">
               <Icon name="board" size={32} />
@@ -1997,26 +2009,83 @@ export function App() {
               </button>
             </div>
           )}
-          {minimapOpen && rects.length > 0 && (
-            <Minimap rects={rects} selected={selected} view={view} size={size} onJump={(x, y) => setView((v) => ({ ...v, x: size.w / 2 - x * v.zoom, y: size.h / 2 - y * v.zoom }))} />
-          )}
         </div>
-        {narrow && leftOpen && <div className="drawer-backdrop" onPointerDown={() => setLeftOpen(false)} />}
-        <div className="right" hidden={!rightOpen}>
-          <div className="right-tabs" role="tablist" aria-label={strings.tabs.right}>
-            <button role="tab" aria-selected={rightTab === "inspect"} className={rightTab === "inspect" ? "on" : ""} onClick={() => setRightTab("inspect")}>
-              {strings.tabs.properties}
+        {/* Decision a · the context line: the element toolbar when one element is selected, otherwise the hint. Never both */}
+        {!sheet &&
+          (etbOn && etbSel && !dockMenu ? (
+            <ElementBar
+              win={win}
+              bottom={narrow ? 64 : 68}
+              selection={etbSel}
+              inline={(() => {
+                const doc = frames.current.get(editFile!)?.contentDocument;
+                const el = doc ? elementAt(doc, etbSel.path) : null;
+                return el ? inlineStyles(el) : {};
+              })()}
+              tokens={tokens}
+              vars={vars}
+              onStyle={setElementStyle}
+              onAskAi={() => openChat()}
+              onComment={() => {
+                setRightTab("inspect");
+                setRightOpen(true);
+                setTimeout(() => commentRef.current?.focus(), 0);
+              }}
+            />
+          ) : (
+            hintOn && <CanvasHint win={win} first={firstRunHint && visibleBoards.length > 0} />
+          ))}
+        {!narrow && (
+          <nav className={`oc-card oc-nav ${minimapOpen && rects.length ? "" : "is-collapsed"}`} aria-label={strings.app.navigation}>
+            {minimapOpen && rects.length > 0 && <Minimap className="oc-map" w={240} h={112} inset={8} rects={rects} selected={selected} view={view} size={size} onJump={centreOn} />}
+            <ZoomRow zoom={view.zoom} onZoom={zoomBy} onZoom100={() => zoomTo(1)} onFit={fitAll} />
+          </nav>
+        )}
+        {narrow && mapNarrow && rects.length > 0 && !sheet && (
+          <nav className="oc-card oc-nav oc-nav-n" aria-label={strings.app.navigation}>
+            <Minimap className="oc-map" w={240} h={112} inset={8} rects={rects} selected={selected} view={view} size={size} onJump={centreOn} />
+          </nav>
+        )}
+        <aside
+          className={`oc-card oc-right ${rest ? "is-rest" : ""} ${sheet ? "oc-sheet" : ""}`}
+          aria-label={strings.app.inspectorAside}
+          style={sheet ? { top: sheetTop, height: win.h - sheetTop - 8 } : undefined}
+        >
+          <div className="oc-rhead" ref={rheadRef}>
+            <ShareButton pages={pages} currentPage={currentPage} selected={selected} />
+            <button className={`ask-ai ${rightTab === "chat" && !rest ? "on" : ""}`} aria-label={strings.toolbar.aiChat} aria-pressed={rightTab === "chat" && !rest} title={strings.toolbar.aiChatTitle(mod)} onClick={() => (rightTab === "chat" && !rest ? setRightTab("inspect") : openChat())}>
+              <Icon name="comment" size={16} /> <span className="ask-ai-label">{strings.toolbar.askAi}</span>
             </button>
-            <button role="tab" aria-selected={rightTab === "chat"} className={rightTab === "chat" ? "on" : ""} onClick={() => openChat()}>
-              {strings.tabs.ai} <kbd>{mod}J</kbd>
+            <button
+              className={`icon-btn ${menu?.className?.startsWith("view") ? "on" : ""}`}
+              aria-label={strings.toolbar.viewMenu}
+              aria-haspopup="menu"
+              aria-expanded={!!menu?.className?.startsWith("view")}
+              title={narrow ? strings.toolbar.viewMenuTitleNarrow : strings.toolbar.viewMenuTitle}
+              onClick={(e) => {
+                const r = e.currentTarget.getBoundingClientRect();
+                viewMenu({ clientX: r.right, clientY: r.bottom + 8 });
+              }}
+            >
+              <Icon name="more" />
             </button>
-            {narrow && (
-              <button className="icon-btn sm right-close" aria-label={strings.tabs.closePanel} title={strings.tabs.closePanel} onClick={() => setRightOpen(false)}>
-                <Icon name="close" size={14} />
-              </button>
-            )}
           </div>
-          <div className="chat-wrap" hidden={rightTab !== "chat"}>
+          {!rest && (
+            <div className="oc-tabs" role="tablist" aria-label={strings.tabs.right} ref={rightTabsRef}>
+              <button role="tab" aria-selected={rightTab === "inspect"} className={rightTab === "inspect" ? "on" : ""} onClick={() => setRightTab("inspect")}>
+                {strings.tabs.properties}
+              </button>
+              <button role="tab" aria-selected={rightTab === "chat"} className={rightTab === "chat" ? "on" : ""} onClick={() => openChat()}>
+                {strings.tabs.ai} <kbd>{mod}J</kbd>
+              </button>
+              {narrow && (
+                <button className="icon-btn oc-close" aria-label={strings.tabs.closePanel} title={`${strings.tabs.closePanel} (${mod}\\)`} onClick={() => setRightOpen(false)}>
+                  <Icon name="close" size={16} />
+                </button>
+              )}
+            </div>
+          )}
+          <div className="chat-wrap" hidden={rest || rightTab !== "chat"}>
             <ChatPanel
               selection={editFile && edit.state.selection?.file === editFile ? edit.state.selection : null}
               boards={editFile ? [editFile] : selected}
@@ -2032,12 +2101,11 @@ export function App() {
               subscribe={chatSubscribe}
               onLocate={setLocate}
               inputRef={chatInputRef}
-              open={rightTab === "chat" && rightOpen}
+              open={rightTab === "chat" && !rest}
             />
           </div>
-          {rightTab === "inspect" && (
+          {rightTab === "inspect" && !rest && (
         <Inspector
-          onAskAi={() => openChat()}
           author={author || strings.app.defaultAuthor}
           onAuthor={async () => {
             const r = await ask.prompt({ title: strings.dialog.authorTitle, label: strings.dialog.name, value: author, ok: strings.dialog.save });
@@ -2087,6 +2155,19 @@ export function App() {
             const f = editFile ?? one;
             if (f) pickElement(f, [p]);
           }}
+          onDuplicate={elSel ? () => void doEdit({ op: "duplicate", path: elSel.path, hash: elSel.hash }) : undefined}
+          onDelete={
+            elSel
+              ? async () => {
+                  if (await doEdit({ op: "delete", path: elSel.path, hash: elSel.hash })) void edit.select([]);
+                }
+              : undefined
+          }
+          footer={
+            !editFile && one && board.boards[one] ? (
+              <BoardActions onFocus={() => setFocusFile(one)} onDuplicate={() => void duplicateBoard(one)} onFront={() => reorder([one], "front")} onBack={() => reorder([one], "back")} onDelete={() => void deleteBoards([one])} />
+            ) : undefined
+          }
         >
           {!editFile && selectedShape && shapes[selectedShape] && (
             <ShapeOptions shape={shapes[selectedShape]} onPatch={(pt) => patchShape(selectedShape, pt, strings.history.shapeStyle)} onDelete={() => deleteShapes([selectedShape])} onFront={() => shapeZ(selectedShape, "front")} onBack={() => shapeZ(selectedShape, "back")} />
@@ -2113,13 +2194,17 @@ export function App() {
               onPatch={(patch) => patchBoard(one, patch)}
               onRename={() => void renameBoard(one)}
               onRenameFile={() => void renameFile(one)}
-              onFocus={() => setFocusFile(one)}
-              onFront={() => reorder([one], "front")}
-              onBack={() => reorder([one], "back")}
-              onDuplicate={() => void duplicateBoard(one)}
-              onDelete={() => void deleteBoards([one])}
               onLaunch={(on) => update((b) => ({ ...b, launch: on ? { view: "focused", file: one } : { view: "canvas" } }), strings.history.launchScreen)}
             />
+          )}
+          {!editFile && checks}
+          {!editFile && one && board.boards[one] && (
+            <Collapsible id="guides" title={strings.sections.guides} count={(board.guides?.[one] ?? []).length}>
+              <GuidesEditor
+              guides={board.guides?.[one] ?? []}
+              onChange={(g: LayoutGuide[], label) => update((b) => ({ ...b, guides: { ...(b.guides ?? {}), [one]: g } }), label)}
+            />
+            </Collapsible>
           )}
           {!editFile && one && board.boards[one] && readTweaks(frames.current.get(one)?.contentDocument) && (
             <Collapsible id="tweaks" title={strings.sections.tweaks}>
@@ -2137,55 +2222,25 @@ export function App() {
             />
             </Collapsible>
           )}
-          {lintTarget && board.boards[lintTarget] && (
-            <>
-              {tokens && !tokens.registered ? (
-                <Collapsible id="token-check" title={strings.sections.tokenCheck} count={strings.checks.off}>
-                  <TokenCheckOff onSetUp={() => { setLeftTab("tokens"); setLeftOpen(true); }} />
-                </Collapsible>
-              ) : (
-                <Collapsible id="token-check" title={strings.sections.tokenCheck} count={lint?.length ?? 0}>
-                  <CheckList title={strings.checks.tokenCheck(tokens?.active ?? "")} items={lint} empty={strings.checks.noOffToken} onPick={(p) => pickPath(lintTarget, p)} onAskAI={() => openChat(strings.prompts.fixTokens((lint ?? []).slice(0, 12).map((x) => `- ${x.path ?? strings.prompts.line + x.line}: ${x.message}`).join("\n")), [lintTarget])} />
-                </Collapsible>
-              )}
-              <Collapsible id="a11y" title={strings.sections.a11y} count={a11y?.length ?? 0}>
-                <CheckList title={strings.checks.a11y} items={a11y} empty={strings.checks.a11yOk} onPick={(p) => pickPath(lintTarget, p)} onAskAI={() => openChat(strings.prompts.fixA11y((a11y ?? []).slice(0, 12).map((x) => `- ${x.path}: ${x.message}`).join("\n")), [lintTarget])} />
-              </Collapsible>
-            </>
-          )}
-          {!editFile && one && board.boards[one] && (
-            <Collapsible id="guides" title={strings.sections.guides} count={(board.guides?.[one] ?? []).length}>
-              <GuidesEditor
-              guides={board.guides?.[one] ?? []}
-              onChange={(g: LayoutGuide[], label) => update((b) => ({ ...b, guides: { ...(b.guides ?? {}), [one]: g } }), label)}
-            />
-            </Collapsible>
-          )}
           {!editFile && selectedShapes.length > 1 && (
-            <section className="board-opts">
-              <div className="sec-head">
-                <span>{strings.shapes.selectedN(selectedShapes.length)}</span>
-              </div>
+            <section className="pp-group">
+              <h3 className="pp-group-h">{strings.shapes.selectedN(selectedShapes.length)}</h3>
               <div className="btn-row">
                 <button className="icon-btn danger" aria-label={strings.shapes.deleteAll} title={strings.shapes.deleteAll} onClick={() => deleteShapes(selectedShapes)}><Icon name="trash" /></button>
               </div>
             </section>
           )}
           {!editFile && selectedNotes.length > 1 && (
-            <section className="board-opts">
-              <div className="sec-head">
-                <span>{strings.notes.selectedN(selectedNotes.length)}</span>
-              </div>
+            <section className="pp-group">
+              <h3 className="pp-group-h">{strings.notes.selectedN(selectedNotes.length)}</h3>
               <div className="btn-row">
                 <button className="icon-btn danger" aria-label={strings.notes.deleteAll} title={strings.notes.deleteAll} onClick={() => deleteNotes(selectedNotes)}><Icon name="trash" /></button>
               </div>
             </section>
           )}
           {!editFile && selected.length > 1 && (
-            <section className="board-opts">
-              <div className="sec-head">
-                <span>{strings.boardOptions.selectedN(selected.length)}</span>
-              </div>
+            <section className="pp-group">
+              <h3 className="pp-group-h">{strings.boardOptions.selectedN(selected.length)}</h3>
               <div className="btn-row">
                 <button className="icon-btn" aria-label={strings.boardOptions.front} title={strings.boardOptions.frontTitleMod(mod)} onClick={() => reorder(selected, "front")}><Icon name="front" /></button>
                 <button className="icon-btn" aria-label={strings.boardOptions.back} title={strings.boardOptions.backTitleMod(mod)} onClick={() => reorder(selected, "back")}><Icon name="back" /></button>
@@ -2226,16 +2281,14 @@ export function App() {
                 vars={vars}
                 onStyle={setElementStyle}
                 onAttr={(name, value) => void doEdit({ op: "setAttr", path: sel.path, hash: sel.hash, name, value })}
-                onDuplicate={() => void doEdit({ op: "duplicate", path: sel.path, hash: sel.hash })}
-                onDelete={async () => {
-                  if (await doEdit({ op: "delete", path: sel.path, hash: sel.hash })) void edit.select([]);
-                }}
                 onWrap={async (display) => {
                   const ordered = [...paths].sort((a, b) => Number(a.split("/").pop()) - Number(b.split("/").pop()));
                   const hashes = await Promise.all(ordered.map((p) => api.get<{ hash: string }>(`/api/element?f=${encodeURIComponent(editFile)}&path=${encodeURIComponent(p)}`).then((r) => r.hash)));
                   if (await doEdit({ op: "wrap", paths: ordered, hashes, display })) void edit.select([ordered[0]]);
                 }}
-              />
+              >
+                {checks}
+              </Properties>
             );
           })()}
           {(editFile ?? (selectedShapes.length || selectedNotes.length ? null : one)) && (() => {
@@ -2259,8 +2312,26 @@ export function App() {
           })()}
         </Inspector>
           )}
-        </div>
-      </div>
+        </aside>
+      {!sheet && (
+        <Dock
+          tool={tool}
+          setTool={setTool}
+          phone={phone}
+          foldShapes={win.w <= 900}
+          win={win}
+          hist={hist}
+          histOpen={histOpen}
+          caretRef={caretRef}
+          onNewBoard={(e) => templateMenu(fromDock(e))}
+          onToolsMenu={(e) => toolsMenu(fromDock(e))}
+          onShapesMenu={(e) => shapesMenu(fromDock(e))}
+          onInsertImage={() => setPicker(() => (a: Asset) => { setPicker(null); addImageShape(a); })}
+          onUndo={() => void undoRedo("undo")}
+          onRedo={() => void undoRedo("redo")}
+          onHistory={() => (histOpen ? closeHist() : openHist())}
+        />
+      )}
       {playFile && (
         <Play
           board={board}
@@ -2287,7 +2358,7 @@ export function App() {
       <div className="sr-only" role="status" aria-live="polite">
         {announce}
       </div>
-      <ContextMenu menu={menu} onClose={() => setMenu(null)} />
+      <ContextMenu menu={menu} onClose={() => setMenu(null)} head={menu?.className?.startsWith("view") && narrow ? <ZoomRow zoom={view.zoom} onZoom={zoomBy} onZoom100={() => zoomTo(1)} onFit={fitAll} menu /> : undefined} />
       {tagPop && !playFile && (() => {
         const t = tagOf(tagPop.file, tagPop.key);
         return t ? (
@@ -2344,4 +2415,151 @@ function focusCanvas() {
   if (!c) return;
   c.tabIndex = -1;
   c.focus({ preventScroll: true });
+}
+
+/** − value + … Fit all: the navigation card's zoom row, and the View menu's in narrow windows */
+function ZoomRow(p: { zoom: number; onZoom: (k: number) => void; onZoom100: () => void; onFit: () => void; menu?: boolean }) {
+  return (
+    <div className={p.menu ? "menu-zoom" : "oc-zoom"}>
+      <button className="icon-btn oc-ib" aria-label={strings.toolbar.zoomOut} title={strings.toolbar.zoomOutTitle(mod)} onClick={() => p.onZoom(1 / 2)}>
+        <Icon name="minus" />
+      </button>
+      <button className="zoom" aria-label={strings.toolbar.zoom100} title={strings.toolbar.zoom100Title(mod)} onClick={p.onZoom100}>
+        {Math.round(p.zoom * 100)}%
+      </button>
+      <button className="icon-btn oc-ib" aria-label={strings.toolbar.zoomIn} title={strings.toolbar.zoomInTitle(mod)} onClick={() => p.onZoom(2)}>
+        <Icon name="plus" />
+      </button>
+      {p.menu ? (
+        <button className="btn" title={strings.toolbar.fitAllTitle} onClick={p.onFit}>
+          <Icon name="fit" size={16} /> {strings.toolbar.fitAll}
+        </button>
+      ) : (
+        <button className="icon-btn oc-ib oc-fit" aria-label={strings.toolbar.fitAll} title={strings.toolbar.fitAllTitle} onClick={p.onFit}>
+          <Icon name="fit" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** The hint in the context line when no element toolbar is there (decision a). On the first run it carries both first-run hints,
+ * split by a hairline, as wide as the dock under it; where one line does not fit the window they stack (the slot grows upward) */
+function CanvasHint({ win, first }: { win: { w: number; h: number }; first: boolean }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [stacked, setStacked] = useState(false);
+  const [dockW, setDockW] = useState(0);
+  useLayoutEffect(() => setStacked(false), [win.w, first]);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!first || !el) return;
+    const w = document.querySelector<HTMLElement>(".oc-dock")?.offsetWidth ?? 0;
+    if (w !== dockW) setDockW(w);
+    if (!stacked && el.scrollWidth > win.w - 16) setStacked(true);
+  });
+  const left = useCentred(ref, win.w);
+  const place = { left: left ?? undefined, visibility: left == null ? ("hidden" as const) : undefined };
+  if (!first)
+    return (
+      <div ref={ref} className="canvas-hint" aria-hidden="true" style={place}>
+        {strings.canvas.hint}
+      </div>
+    );
+  const key = `${mod}J`;
+  const [before, after] = strings.app.firstRunAi(mod).split(key);
+  return (
+    <div ref={ref} className={`canvas-hint oc-first ${stacked ? "is-stacked" : ""}`} role="status" style={{ ...place, minWidth: stacked ? undefined : dockW || undefined }}>
+      <span className="oc-fr">
+        <Icon name="select" size={16} />
+        <span>{strings.app.firstRunEdit}</span>
+      </span>
+      <span className="oc-fr-sep" aria-hidden="true" />
+      <span className="oc-fr">
+        <Icon name="comment" size={16} />
+        <span>
+          {before}
+          <kbd>{key}</kbd>
+          {after}
+        </span>
+      </span>
+    </div>
+  );
+}
+
+/** The dock at the bottom centre: New board, the canvas tools, the shapes, Undo · History · Redo. Folds as the window narrows:
+ * shapes into one button below 900, the canvas tools into one below 480 (Shapes stays), New board's label away below 480 */
+function Dock(p: {
+  tool: Tool;
+  setTool: (t: Tool) => void;
+  phone: boolean;
+  foldShapes: boolean;
+  win: { w: number; h: number };
+  hist: { canUndo: boolean; canRedo: boolean; undo: string[]; redo: string[] };
+  histOpen: boolean;
+  caretRef: React.RefObject<HTMLButtonElement | null>;
+  onNewBoard: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  onToolsMenu: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  onShapesMenu: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  onInsertImage: () => void;
+  onUndo: () => void;
+  onRedo: () => void;
+  onHistory: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const left = useCentred(ref, p.win.w);
+  const tool = (t: (typeof TOOLS)[number], title: string) => (
+    <button key={t.id} role="radio" aria-checked={p.tool === t.id} aria-label={strings.toolbar.tool(t.label, t.key)} title={title} className={`icon-btn tool ${p.tool === t.id ? "on" : ""}`} onClick={() => p.setTool(t.id)}>
+      <Icon name={t.icon} />
+    </button>
+  );
+  const canvasTool = TOOLS.slice(0, 5).find((t) => t.id === p.tool);
+  const shapeTool = TOOLS.slice(5).find((t) => t.id === p.tool);
+  return (
+    <div ref={ref} className="oc-dock" role="toolbar" aria-label={strings.toolbar.aria} style={{ left: left ?? undefined, visibility: left == null ? "hidden" : undefined }}>
+      <button className="new-board" aria-haspopup="menu" aria-label={p.phone ? strings.toolbar.newBoard : undefined} title={strings.toolbar.newBoardTitle} onClick={p.onNewBoard}>
+        <Icon name="plus" />
+        {!p.phone && <span>{strings.toolbar.newBoard}</span>}
+        <Icon name="chevronDown" size={16} className="s" />
+      </button>
+      <span className="oc-sep" aria-hidden="true" />
+      {p.phone ? (
+        <button className={`icon-btn tool oc-fold ${canvasTool ? "on" : ""}`} aria-label={strings.toolbar.canvasTools} aria-haspopup="menu" title={strings.toolbar.canvasTools} onClick={p.onToolsMenu}>
+          <Icon name={canvasTool?.icon ?? "select"} />
+          <Icon name="chevronDown" size={16} className="s" />
+        </button>
+      ) : (
+        <div className="oc-group" role="radiogroup" aria-label={strings.toolbar.canvasTools}>
+          {TOOLS.slice(0, 2).map((t) => tool(t, strings.toolbar.tool(t.hint, t.key)))}
+          <span className="oc-sep" aria-hidden="true" />
+          {TOOLS.slice(2, 5).map((t) => tool(t, strings.toolbar.tool(t.hint, t.key)))}
+        </div>
+      )}
+      <span className="oc-sep" aria-hidden="true" />
+      {p.foldShapes ? (
+        <button className={`icon-btn tool oc-fold ${shapeTool ? "on" : ""}`} aria-label={strings.toolbar.shapes} aria-haspopup="menu" title={strings.toolbar.shapes} onClick={p.onShapesMenu}>
+          <Icon name={shapeTool?.icon ?? "rect"} />
+          <Icon name="chevronDown" size={16} className="s" />
+        </button>
+      ) : (
+        <div className="oc-group" role="radiogroup" aria-label={strings.toolbar.shapes}>
+          {TOOLS.slice(5).map((t) => tool(t, strings.toolbar.shapeToolTitle(t.hint, t.key)))}
+          <button className="icon-btn" aria-label={strings.toolbar.insertImage} title={strings.toolbar.insertImageTitle} onClick={p.onInsertImage}>
+            <Icon name="image" />
+          </button>
+        </div>
+      )}
+      <span className="oc-sep" aria-hidden="true" />
+      <div className="oc-group undo-split">
+        <button className="icon-btn" aria-label={strings.toolbar.undo} title={strings.toolbar.undoTitle(p.hist.undo.length ? p.hist.undo[p.hist.undo.length - 1] : undefined, mod)} disabled={!p.hist.canUndo} onClick={p.onUndo}>
+          <Icon name="undo" />
+        </button>
+        <button ref={p.caretRef} className={`icon-btn caret-btn ${p.histOpen ? "on" : ""}`} aria-label={strings.activity.historyButton} aria-haspopup="menu" aria-expanded={p.histOpen} title={strings.activity.historyButton} onClick={p.onHistory}>
+          <Icon name="chevronDown" size={16} />
+        </button>
+        <button className="icon-btn" aria-label={strings.toolbar.redo} title={strings.toolbar.redoTitle(p.hist.redo.length ? p.hist.redo[p.hist.redo.length - 1] : undefined, mod)} disabled={!p.hist.canRedo} onClick={p.onRedo}>
+          <Icon name="redo" />
+        </button>
+      </div>
+    </div>
+  );
 }

@@ -1,13 +1,15 @@
 // AI-generated with Claude Code, 2026-11-11, reviewed by Hyun Park
-// Toolbar Share: export a view-only copy (web folder or one .html, PDF, PNG) of the whole canvas, this page or the selected boards.
-// The result stays in the popover with Reveal and a deploy command; the footer shows the same export as a CLI line.
+// Share in the inspector header: export a view-only copy (web folder or one .html, PDF, PNG) of the whole canvas, this page or the
+// selected boards. The popover drops 8px under the header, its right edge on the card's edge (A: it is 96px wider than the card and
+// that falls on the canvas). Export buttons are grey; the orange stays on Ask AI. The result stays in the popover with Reveal and a
+// deploy command; the footer shows the same export as a CLI line.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { api } from "./api";
 import { Icon, type IconName } from "./icons";
 import { strings } from "./strings";
 import type { Page } from "./types";
-import { useToast } from "./ui";
+import { snapWidths, useToast } from "./ui";
 
 type Scope = "all" | "page" | "boards";
 type Kind = "web" | "single" | "pdf" | "png";
@@ -57,22 +59,27 @@ export function ShareButton({ pages, currentPage, selected }: { pages: Page[]; c
     setOpen(true);
   };
 
-  // Place under the button, right-aligned, kept inside the window on narrow screens
+  // 8px under the button, right edge on the card's right edge, kept inside the window on narrow screens (whole pixels)
   useLayoutEffect(() => {
     if (!open) return;
     const place = () => {
       const r = btnRef.current!.getBoundingClientRect();
+      const card = btnRef.current!.closest(".oc-card")?.getBoundingClientRect() ?? r;
       const width = Math.min(WIDTH, window.innerWidth - 16);
-      setPos({ width, top: r.bottom + 8, left: Math.max(8, Math.min(r.right - width, window.innerWidth - width - 8)) });
+      setPos({ width, top: Math.round(r.bottom + 8), left: Math.round(Math.max(8, Math.min(card.right - width, window.innerWidth - width - 8))) });
     };
     place();
     window.addEventListener("resize", place);
     return () => window.removeEventListener("resize", place);
   }, [open]);
+  // Text buttons on whole pixels (their labels change while exporting)
+  useLayoutEffect(() => {
+    if (open) snapWidths(popRef.current, ".oc-seg button, .btn");
+  });
   // Focus moves into the popover; a press outside closes it
   useEffect(() => {
     if (!open) return;
-    popRef.current?.querySelector<HTMLElement>(".seg [aria-checked='true']")?.focus();
+    popRef.current?.querySelector<HTMLElement>(".oc-seg [aria-checked='true']")?.focus();
     const down = (e: PointerEvent) => {
       const t = e.target as Node;
       if (!popRef.current?.contains(t) && !btnRef.current?.contains(t)) close(false);
@@ -138,42 +145,42 @@ export function ShareButton({ pages, currentPage, selected }: { pages: Page[]; c
   const name = info?.single ?? `${project}-canvas.html`;
 
   const resultLine = (r: Result, opts: { deploy?: boolean; hint?: boolean }) => (
-    <span className="result" role="status">
-      <span className="r-line">
-        <Icon name="check" size={14} />
+    <span className="oc-res" role="status">
+      <span className="oc-rline">
+        <Icon name="check" size={16} />
         <code>{r.kind === "single" ? r.mainRel.split("/").pop() : shown(r)}</code> {r.kind === "single" ? strings.share.saved : strings.share.exported}
       </span>
-      <span className="r-acts">
-        <button className="link" title={strings.share.revealTitle} onClick={() => void reveal()}>
+      <span className="oc-racts">
+        <button className="btn" title={strings.share.revealTitle} onClick={() => void reveal()}>
           {strings.share.reveal}
         </button>
         {opts.deploy && r.deploy && (
-          <button className="link" title={strings.share.copyDeployTitle(r.deploy)} onClick={() => void copyDeploy(r.deploy!)}>
+          <button className="btn" title={strings.share.copyDeployTitle(r.deploy)} onClick={() => void copyDeploy(r.deploy!)}>
             {strings.share.copyDeploy}
           </button>
         )}
       </span>
-      {opts.hint && <span className="r-hint">{strings.share.attachHint}</span>}
+      {opts.hint && <span className="oc-rhint">{strings.share.attachHint}</span>}
       {r.skipped.length > 0 && (
-        <span className="r-hint" title={r.skipped.map((s) => `${s.ref} (${s.from}): ${s.reason}`).join("\n")}>
+        <span className="oc-rhint" title={r.skipped.map((s) => `${s.ref} (${s.from}): ${s.reason}`).join("\n")}>
           {strings.share.skipped(r.skipped.length)}
         </span>
       )}
     </span>
   );
   const row = (kind: "pdf" | "png", icon: IconName, title: string, hint: string) => (
-    <div className="out-row">
+    <div className="oc-orow">
       <span className="out-ic">
         <Icon name={icon} />
       </span>
-      <span className="out-text">
+      <span className="oc-otext">
         <strong>{title}</strong>
         <span>{noBrowser ? `${strings.share.unavailable} ${noBrowser}` : hint}</span>
       </span>
-      <button disabled={!!noBrowser} aria-busy={busy === kind} onClick={() => void run(kind)}>
+      <button className="btn" disabled={!!noBrowser} aria-busy={busy === kind} onClick={() => void run(kind)}>
         {busy === kind ? strings.share.working : strings.share.export}
       </button>
-      {errors[kind] && <span className="out-err" role="alert">{errors[kind]}</span>}
+      {errors[kind] && <ErrorLine text={errors[kind]!} />}
       {results[kind] && !errors[kind] && resultLine(results[kind]!, {})}
     </div>
   );
@@ -186,7 +193,7 @@ export function ShareButton({ pages, currentPage, selected }: { pages: Page[]; c
       {open && (
         <div
           ref={popRef}
-          className="share-pop"
+          className="share-pop oc-share entering"
           role="dialog"
           aria-label={strings.share.title}
           style={{ left: pos.left, top: pos.top, width: pos.width }}
@@ -196,7 +203,7 @@ export function ShareButton({ pages, currentPage, selected }: { pages: Page[]; c
           }}
         >
           <h4>{strings.share.title}</h4>
-          <div className="seg" role="radiogroup" aria-label={strings.share.scope}>
+          <div className="oc-seg" role="radiogroup" aria-label={strings.share.scope}>
             <button role="radio" aria-checked={sc === "all"} className={sc === "all" ? "on" : ""} onClick={() => setScope("all")}>
               {strings.share.whole}
             </button>
@@ -209,12 +216,12 @@ export function ShareButton({ pages, currentPage, selected }: { pages: Page[]; c
               </button>
             )}
           </div>
-          <div className="out">
-            <div className="out-row first">
+          <div className="oc-out">
+            <div className="oc-orow first">
               <span className="out-ic">
                 <Icon name={single ? "file" : "folder"} />
               </span>
-              <span className="out-text">
+              <span className="oc-otext">
                 <strong>{single ? strings.share.singleTitle : strings.share.webTitle}</strong>
                 <span>
                   {single ? (
@@ -226,21 +233,21 @@ export function ShareButton({ pages, currentPage, selected }: { pages: Page[]; c
                     strings.share.webHint
                   )}
                 </span>
-                <label className="switch-row">
+                <label className="oc-sw">
                   <button type="button" role="switch" aria-checked={single} className={`switch ${single ? "on" : ""}`} onClick={() => setSingle((v) => !v)} />
                   <span>{strings.share.singleSwitch}</span>
                 </label>
               </span>
-              <button className="primary" aria-busy={busy === first} onClick={() => void run(first)}>
+              <button className="btn" aria-busy={busy === first} onClick={() => void run(first)}>
                 {busy === first ? strings.share.working : single ? strings.share.save : strings.share.export}
               </button>
-              {errors[first] && <span className="out-err" role="alert">{errors[first]}</span>}
+              {errors[first] && <ErrorLine text={errors[first]!} />}
               {res && !errors[first] && resultLine(res, { deploy: !single, hint: single })}
             </div>
             {row("pdf", "pdf", strings.share.pdfTitle, strings.share.pdfHint)}
             {row("png", "image", strings.share.pngTitle, strings.share.pngHint)}
           </div>
-          <div className="pop-foot">
+          <div className="oc-pfoot">
             {single && <span>{strings.share.largeFiles}</span>}
             <span>
               {strings.share.sameAs} <code>{cliLine({ dirFlag: info?.dirFlag, scope: sc, page, pages, boards: selected, single })}</code>
@@ -249,5 +256,15 @@ export function ShareButton({ pages, currentPage, selected }: { pages: Page[]; c
         </div>
       )}
     </div>
+  );
+}
+
+/** A failed export: the icon says it failed (--warn), the message stays readable in --text */
+function ErrorLine({ text }: { text: string }) {
+  return (
+    <span className="oc-err" role="alert">
+      <Icon name="warn" size={16} />
+      <span>{text}</span>
+    </span>
   );
 }

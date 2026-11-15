@@ -4,13 +4,18 @@
 // show as cards. Each finished run ends with a result row (Undo this run / Compare, or Restore the copy after a restart).
 // A failed run shows one sentence (cause + next step) with the raw output under Details, and its message goes back into the composer.
 // The transcript is kept per canvas in localStorage with run ids, so it survives a reload and shows where Easel restarted.
-import { useCallback, useEffect, useRef, useState } from "react";
+// Direction A (2026-11-15): it fills the inspector card under its tabs. Head as a Properties group (Agent, Model, status, New chat),
+// the thread scrolls under it, the composer is pinned to the card's foot. The agent menu and the Custom command dialog render at the
+// app level (document.body) so the card's edge does not clip them.
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { api } from "./api";
 import { Compare, runBefore, type CompareBoard } from "./compare";
 import { Icon } from "./icons";
 import { Markdown } from "./Markdown";
 import { strings } from "./strings";
+import { snapWidths } from "./ui";
 
 type Decision = "once" | "always" | "deny";
 type PermWhat = "command" | "edit" | "fetch" | "tool";
@@ -173,6 +178,10 @@ export function ChatPanel(p: {
   const [checking, setChecking] = useState(false);
   const [checked, setChecked] = useState<{ at: string; onOpen: boolean } | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  /** Where the agent menu hangs: right edge on the field's right edge, 4px under it (window coordinates) */
+  const [menuAt, setMenuAt] = useState<{ right: number; top: number } | null>(null);
+  /** The thread has scrolled: the head draws its hairline */
+  const [scrolled, setScrolled] = useState(false);
   const [models, setModels] = useState<Record<string, string>>(() => load("design-canvas:models", {}));
   const [restored, setRestored] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
@@ -203,22 +212,28 @@ export function ChatPanel(p: {
   const listRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLElement>(null);
   const runningRef = useRef<string | null>(null);
   runningRef.current = running;
   /** What each run was sent with, to put back into the composer when it fails */
   const sentRef = useRef(new Map<string, { text: string; attach: Attach }>());
   const storeKey = p.storeKey ? `easel:chat:${p.storeKey}` : null;
 
+  /** Only the newest check counts: a slow earlier one (a CLI's status command) must not overwrite it */
+  const checkSeq = useRef(0);
   const check = useCallback((onOpen = false) => {
     setChecking(true);
+    const seq = ++checkSeq.current;
     api
       .get<{ agents: Agent[]; checkedAt: string }>("/api/agents")
       .then((r) => {
+        if (seq !== checkSeq.current) return;
         setAgents(r.agents);
         setChecked({ at: r.checkedAt, onOpen });
       })
       .catch(() => {})
-      .finally(() => setChecking(false));
+      .finally(() => seq === checkSeq.current && setChecking(false));
   }, []);
   useEffect(() => {
     if (p.open) check(true);
@@ -234,12 +249,40 @@ export function ChatPanel(p: {
   useEffect(() => {
     if (!menuOpen) return;
     const close = (e: Event) => {
-      if (menuRef.current && e.target instanceof Node && menuRef.current.contains(e.target)) return;
+      const inside = (r: React.RefObject<HTMLDivElement | null>) => r.current && e.target instanceof Node && r.current.contains(e.target);
+      if (inside(menuRef) || inside(popRef)) return;
       setMenuOpen(false);
     };
+    const shut = () => setMenuOpen(false);
     window.addEventListener("pointerdown", close, true);
-    return () => window.removeEventListener("pointerdown", close, true);
+    window.addEventListener("resize", shut);
+    return () => {
+      window.removeEventListener("pointerdown", close, true);
+      window.removeEventListener("resize", shut);
+    };
   }, [menuOpen]);
+  // The menu lives on document.body, so keys move into it on open and back to the field when it closes from the keyboard
+  useEffect(() => {
+    if (menuOpen) popRef.current?.querySelector<HTMLElement>('[aria-checked="true"], [role^="menuitem"]')?.focus();
+  }, [menuOpen]);
+  const closeMenu = () => {
+    setMenuOpen(false);
+    menuRef.current?.querySelector<HTMLElement>(".agent-btn")?.focus();
+  };
+  const menuKeys = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") return closeMenu();
+    if (e.key !== "Tab" || !popRef.current) return;
+    const all = Array.from(popRef.current.querySelectorAll<HTMLElement>("button:not(:disabled), a[href]"));
+    if (e.target === all[e.shiftKey ? 0 : all.length - 1]) {
+      e.preventDefault();
+      closeMenu();
+    }
+  };
+  const toggleMenu = (btn: HTMLElement) => {
+    const r = btn.getBoundingClientRect();
+    setMenuAt({ right: Math.round(window.innerWidth - r.right), top: Math.round(r.bottom + 4) });
+    setMenuOpen((v) => !v);
+  };
   const copy = (key: string, text: string) => {
     void navigator.clipboard?.writeText(text).then(() => {
       setCopied(key);
@@ -477,19 +520,23 @@ export function ChatPanel(p: {
     if (m.restored)
       return (
         <div className="run-result undone">
-          <span className="rr-line">
-            <Icon name="restore" size={14} /> {strings.chat.restoredCopy}
-          </span>
+          <div className="oc-rr-top">
+            <span className="rr-line">
+              <Icon name="restore" size={14} /> {strings.chat.restoredCopy}
+            </span>
+          </div>
         </div>
       );
     if (past)
       return (
         <div className="run-result">
-          <span className="rr-line">{line}</span>
+          <div className="oc-rr-top">
+            <span className="rr-line">{line}</span>
+          </div>
           {info === undefined ? null : info.copy ? (
             <>
               <div className="btn-row">
-                <button onClick={() => void restoreCopy(m, info.copy!.at)}>
+                <button className="btn" onClick={() => void restoreCopy(m, info.copy!.at)}>
                   <Icon name="restore" size={14} /> {strings.chat.restoreCopy}
                 </button>
               </div>
@@ -504,22 +551,28 @@ export function ChatPanel(p: {
       <div className="rr-conflict" role="alert">
         <p>{(c.kind === "undo" ? strings.chat.conflictUndo : strings.chat.conflictRedo)(c.names.join(", "))}</p>
         <div className="btn-row">
-          <button onClick={() => void runAction(m.id, c.kind, "rest")}>{c.kind === "undo" ? strings.chat.undoRest : strings.chat.redoRest}</button>
-          <button className="danger" onClick={() => void runAction(m.id, c.kind, "all")}>
+          <button className="btn" onClick={() => void runAction(m.id, c.kind, "rest")}>
+            {c.kind === "undo" ? strings.chat.undoRest : strings.chat.redoRest}
+          </button>
+          <button className="btn danger" onClick={() => void runAction(m.id, c.kind, "all")}>
             {c.kind === "undo" ? strings.chat.undoAll : strings.chat.redoAll}
           </button>
-          <button onClick={() => setConflict(null)}>{strings.chat.cancel}</button>
+          <button className="btn" onClick={() => setConflict(null)}>
+            {strings.chat.cancel}
+          </button>
         </div>
       </div>
     );
     if (m.undone)
       return (
         <div className="run-result undone">
-          <span className="rr-line">
-            <Icon name="undo" size={14} /> {strings.chat.runUndone(bs.length)}
-          </span>
+          <div className="oc-rr-top">
+            <span className="rr-line">
+              <Icon name="undo" size={14} /> {strings.chat.runUndone(bs.length)}
+            </span>
+          </div>
           <div className="btn-row">
-            <button disabled={busyRun === m.id || !!running} onClick={() => void runAction(m.id, "redo")}>
+            <button className="btn" disabled={busyRun === m.id || !!running} onClick={() => void runAction(m.id, "redo")}>
               <Icon name="redo" size={14} /> {strings.chat.redo}
             </button>
           </div>
@@ -528,28 +581,27 @@ export function ChatPanel(p: {
       );
     return (
       <div className="run-result">
-        <span className="rr-line">{line}</span>
-        {bs.length > 0 && (
-          <div className="chips">
-            {bs.map((b) =>
-              b.kind === "removed" ? (
-                <span key={b.file} className="chip">
-                  <Icon name="board" size={12} /> {strings.chat.chipRemoved(p.titleOf(b.file))}
-                </span>
-              ) : (
-                <button key={b.file} className="chip" title={b.file} onClick={() => p.onLocate([b.file])}>
-                  <Icon name="board" size={12} /> {b.kind === "added" ? strings.chat.chipNew(p.titleOf(b.file)) : p.titleOf(b.file)}
-                </button>
-              ),
-            )}
-          </div>
-        )}
+        {/* The line and the boards it names share one row; more boards wrap under it */}
+        <div className="oc-rr-top">
+          <span className="rr-line">{line}</span>
+          {bs.map((b) =>
+            b.kind === "removed" ? (
+              <span key={b.file} className="chip">
+                <Icon name="board" size={12} /> {strings.chat.chipRemoved(p.titleOf(b.file))}
+              </span>
+            ) : (
+              <button key={b.file} className="chip" title={b.file} onClick={() => p.onLocate([b.file])}>
+                <Icon name="board" size={12} /> {b.kind === "added" ? strings.chat.chipNew(p.titleOf(b.file)) : p.titleOf(b.file)}
+              </button>
+            ),
+          )}
+        </div>
         <div className="btn-row">
-          <button disabled={busyRun === m.id || !!running} onClick={() => void runAction(m.id, "undo")}>
+          <button className="btn" disabled={busyRun === m.id || !!running} onClick={() => void runAction(m.id, "undo")}>
             <Icon name="undo" size={14} /> {strings.chat.undoRun}
           </button>
           {bs.length > 0 && (
-            <button onClick={() => openCompare(m)}>
+            <button className="btn" onClick={() => openCompare(m)}>
               <Icon name="compare" size={14} /> {strings.chat.compare}
             </button>
           )}
@@ -570,8 +622,9 @@ export function ChatPanel(p: {
       </div>
     ) : (
       <div className="perm" role="group" aria-label={strings.chat.permAsk(m.label ?? AGENT_LABEL[m.agent] ?? m.agent, x.what, x.tool)}>
+        {/* The dot is ink, the same mark as Waiting for you: the agent's colour next to Allow once read as a second orange */}
         <div className="perm-head">
-          <span className="idot" style={{ background: agentColor(m.agent) }} aria-hidden="true" />
+          <span className="idot" aria-hidden="true" />
           {strings.chat.permAsk(m.label ?? AGENT_LABEL[m.agent] ?? m.agent, x.what, x.tool)}
         </div>
         <div className="perm-cmd">{x.subject}</div>
@@ -579,101 +632,156 @@ export function ChatPanel(p: {
           <Icon name="folder" size={14} /> {strings.chat.permIn} <code>{folderName(x.where)}</code>
           {x.outside && <span className="perm-outside">· {strings.chat.permOutside}</span>}
         </div>
-        <div className="btn-row">
-          <button className="primary" onClick={() => answer(m.id, x.id, "once")}>
+        <div className={`btn-row ${x.rule ? "" : "oc-one"}`}>
+          <button className="btn primary" onClick={() => answer(m.id, x.id, "once")}>
             {strings.chat.allowOnce}
           </button>
           {x.rule && (
-            <button title={strings.chat.alwaysAllowTitle} onClick={() => answer(m.id, x.id, "always")}>
+            <button className="btn" title={strings.chat.alwaysAllowTitle} onClick={() => answer(m.id, x.id, "always")}>
               {strings.chat.alwaysAllow(x.rule)}
             </button>
           )}
-          <button onClick={() => answer(m.id, x.id, "deny")}>{strings.chat.deny}</button>
+          <button className="btn" onClick={() => answer(m.id, x.id, "deny")}>
+            {strings.chat.deny}
+          </button>
         </div>
       </div>
     );
 
+  // Whole-pixel chrome: text buttons, chips and one-line bubbles take their width rounded up, so nothing after them sits on a half
+  // pixel. Re-measured when what is shown changes (not on every streamed delta)
+  const shape = msgs.map((m) => (m.role === "ai" ? `${m.status}${m.undone ? "u" : ""}${m.restored ? "r" : ""}${m.parts.length}` : m.role)).join();
+  const snap = useCallback(() => {
+    snapWidths(rootRef.current, ".chat-head .new-chat, .rr-line, .chip, .bubble, .btn-row .btn, .oc-variants, .run-status > *");
+    snapWidths(popRef.current, ".agent-status, .menu-foot .btn");
+  }, []);
+  useLayoutEffect(snap, [snap, shape, running, agent, menuOpen, p.open, p.attach, p.selection, p.boards, p.visibleCount, copied, runInfo, conflict, checking, agents, useSel, useBoards, useVisible]);
+  // A width measured while the card was another size (narrow window, the sheet) is measured again when the card changes
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(snap);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [snap]);
+
+  /** One run's parts in order. Tool lines and answered requests that follow each other form one quiet list (.oc-tools) */
+  const partsView = (m: AiMsg, last: boolean) => {
+    const out: React.ReactNode[] = [];
+    let tools: React.ReactNode[] = [];
+    let first = 0;
+    const flush = () => {
+      if (tools.length)
+        out.push(
+          <div key={`t${first}`} className="oc-tools">
+            {tools}
+          </div>,
+        );
+      tools = [];
+    };
+    m.parts.forEach((x, j) => {
+      if (x.t === "tool" || (x.t === "perm" && x.decision)) {
+        if (!tools.length) first = j;
+        // The line the agent is on now is --text; finished lines stay --muted
+        const now = m.status === "running" && j === m.parts.length - 1;
+        tools.push(
+          x.t === "tool" ? (
+            <div key={j} className={`ai-tool ${now ? "is-current" : ""}`}>
+              <Icon name="edit" size={14} />
+              <span>{x.name}</span>
+              {x.detail && <code>{x.detail}</code>}
+            </div>
+          ) : (
+            <Fragment key={j}>{permCard(m, x)}</Fragment>
+          ),
+        );
+        return;
+      }
+      flush();
+      out.push(
+        x.t === "text" ? (
+          <Markdown key={j} className="ai-text" text={x.text} />
+        ) : x.t === "plain" ? (
+          <pre key={j} className="ai-plain">
+            {x.text}
+          </pre>
+        ) : x.t === "perm" ? (
+          <Fragment key={j}>{permCard(m, x)}</Fragment>
+        ) : x.cause ? (
+          // The failure: the sentence (Failed and its icon are in the head), Retry and Switch, Details in place, what it cost
+          <div key={j} className="ai-fail">
+            <div className="ai-error">
+              <span>
+                <Inline text={x.text} />
+              </span>
+            </div>
+            {last && (
+              <div className="btn-row">
+                <button className="btn" disabled={!!running || !!blocked} title={blocked ?? undefined} onClick={() => retry(m.id)}>
+                  {strings.chat.retry}
+                </button>
+                {(() => {
+                  const other = list.find((a) => a.id !== m.agent && a.status !== "missing" && a.ok && !a.custom);
+                  return other && other.id !== agent ? (
+                    <button className="btn" onClick={() => setAgent(other.id)}>
+                      {strings.chat.switchTo(other.label)}
+                    </button>
+                  ) : null;
+                })()}
+              </div>
+            )}
+            {x.raw && (
+              <details className="ai-details">
+                <summary>
+                  <Icon name="chevronDown" size={14} />
+                  {strings.chat.details}
+                </summary>
+                <div className="ai-details-bar">
+                  <button className="btn copy" onClick={() => copy(`raw-${m.id}`, x.raw!)}>
+                    <Icon name="copy" size={12} /> {copied === `raw-${m.id}` ? strings.chat.copied : strings.chat.copy}
+                  </button>
+                </div>
+                <pre>{x.raw}</pre>
+              </details>
+            )}
+            {x.changed === false && <p className="muted small">{strings.chat.noFilesChanged}</p>}
+          </div>
+        ) : (
+          <div key={j} className="ai-error">
+            <Icon name="warn" size={14} /> {x.text}
+          </div>
+        ),
+      );
+    });
+    flush();
+    return out;
+  };
+
   return (
-    <section className="chat" aria-label={strings.chat.aria}>
-      <div className="chat-head">
-        <div className="chat-head-row">
+    <section className="chat" aria-label={strings.chat.aria} ref={rootRef}>
+      <div className={`chat-head ${scrolled ? "is-scrolled" : ""}`}>
+        {/* Agent and Model are two rows on the Properties grid (label 80, field), then the conversation line and New chat */}
+        <div className="chat-head-row oc-field">
+          <span className="pp-l">{strings.chat.agent}</span>
           <div className="agent-pick" ref={menuRef}>
             <button
-              className="agent-btn"
+              className={`agent-btn ${menuOpen ? "is-open" : ""}`}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
               aria-label={strings.chat.agentButton(label, current ? statusText(current) : "")}
               title={strings.chat.agentHint}
               disabled={!!running}
-              onClick={() => setMenuOpen((v) => !v)}
+              onClick={(e) => toggleMenu(e.currentTarget)}
               onKeyDown={(e) => e.key === "Escape" && setMenuOpen(false)}
             >
               <span className={`dot ${current?.status ?? ""}`} aria-hidden="true" />
               <span className="agent-name">{label}</span>
               <Icon name="chevronDown" size={14} />
             </button>
-            {menuOpen && (
-              <div className="menu agent-menu" role="menu" aria-label={strings.chat.agent} onKeyDown={(e) => e.key === "Escape" && setMenuOpen(false)}>
-                {list.map((a) => (
-                  <div key={a.id} className={`menu-item agent-item ${a.status === "missing" ? "off" : ""}`} role="none">
-                    <button
-                      role="menuitemradio"
-                      aria-checked={a.id === agent}
-                      className="agent-choose"
-                      title={a.custom && a.command ? strings.chat.customCommandTitle(a.command) : undefined}
-                      onClick={() => {
-                        setAgent(a.id);
-                        setMenuOpen(false);
-                      }}
-                    >
-                      <span className={`menu-check ${a.id === agent ? "on" : ""}`} aria-hidden="true">
-                        <Icon name="check" size={14} />
-                      </span>
-                      <span className="idot" style={{ background: agentColor(a.id) }} aria-hidden="true" />
-                      <span className="menu-label">{a.label}</span>
-                    </button>
-                    <span className={`agent-status ${a.status === "missing" ? "off" : (a.status ?? "")}`}>
-                      {a.status && a.status !== "missing" && <span className={`dot ${a.status}`} aria-hidden="true" />}
-                      {statusText(a)}
-                      {a.status === "missing" && a.install && (
-                        <>
-                          {" · "}
-                          <a className="link" href={a.install} target="_blank" rel="noopener noreferrer">
-                            {strings.chat.howToInstall}
-                          </a>
-                        </>
-                      )}
-                    </span>
-                    {a.custom && (
-                      <button className="icon-btn sm" aria-label={strings.chat.remove(a.label)} title={strings.chat.remove(a.label)} onClick={() => void removeCustom(a.id)}>
-                        <Icon name="close" size={12} />
-                      </button>
-                    )}
-                  </div>
-                ))}
-                <div className="menu-sep" role="separator" />
-                <button
-                  role="menuitem"
-                  className="menu-item"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    setCustomForm({ name: "", command: "" });
-                  }}
-                >
-                  <span className="menu-check on muted" aria-hidden="true">
-                    <Icon name="plus" size={14} />
-                  </span>
-                  <span className="menu-label">{strings.chat.customCommand}</span>
-                </button>
-                <div className="menu-foot">
-                  <span>{checking ? strings.chat.checking : checked ? strings.chat.checkedAt(hhmm(checked.at), checked.onOpen) : strings.chat.checkedOnOpen}</span>
-                  <button className="link" disabled={checking} onClick={() => check()}>
-                    {strings.chat.checkAgain}
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
+        </div>
+        <div className="chat-head-row oc-field">
+          <span className="pp-l">{isCustom ? strings.chat.customCommandLabel : strings.chat.model}</span>
           {isCustom ? (
             <span className="model-field mono custom-cmd" title={current?.command}>
               {current?.command}
@@ -712,56 +820,136 @@ export function ChatPanel(p: {
               setSessions({});
               setRestored(false);
               setConflict(null);
+              setScrolled(false);
             }}
           >
             <Icon name="plus" size={14} /> <span>{strings.chat.newChat}</span>
           </button>
         </div>
       </div>
-      {customForm && (
-        <div className="cf-card" role="dialog" aria-label={strings.chat.customTitle} onKeyDown={(e) => e.key === "Escape" && setCustomForm(null)}>
-          <div className="cf">
-            <div className="cf-title">
-              <span className="idot" style={{ background: "var(--line-strong)" }} aria-hidden="true" />
-              {strings.chat.customTitle}
-            </div>
-            <label className="cf-field">
-              {strings.chat.customName}
-              <input className="cf-input" autoFocus value={customForm.name} placeholder={strings.chat.customNamePlaceholder} onChange={(e) => setCustomForm({ ...customForm, name: e.target.value, error: undefined })} />
-            </label>
-            <label className="cf-field">
-              {strings.chat.customCommandLabel}
-              <input
-                className="cf-input mono"
-                value={customForm.command}
-                spellCheck={false}
-                placeholder={strings.chat.customCommandPlaceholder}
-                onChange={(e) => setCustomForm({ ...customForm, command: e.target.value, error: undefined })}
-                onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && void saveCustom()}
-              />
-            </label>
-            <p className="cf-hint">
-              <Inline text={strings.chat.customHint} />
-            </p>
-            {customForm.error && <p className="warn small">{customForm.error}</p>}
-            <div className="btn-row">
-              <button className="primary" disabled={!customForm.name.trim() || !customForm.command.trim()} onClick={() => void saveCustom()}>
-                {strings.chat.customSave}
+      {menuOpen &&
+        menuAt &&
+        createPortal(
+          // The shared menu surface, hung from the Agent field: right edges flush, allowed to hang over the canvas
+          <div
+            ref={popRef}
+            className="menu agent-menu oc-agent-menu entering"
+            role="menu"
+            aria-label={strings.chat.agent}
+            style={{ right: menuAt.right, top: menuAt.top }}
+            onKeyDown={menuKeys}
+          >
+            {list.map((a) => (
+              <div key={a.id} className={`menu-item agent-item ${a.status === "missing" ? "off" : ""}`} role="none">
+                <button
+                  role="menuitemradio"
+                  aria-checked={a.id === agent}
+                  className="agent-choose"
+                  title={a.custom && a.command ? strings.chat.customCommandTitle(a.command) : undefined}
+                  onClick={() => {
+                    setAgent(a.id);
+                    setMenuOpen(false);
+                  }}
+                >
+                  <span className={`menu-check ${a.id === agent ? "on" : ""}`} aria-hidden="true">
+                    <Icon name="check" size={14} />
+                  </span>
+                  <span className="idot" style={{ background: agentColor(a.id) }} aria-hidden="true" />
+                  <span className="menu-label">{a.label}</span>
+                </button>
+                <span className={`agent-status ${a.status === "missing" ? "off" : (a.status ?? "")}`}>
+                  {a.status && a.status !== "missing" && <span className={`dot ${a.status}`} aria-hidden="true" />}
+                  {statusText(a)}
+                  {a.status === "missing" && a.install && (
+                    <>
+                      {" · "}
+                      <a className="link" href={a.install} target="_blank" rel="noopener noreferrer">
+                        {strings.chat.howToInstall}
+                      </a>
+                    </>
+                  )}
+                </span>
+                {a.custom && (
+                  <button className="icon-btn sm oc-remove" aria-label={strings.chat.remove(a.label)} title={strings.chat.remove(a.label)} onClick={() => void removeCustom(a.id)}>
+                    <Icon name="close" size={12} />
+                  </button>
+                )}
+              </div>
+            ))}
+            <div className="menu-sep" role="separator" />
+            <button
+              role="menuitem"
+              className="menu-item oc-custom"
+              onClick={() => {
+                setMenuOpen(false);
+                setCustomForm({ name: "", command: "" });
+              }}
+            >
+              <span className="menu-check on muted" aria-hidden="true">
+                <Icon name="plus" size={14} />
+              </span>
+              <span className="menu-label">{strings.chat.customCommand}</span>
+            </button>
+            <div className="menu-foot">
+              <span>{checking ? strings.chat.checking : checked ? strings.chat.checkedAt(hhmm(checked.at), checked.onOpen) : strings.chat.checkedOnOpen}</span>
+              <button className="btn" disabled={checking} onClick={() => check()}>
+                {strings.chat.checkAgain}
               </button>
-              <button onClick={() => setCustomForm(null)}>{strings.chat.cancel}</button>
             </div>
-          </div>
-        </div>
-      )}
-      <div className="chat-list" ref={listRef} aria-live="polite">
+          </div>,
+          document.body,
+        )}
+      {customForm &&
+        createPortal(
+          // The shared dialog: over everything, so its Save is the one orange on screen
+          <div className="dialog-backdrop" onPointerDown={(e) => e.target === e.currentTarget && setCustomForm(null)}>
+            <div className="dialog cf" role="dialog" aria-modal="true" aria-label={strings.chat.customTitle} onKeyDown={(e) => e.key === "Escape" && setCustomForm(null)}>
+              <h2 className="cf-title">
+                <span className="idot" aria-hidden="true" />
+                {strings.chat.customTitle}
+              </h2>
+              <label className="dialog-field">
+                {strings.chat.customName}
+                <input autoFocus value={customForm.name} placeholder={strings.chat.customNamePlaceholder} onChange={(e) => setCustomForm({ ...customForm, name: e.target.value, error: undefined })} />
+              </label>
+              <label className="dialog-field">
+                {strings.chat.customCommandLabel}
+                <input
+                  className="mono"
+                  value={customForm.command}
+                  spellCheck={false}
+                  placeholder={strings.chat.customCommandPlaceholder}
+                  onChange={(e) => setCustomForm({ ...customForm, command: e.target.value, error: undefined })}
+                  onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && void saveCustom()}
+                />
+              </label>
+              <p className="cf-hint">
+                <Inline text={strings.chat.customHint} />
+              </p>
+              {customForm.error && (
+                <p className="cf-error">
+                  <Icon name="warn" size={14} /> {customForm.error}
+                </p>
+              )}
+              <div className="dialog-actions">
+                <button onClick={() => setCustomForm(null)}>{strings.chat.cancel}</button>
+                <button className="primary" disabled={!customForm.name.trim() || !customForm.command.trim()} onClick={() => void saveCustom()}>
+                  {strings.chat.customSave}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+      <div className="chat-list" ref={listRef} aria-live="polite" onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 0)}>
         {msgs.length === 0 ? (
           <div className="chat-empty">
-            <Icon name="comment" size={28} />
             <p>{strings.chat.intro(label)}</p>
             <div className="chat-suggest">
               {strings.chat.suggestions.map((x) => (
                 <button
                   key={x.label}
+                  className="btn"
                   onClick={() => {
                     p.setDraft(x.text);
                     setVariants(x.n);
@@ -802,71 +990,24 @@ export function ChatPanel(p: {
                         {strings.chat.waiting}
                       </span>
                     ) : (
-                      <span className="spinner" aria-label={strings.chat.running} />
+                      <span className="spinner" role="img" aria-label={strings.chat.running} />
                     ))}
                   {m.status === "cancelled" && <span className="muted">{strings.chat.cancelled}</span>}
-                  {m.status === "error" && <span className="muted">{strings.chat.failed}</span>}
+                  {m.status === "error" && (
+                    <span className="oc-failed">
+                      <Icon name="warn" size={14} />
+                      {strings.chat.failed}
+                    </span>
+                  )}
                   {m.status === "done" && m.cost != null && <span className="muted small">${m.cost.toFixed(3)}</span>}
                 </div>
                 {m.variants?.length ? (
-                  <button className="link" onClick={() => p.onLocate(m.variants!)}>
-                    {strings.chat.madeVariants(m.variants.length)}
+                  <button className="btn oc-variants" onClick={() => p.onLocate(m.variants!)}>
+                    <Icon name="board" size={14} /> {strings.chat.madeVariants(m.variants.length)}
                   </button>
                 ) : null}
-                {m.parts.map((x, j) =>
-                  x.t === "text" ? (
-                    <Markdown key={j} className="ai-text" text={x.text} />
-                  ) : x.t === "plain" ? (
-                    <pre key={j} className="ai-plain">
-                      {x.text}
-                    </pre>
-                  ) : x.t === "perm" ? (
-                    <div key={j}>{permCard(m, x)}</div>
-                  ) : x.t === "tool" ? (
-                    <div key={j} className="ai-tool">
-                      <Icon name="edit" size={12} />
-                      <span>{x.name}</span>
-                      {x.detail && <code>{x.detail}</code>}
-                    </div>
-                  ) : x.cause ? (
-                    <div key={j} className="ai-fail">
-                      <div className="ai-error">
-                        <Icon name="warn" size={14} />
-                        <span>
-                          <Inline text={x.text} />
-                        </span>
-                      </div>
-                      {i === msgs.length - 1 && (
-                        <div className="btn-row">
-                          <button disabled={!!running || !!blocked} title={blocked ?? undefined} onClick={() => retry(m.id)}>
-                            {strings.chat.retry}
-                          </button>
-                          {(() => {
-                            const other = list.find((a) => a.id !== m.agent && a.status !== "missing" && a.ok && !a.custom);
-                            return other && other.id !== agent ? <button onClick={() => setAgent(other.id)}>{strings.chat.switchTo(other.label)}</button> : null;
-                          })()}
-                        </div>
-                      )}
-                      {x.raw && (
-                        <details className="ai-details">
-                          <summary>{strings.chat.details}</summary>
-                          <div className="ai-details-bar">
-                            <button className="link" onClick={() => copy(`raw-${m.id}`, x.raw!)}>
-                              {copied === `raw-${m.id}` ? strings.chat.copied : strings.chat.copy}
-                            </button>
-                          </div>
-                          <pre>{x.raw}</pre>
-                        </details>
-                      )}
-                      {x.changed === false && <p className="muted small">{strings.chat.noFilesChanged}</p>}
-                    </div>
-                  ) : (
-                    <div key={j} className="ai-error">
-                      <Icon name="warn" size={14} /> {x.text}
-                    </div>
-                  ),
-                )}
-                {m.status === "running" && !m.parts.length && <div className="muted">{strings.chat.thinking}</div>}
+                {partsView(m, i === msgs.length - 1)}
+                {m.status === "running" && !m.parts.length && <div className="muted oc-thinking">{strings.chat.thinking}</div>}
                 {strings.chat.noPause[m.agent] && m.parts.some((x) => x.t === "tool") && <p className="ai-note">{strings.chat.noPause[m.agent]}</p>}
                 {m.status !== "running" && m.step && resultRow(m)}
               </div>
@@ -875,19 +1016,20 @@ export function ChatPanel(p: {
         )}
       </div>
       {remedy && (
+        // Pinned between the thread and the composer, so it does not scroll away while sending is blocked
         <div className="remedy" role="status">
-          <Icon name="warn" size={14} />
+          <Icon name="warn" size={16} />
           <div>
             <p>
               <Inline text={remedy.text} />
             </p>
             <div className="btn-row">
               {remedy.cmd && (
-                <button className="sm" onClick={() => copy("cmd", remedy.cmd!)} title={remedy.cmd}>
+                <button className="btn" onClick={() => copy("cmd", remedy.cmd!)} title={remedy.cmd}>
                   <Icon name="copy" size={14} /> {copied === "cmd" ? strings.chat.copied : strings.chat.copyCommand}
                 </button>
               )}
-              <button className="sm" disabled={checking} onClick={() => check()}>
+              <button className="btn" disabled={checking} onClick={() => check()}>
                 {checking ? strings.chat.checking : strings.chat.checkAgain}
               </button>
             </div>
@@ -970,7 +1112,11 @@ export function ChatPanel(p: {
             }
           }}
         />
-        {error && <p className="warn small">{error}</p>}
+        {error && (
+          <p className="warn small oc-err">
+            <Icon name="warn" size={14} /> {error}
+          </p>
+        )}
         {blocked && !running && (
           <p className="send-why">
             <Icon name="warn" size={14} /> {blocked}
@@ -994,7 +1140,8 @@ export function ChatPanel(p: {
           </label>
           <div className="spacer" />
           {running ? (
-            <button className="danger" onClick={cancel}>
+            // Cancel stands where Send stood, quiet: nothing to send while the agent works, and --warn is kept for failure
+            <button className="btn oc-cancel" title={strings.chat.cancelTitle} onClick={cancel}>
               <Icon name="close" size={14} /> {strings.chat.cancel}
             </button>
           ) : (
@@ -1004,7 +1151,7 @@ export function ChatPanel(p: {
           )}
         </div>
       </div>
-      {compare && <Compare before={runBefore(compare.id)} boards={compare.boards} onClose={() => setCompare(null)} />}
+      {compare && createPortal(<Compare before={runBefore(compare.id)} boards={compare.boards} onClose={() => setCompare(null)} />, document.body)}
     </section>
   );
 }

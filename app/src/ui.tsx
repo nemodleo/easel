@@ -1,6 +1,6 @@
 // AI-generated with Claude Code, 2026-10-09, reviewed by Hyun Park
 // Shared UI: toasts, context menus, in-app prompt and confirm dialogs. Supports keyboard (Esc, Enter, arrows) and aria.
-import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import { Icon, type IconName } from "./icons";
 import { strings } from "./strings";
@@ -46,16 +46,31 @@ export function ToastHost({ children }: { children: ReactNode }) {
 
 /* ---------------- Context menu ---------------- */
 export type MenuItem = { label: string; icon?: IconName; shortcut?: string; disabled?: boolean; danger?: boolean; /** Toggle state shown as a check mark */ check?: boolean; run: () => void } | "sep";
-export type MenuState = { x: number; y: number; items: MenuItem[]; title?: string } | null;
+export type MenuState = {
+  x: number;
+  y: number;
+  items: MenuItem[];
+  title?: string;
+  /** Extra class on the surface (the View menu's rows) */
+  className?: string;
+  /** A row of controls under the title (the View menu's zoom row in narrow windows) */
+  head?: ReactNode;
+  /** Measured from the right edge: the menu's right edge stays there (a menu under a button at the window's right) */
+  right?: boolean;
+  /** y is the menu's bottom edge: it opens upward (menus from the dock) */
+  up?: boolean;
+} | null;
 
-export function ContextMenu({ menu, onClose }: { menu: MenuState; onClose: () => void }) {
+export function ContextMenu({ menu, onClose, head }: { menu: MenuState; onClose: () => void; /** Live controls under the title (they follow state while the menu is open) */ head?: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const [active, setActive] = useState(-1);
   useLayoutEffect(() => {
     if (!menu || !ref.current) return;
     const r = ref.current.getBoundingClientRect();
-    setPos({ x: Math.min(menu.x, window.innerWidth - r.width - 8), y: Math.min(menu.y, window.innerHeight - r.height - 8) });
+    const x = menu.right ? menu.x - r.width : menu.x;
+    const y = menu.up ? menu.y - r.height : menu.y;
+    setPos({ x: Math.round(Math.max(8, Math.min(x, window.innerWidth - r.width - 8))), y: Math.round(Math.max(8, Math.min(y, window.innerHeight - r.height - 8))) });
     setActive(-1);
     ref.current.focus();
   }, [menu]);
@@ -78,7 +93,7 @@ export function ContextMenu({ menu, onClose }: { menu: MenuState; onClose: () =>
   return (
     <div
       ref={ref}
-      className="menu"
+      className={`menu entering ${menu.className ?? ""}`}
       role="menu"
       tabIndex={-1}
       aria-label={menu.title ?? strings.dialog.menu}
@@ -100,6 +115,7 @@ export function ContextMenu({ menu, onClose }: { menu: MenuState; onClose: () =>
       }}
     >
       {menu.title && <div className="menu-title">{menu.title}</div>}
+      {head ?? menu.head}
       {items.map((it, i) =>
         it === "sep" ? (
           <div key={i} className="menu-sep" role="separator" />
@@ -207,9 +223,11 @@ export function useDialog() {
   return { state, close: () => setState(null), prompt, confirm };
 }
 
-/* ---------------- Collapsible section (right panel) ---------------- */
+/* ---------------- Collapsible section (inspector) ---------------- */
 const openKey = (id: string) => `design-canvas:open:${id}`;
-export function Collapsible({ id, title, count, defaultOpen = false, right, children }: { id: string; title: string; count?: number | string; defaultOpen?: boolean; right?: ReactNode; children: ReactNode }) {
+/** A fold in the inspector, closed by default and remembered per section. `row`: a row of a group (label, count, chevron at the right:
+ * Token check, Accessibility); `head` (default): a group of its own whose head is the toggle (chevron, title, count: Layout guides, More (CSS)) */
+export function Collapsible({ id, title, count, defaultOpen = false, right, variant = "head", children }: { id: string; title: string; count?: number | string; defaultOpen?: boolean; right?: ReactNode; variant?: "head" | "row"; children: ReactNode }) {
   const [open, setOpen] = useState<boolean>(() => {
     try {
       const v = localStorage.getItem(openKey(id));
@@ -228,21 +246,63 @@ export function Collapsible({ id, title, count, defaultOpen = false, right, chil
       return !o;
     });
   };
+  const shown = count !== undefined && count !== "";
+  const badge = shown && <span className={`collapsible-count ${typeof count === "string" ? "oc-off" : ""}`}>{count}</span>;
+  if (variant === "row")
+    return (
+      <div className={`pp-foldset ${open ? "open" : ""}`}>
+        <button className="pp-fold" aria-expanded={open} aria-controls={`sec-${id}`} onClick={toggle}>
+          <span className="pp-l">{title}</span>
+          <span className="pp-v">
+            {badge}
+            <Icon name="chevronRight" size={14} className="chev" />
+          </span>
+        </button>
+        {open && (
+          <div className="pp-fold-body" id={`sec-${id}`}>
+            {children}
+          </div>
+        )}
+      </div>
+    );
   return (
-    <section className={`collapsible ${open ? "open" : ""}`}>
+    <section className={`pp-group collapsible ${open ? "open" : ""}`}>
       <div className="collapsible-head">
-        <button className="collapsible-toggle" aria-expanded={open} aria-controls={`sec-${id}`} onClick={toggle}>
+        <button className="pp-fold-h" aria-expanded={open} aria-controls={`sec-${id}`} onClick={toggle}>
           <Icon name="chevronRight" size={14} className="chev" />
           <span className="collapsible-title">{title}</span>
-          {count !== undefined && count !== 0 && count !== "" && <span className="collapsible-count">{count}</span>}
+          {badge}
         </button>
         {right && <span className="collapsible-right">{right}</span>}
       </div>
       {open && (
-        <div className="collapsible-body" id={`sec-${id}`}>
+        <div className="pp-fold-body" id={`sec-${id}`}>
           {children}
         </div>
       )}
     </section>
   );
+}
+
+/** Whole-pixel chrome: text buttons in a row take their width rounded up, so nothing after them starts on a half pixel */
+export function snapWidths(root: HTMLElement | null, sel = "button") {
+  if (!root) return;
+  for (const b of Array.from(root.querySelectorAll<HTMLElement>(sel))) {
+    b.style.width = "";
+    const w = b.getBoundingClientRect().width;
+    if (w % 1 > 0.01) b.style.width = `${Math.ceil(w)}px`;
+  }
+}
+
+/** Centred on the window on a whole pixel: measured after layout (a CSS translate of -50% can land on a half pixel) */
+export function useCentred(ref: RefObject<HTMLElement | null>, winW: number) {
+  const [left, setLeft] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    snapWidths(el);
+    const x = Math.max(8, Math.round((winW - el.offsetWidth) / 2));
+    if (x !== left) setLeft(x);
+  });
+  return left;
 }

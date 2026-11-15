@@ -1,11 +1,11 @@
 // AI-generated with Claude Code, 2026-11-12, reviewed by Hyun Park
-// Who changed what: tags above boards someone else changed (author colour, seen state per browser), the tag popover (the change,
-// Before / After, Undo), the outline of the changed elements, and the History menu under Undo ("Go back to here").
+// Who changed what: tags above boards someone else changed (who by glyph and name, seen state per browser), the tag popover (the change,
+// Before / After, Undo), the outline of the changed elements, and the History menu over the dock ("Go back to here").
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { api, browserId } from "./api";
 import { elementAt, rectOf, type Rect } from "./editor";
-import { Icon } from "./icons";
+import { Icon, type IconName } from "./icons";
 import { strings } from "./strings";
 
 export type Who = { by?: string; person?: string; outside?: boolean };
@@ -18,14 +18,8 @@ export type Activity = { boot: string; steps: Step[]; tags: Record<string, Tag[]
 const SEEN_FOR = 24 * 60 * 60 * 1000;
 const seenKey = (canvas: string) => `design-canvas:seen:${canvas}`;
 
-/** Fixed colours for the agents Easel knows and for changes from outside Easel, the rest of the set by a stable hash of the name (CSS --who-1 … --who-6) */
-const KNOWN: Record<string, number> = { "Claude Code": 1, Codex: 2, Cursor: 3, "Gemini CLI": 4 };
-export function authorColor(w: Who) {
-  const name = w.by ?? w.person ?? (w.outside ? "outside" : "me");
-  let h = 0;
-  for (const ch of name) h = (h * 31 + ch.codePointAt(0)!) >>> 0;
-  return `var(--who-${w.outside && !w.by && !w.person ? 6 : (KNOWN[name] ?? (h % 6) + 1)})`;
-}
+/** Who made a change reads from a glyph and the name, never from colour: an agent's speech mark, a person, a file changed on disk */
+export const whoIcon = (w: Who): IconName => (w.by ? "comment" : w.person || !w.outside ? "person" : "file");
 /** Display name: the agent, the person's name sent by their browser, "Outside Easel", or (API calls without one) this person */
 export const whoName = (w: Who, me: string) => w.by ?? w.person ?? (w.outside ? strings.activity.outside : me);
 
@@ -114,7 +108,7 @@ export function BoardTags({ file, act, me, onOpen, lead }: { file: string; act: 
               onOpen(file, t.key);
             }}
           >
-            <span className="dot" style={{ background: authorColor(t) }} aria-hidden="true" />
+            <Icon name={whoIcon(t)} size={16} />
             <span className="act-tag-text">{text}</span>
           </button>
         );
@@ -174,14 +168,13 @@ export function TagPopover(p: {
     return () => window.removeEventListener("pointerdown", close, true);
   }, [p.file, p.tag.key]);
   const who = whoName(p.tag, p.me);
-  const color = authorColor(p.tag);
   return (
     <div
       ref={ref}
       className="callout"
       role="dialog"
       aria-label={strings.activity.popAria(who)}
-      style={{ left: pos?.x ?? -9999, top: pos?.y ?? -9999, borderTopColor: color }}
+      style={{ left: pos?.x ?? -9999, top: pos?.y ?? -9999 }}
       onKeyDown={(e) => {
         if (e.key === "Escape") {
           e.stopPropagation();
@@ -191,7 +184,7 @@ export function TagPopover(p: {
       }}
     >
       <div className="callout-top">
-        <span className="dot" style={{ background: color }} aria-hidden="true" />
+        <Icon name={whoIcon(p.tag)} size={16} />
         {who} <span className="muted">· {strings.activity.agoLong(p.now - p.tag.at)}</span>
         <button className="icon-btn sm callout-x" aria-label={strings.activity.close} title={strings.activity.close} onClick={p.onClose}>
           <Icon name="close" size={14} />
@@ -222,8 +215,9 @@ export function TagPopover(p: {
   );
 }
 
-/** Outline of the changed elements in the author's colour, inside a board's overlay (board coordinates); follows reloads of the frame */
-export function ChangeOutline({ frame, paths, color, zoom }: { frame: HTMLIFrameElement | null; paths: string[]; color: string; zoom: number }) {
+/** Outline of the changed elements, dashed and set off from them (apart from your own solid blue selection), inside a board's overlay
+ * (board coordinates); follows reloads of the frame */
+export function ChangeOutline({ frame, paths, zoom }: { frame: HTMLIFrameElement | null; paths: string[]; zoom: number }) {
   const [rects, setRects] = useState<Rect[]>([]);
   const key = paths.join(",");
   useEffect(() => {
@@ -243,17 +237,18 @@ export function ChangeOutline({ frame, paths, color, zoom }: { frame: HTMLIFrame
       frame.removeEventListener("dc-reloaded", measure);
     };
   }, [frame, key]);
-  const w = 2.5 / Math.max(zoom, 0.05);
+  const px = 1 / Math.max(zoom, 0.05);
   return (
     <>
       {rects.map((r, i) => (
-        <div key={i} className="box change-outline" style={{ left: r.x, top: r.y, width: r.w, height: r.h, outline: `${w}px solid ${color}`, outlineOffset: w * 1.5 }} />
+        <div key={i} className="box change-outline" style={{ left: r.x, top: r.y, width: r.w, height: r.h, ["--px" as string]: `${px}px` }} />
       ))}
     </>
   );
 }
 
-/** History · newest first: who, what, when; the current position is "Now"; a row goes back (or forward) to that step */
+/** History · newest first: who (glyph and name), what, when; the current position is "Now"; the row under the pointer or the focus
+ * offers "Go back to here". It rises 8px above the dock, its right edge on the dock's right edge (the dock's menus all rise from it) */
 export function HistoryMenu(p: { steps: Step[]; me: string; now: number; anchor: DOMRect | null; busy: boolean; onGo: (s: Step) => void; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const nowIdx = Math.max(0, p.steps.findIndex((s) => s.now));
@@ -280,14 +275,16 @@ export function HistoryMenu(p: { steps: Step[]; me: string; now: number; anchor:
     rows.current[n]?.focus();
   };
   const style = useMemo(() => {
-    const a = p.anchor;
-    const w = Math.min(372, window.innerWidth - 16);
-    return { left: a ? Math.max(8, Math.min(a.left, window.innerWidth - w - 8)) : 8, top: a ? a.bottom + 4 : 52, width: w };
+    const dock = document.querySelector(".oc-dock")?.getBoundingClientRect() ?? p.anchor;
+    const w = Math.min(448, window.innerWidth - 16);
+    if (!dock) return { left: 8, bottom: 76, width: w };
+    const bottom = Math.round(window.innerHeight - dock.top + 8);
+    return { left: Math.round(Math.max(8, Math.min(dock.right - w, window.innerWidth - w - 8))), bottom, width: w, maxHeight: Math.round(window.innerHeight - bottom - 8) };
   }, [p.anchor]);
   return (
     <div
       ref={ref}
-      className="menu hist"
+      className="menu oc-hist entering"
       role="menu"
       aria-label={strings.activity.historyTitle}
       style={style}
@@ -307,19 +304,18 @@ export function HistoryMenu(p: { steps: Step[]; me: string; now: number; anchor:
         }
       }}
     >
-      <div className="menu-title">{strings.activity.historyTitle}</div>
+      <div className="oc-menu-h">{strings.activity.historyTitle}</div>
       {!p.steps.length && <p className="hist-empty">{strings.activity.historyEmpty}</p>}
       <div className="hist-rows">
         {p.steps.map((s, i) => {
           const who = whoName(s, p.me);
           const ago = strings.activity.ago(p.now - s.at);
-          const person = !s.by && !s.outside;
           return (
             <button
               key={s.id}
               ref={(el) => void (rows.current[i] = el)}
               role="menuitem"
-              className={`menu-item ${s.now ? "now" : ""} ${s.undone ? "past" : ""} ${active === i ? "active" : ""}`}
+              className={`menu-item oc-hrow ${s.now ? "now" : ""} ${s.undone ? "past" : ""} ${active === i ? "active" : ""}`}
               aria-label={(s.now ? strings.activity.nowAria : s.undone ? strings.activity.undoneAria : strings.activity.goBackAria)(s.name, who, ago)}
               aria-current={s.now ? "step" : undefined}
               title={s.label}
@@ -328,13 +324,14 @@ export function HistoryMenu(p: { steps: Step[]; me: string; now: number; anchor:
               onFocus={() => setActive(i)}
               onClick={() => !s.now && !p.busy && p.onGo(s)}
             >
-              <span className={`who-chip ${person ? "person" : ""}`}>
-                <span className="dot" style={person ? undefined : { background: authorColor(s) }} aria-hidden="true" />
-                {who}
+              <span className="oc-now-dot" aria-hidden="true" />
+              <span className="oc-who">
+                <Icon name={whoIcon(s)} size={16} />
+                <span>{who}</span>
               </span>
-              <span className="menu-label">{s.name}</span>
-              {s.now ? <span className="h-now">{strings.activity.now}</span> : active === i ? <span className="h-go">{strings.activity.goBack}</span> : null}
-              <span className="h-when">{ago}</span>
+              <span className="oc-what">{s.name}</span>
+              {s.now ? <span className="oc-mark">{strings.activity.now}</span> : active === i ? <span className="oc-mark go">{strings.activity.goBack}</span> : <span />}
+              <span className="oc-when">{ago}</span>
             </button>
           );
         })}

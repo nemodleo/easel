@@ -32,9 +32,10 @@ test("draw a board with the board tool, delete it (confirm), restore with Cmd+Z,
   await wait(200);
   await page.keyboard.press("b");
   assert.equal(await page.getByRole("radio", { name: /Draw board/ }).getAttribute("aria-checked"), "true");
-  await page.mouse.move(c.x + 200, c.y + 200);
+  // In the clear area between the cards (the canvas runs under them)
+  await page.mouse.move(c.x + 400, c.y + 200);
   await page.mouse.down();
-  await page.mouse.move(c.x + 300, c.y + 400, { steps: 5 });
+  await page.mouse.move(c.x + 500, c.y + 400, { steps: 5 });
   await page.mouse.up();
   assert.ok(await until(() => exists("screens/board.html")), "new HTML file");
   const b1 = await board();

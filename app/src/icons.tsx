@@ -54,6 +54,15 @@ const P: Record<string, string> = {
   radius: "M5 19V11a6 6 0 0 1 6-6h8",
   spacing: "M4 4v16M20 4v16M8 12h8M8 12l2-2M8 12l2 2M16 12l-2-2M16 12l-2 2",
   minus: "M5 12h14",
+  parent: "M10 14L5 9l5-5M5 9h8a6 6 0 0 1 6 6v5",
+  clock: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2",
+  person: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM5 20a7 7 0 0 1 14 0",
+  alignLeft: "M5 4v16M9 8h10M9 16h6",
+  alignHcenter: "M12 4v16M6 8h12M8 16h8",
+  alignRight: "M19 4v16M5 8h10M9 16h6",
+  alignTop: "M4 5h16M8 9v10M16 9v6",
+  alignVcenter: "M4 12h16M8 6v12M16 8v8",
+  alignBottom: "M4 19h16M8 5v10M16 9v6",
 };
 
 export type IconName = keyof typeof P;

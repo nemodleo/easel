@@ -3,7 +3,7 @@
 // original to its fork, and picking one version — "Use this one" for a fork, "Use this" for a variant — with its confirm popover.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
-import { authorColor } from "./activity";
+import { whoIcon } from "./activity";
 import { browserId } from "./api";
 import { Icon } from "./icons";
 import { strings } from "./strings";
@@ -14,14 +14,13 @@ export type Holder = { key: string; kind: "agent" | "person"; by?: string; perso
 export type Occupancy = Record<string, Holder[]>;
 
 const isYou = (h: Holder) => h.kind === "person" && h.client === browserId;
-/** Colour of a holder: the agent's author colour; people in the selection colour (you) or their own author colour */
-export const holderColor = (h: Holder) => (isYou(h) ? "var(--select)" : h.kind === "person" ? authorColor({ person: h.person ?? "" }) : authorColor({ by: h.by }));
 const holderName = (h: Holder) => h.by ?? h.person ?? strings.occupancy.someone;
 
 /** Agents editing a board right now (the ones "Use this" waits for) */
 export const writersOn = (occ: Occupancy, f: string) => (occ[f] ?? []).filter((h) => h.kind === "agent" && h.state === "editing");
 
-/** The labels above one board: who is editing it, then who finished */
+/** The labels above one board: who is editing it, then who finished. You: the blue dot (selected by you); an agent at work: the 12px
+ * waiting ring; anyone else: their glyph (who reads without colour) */
 export function OccTags({ list }: { list: Holder[] }) {
   return (
     <>
@@ -30,7 +29,7 @@ export function OccTags({ list }: { list: Holder[] }) {
         const text = you ? strings.occupancy.you : h.state === "done" ? strings.occupancy.done(holderName(h), strings.occupancy.clock(h.doneAt ?? Date.now())) : h.kind === "person" ? strings.occupancy.personEditing(holderName(h)) : strings.occupancy.editing(holderName(h));
         return (
           <span key={h.key} className={`occ-tag ${you ? "you" : ""} ${h.state === "done" ? "done" : ""}`} data-occ={h.key} title={text}>
-            {h.state === "editing" && h.kind === "agent" ? <span className="ring" style={{ ["--c" as string]: holderColor(h) }} aria-hidden="true" /> : <span className="idot" style={{ background: holderColor(h) }} aria-hidden="true" />}
+            {you ? <span className="idot" aria-hidden="true" /> : h.state === "editing" && h.kind === "agent" ? <span className="spinner" aria-hidden="true" /> : <Icon name={whoIcon(h.kind === "agent" ? { by: h.by ?? "" } : { person: h.person ?? "" })} size={16} />}
             <span className="act-tag-text">{text}</span>
           </span>
         );
@@ -39,10 +38,10 @@ export function OccTags({ list }: { list: Holder[] }) {
   );
 }
 
-/** Board list: the dot of whoever is editing the board (the first one) */
+/** Board list: a dot while someone is editing the board (the first one): blue for you, ink for anyone else (the name is its label) */
 export function listDot(occ: Occupancy, f: string) {
   const h = (occ[f] ?? []).find((x) => x.state === "editing");
-  return h ? { color: holderColor(h), label: isYou(h) ? strings.occupancy.youListDot : strings.occupancy.listDot(holderName(h)) } : null;
+  return h ? { color: isYou(h) ? "var(--select)" : "var(--text)", label: isYou(h) ? strings.occupancy.youListDot : strings.occupancy.listDot(holderName(h)) } : null;
 }
 
 /** The versions "Use this" picks between (mirrors choiceGroup in server/forks.mjs) */
@@ -84,10 +83,11 @@ export function UseButton({ file, group, busy, open, onOpen }: { file: string; g
   );
 }
 
-/** The confirm under a Use this button: what happens to the original and the others; Apply (filled) and Keep all / Keep both */
+/** The confirm under a Use this button: what happens to the original and the others; Apply and Keep all / Keep both. It hangs 8px
+ * under the button, right edges in line, on the shared menu surface; Apply is grey (the orange stays on Ask AI) */
 export function UseConfirm(p: { file: string; group: Group; board: Board; busy: boolean; onApply: () => void; onKeepAll: () => void; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ x: number; y: number; arrow: number } | null>(null);
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const anchor = () => document.querySelector<HTMLElement>(`[data-use="${CSS.escape(p.file)}"]`);
   const t = (f: string) => p.board.boards[f]?.title ?? f;
   const g = p.group;
@@ -99,17 +99,16 @@ export function UseConfirm(p: { file: string; group: Group; board: Board; busy: 
       : g.chosen === g.original
         ? [s.confirmKeep(o), s.confirmKeepBody(g.alts.map(t).join(", "), g.alts.length)]
         : [s.confirmFork(t(g.chosen), o), s.confirmForkBody(o)];
-  // Follows its button as the canvas moves; the arrow points at the button
+  // Follows its button as the canvas moves (whole pixels)
   useLayoutEffect(() => {
     const a = anchor();
     if (!a) return void p.onClose();
     const r = a.getBoundingClientRect();
-    const w = ref.current?.offsetWidth ?? 290;
-    const x = Math.max(8, Math.min(r.right + 24 - w, window.innerWidth - w - 8));
+    const w = ref.current?.offsetWidth ?? 288;
+    const x = Math.round(Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8)));
     const h = ref.current?.offsetHeight ?? 120;
-    const y = Math.max(8, Math.min(r.bottom + 10, window.innerHeight - h - 8));
-    const arrow = Math.max(12, Math.min(w - 24, r.left + r.width / 2 - x - 6));
-    if (!pos || Math.abs(pos.x - x) > 0.5 || Math.abs(pos.y - y) > 0.5 || pos.arrow !== arrow) setPos({ x, y, arrow });
+    const y = Math.round(Math.max(8, Math.min(r.bottom + 8, window.innerHeight - h - 8)));
+    if (!pos || pos.x !== x || pos.y !== y) setPos({ x, y });
   });
   useEffect(() => {
     ref.current?.querySelector<HTMLElement>("button")?.focus();
@@ -124,10 +123,10 @@ export function UseConfirm(p: { file: string; group: Group; board: Board; busy: 
   return (
     <div
       ref={ref}
-      className="menu confirm"
+      className="menu confirm entering"
       role="dialog"
       aria-label={title}
-      style={{ left: pos?.x ?? -9999, top: pos?.y ?? -9999, ["--arrow" as string]: `${pos?.arrow ?? 0}px` }}
+      style={{ left: pos?.x ?? -9999, top: pos?.y ?? -9999 }}
       onKeyDown={(e) => {
         if (e.key === "Escape") {
           e.stopPropagation();
@@ -139,10 +138,10 @@ export function UseConfirm(p: { file: string; group: Group; board: Board; busy: 
       <p className="c-title">{title}</p>
       <p className="c-body">{body}</p>
       <div className="btn-row">
-        <button className="primary" disabled={p.busy} onClick={p.onApply}>
+        <button className="btn oc-strong" disabled={p.busy} onClick={p.onApply}>
           {s.apply}
         </button>
-        <button disabled={p.busy} onClick={p.onKeepAll}>
+        <button className="btn oc-plain" disabled={p.busy} onClick={p.onKeepAll}>
           {g.kind === "variant" ? s.keepAll : s.keepBoth}
         </button>
       </div>

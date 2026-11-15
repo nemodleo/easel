@@ -46,10 +46,11 @@ test("changes by others tag their boards (author, count), the change is outlined
   await page.locator('.board[data-file="scr-02.html"] .act-tag', { hasText: "2 changes" }).waitFor();
   assert.deepEqual(await tags(page, "scr-02.html").allTextContents(), ["Claude Code · now · 2 changes"]);
   assert.deepEqual(await tags(page, "scr-32.html").allTextContents(), ["Codex · now · 1 change"]);
-  // The changed element is outlined in Codex's colour while the tag is fresh
+  // The changed element is outlined while the tag is fresh: dashed, apart from your own solid blue (who it was is the tag's glyph and name)
   const outline = page.locator('.board[data-file="scr-32.html"] .change-outline');
   await outline.waitFor({ timeout: 4000 });
-  assert.match(await outline.getAttribute("style"), /var\(--who-2\)/);
+  assert.equal(await outline.evaluate((e) => getComputedStyle(e).outlineStyle), "dashed");
+  assert.equal(await tags(page, "scr-32.html").locator("svg").count(), 1);
   // The tag's popover: who, when, the text change, Before / After, Undo
   await tags(page, "scr-32.html").click();
   const pop = page.getByRole("dialog", { name: "Change by Codex" });
@@ -95,7 +96,7 @@ test("History under Undo: newest first with Now; Go back to here moves the canva
   const menu = page.getByRole("menu", { name: "History · newest first" });
   await menu.waitFor();
   const rows = menu.getByRole("menuitem");
-  const names = await rows.locator(".menu-label").allTextContents();
+  const names = await rows.locator(".oc-what").allTextContents();
   assert.deepEqual(names, ["Move board SCR-15 채팅 목록", "Change heading on SCR-02 농가 목록", "Change heading on SCR-02 농가 목록", "Change heading on SCR-15 채팅 목록"]);
   // The undone steps sit above Now; Now is the newest applied one (the menu follows the history as it arrives)
   const now = menu.locator('[aria-current="step"]');
