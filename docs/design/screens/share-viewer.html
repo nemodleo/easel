@@ -5,74 +5,249 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="board-size" content="1440x900">
 <title>Share · What the viewer sees</title>
-<link rel="stylesheet" href="/assets/easel.css">
+<link rel="stylesheet" href="../assets/easel.css">
 <style>
-.app{width:1440px;height:900px}
-.board-title{min-width:0;overflow:hidden;text-overflow:ellipsis}
-/* project screens drawn at real size (390x844) and scaled by the canvas zoom */
-.rs{position:absolute;left:0;top:0;width:390px;height:844px;transform-origin:0 0;background:#fff;display:flex;flex-direction:column;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#10213a}
-.rs .hd{height:64px;display:flex;align-items:center;justify-content:flex-end;padding:0 24px;font-weight:700;font-size:16px;color:#2b59c3;flex:none}
-.rs .hd.l{justify-content:flex-start;color:#10213a;font-size:18px}
-.rs .bd{flex:1;padding:8px 24px;display:flex;flex-direction:column;gap:16px;overflow:hidden}
-.rs .art{height:260px;border-radius:24px;background:linear-gradient(160deg,#dfe7fb,#b9cbf4);position:relative;flex:none}
-.rs .art i{position:absolute;width:96px;height:96px;border-radius:48px;background:#2b59c3;left:50%;top:50%;margin:-48px 0 0 -48px;opacity:.85}
-.rs .h{font-size:30px;font-weight:700;line-height:1.15;letter-spacing:-.01em}
-.rs .p{font-size:17px;line-height:1.45;color:#5a6577}
-.rs .ft{padding:16px 24px 36px;display:flex;flex-direction:column;gap:12px;align-items:center;flex:none}
-.rs .cta{width:100%;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;background:#2b59c3;flex:none}
-.rs .lnk{font-size:16px;line-height:22px;color:#2b59c3;font-weight:600}
-.rs .opt{height:60px;border-radius:16px;border:2px solid #d9e0ee;display:flex;align-items:center;padding:0 18px;font-size:17px;font-weight:600;gap:12px;flex:none}
-.rs .opt.on{border-color:#2b59c3;background:#eef3fd;color:#2b59c3}
-.rs .opt b{width:20px;height:20px;border-radius:5px;border:2.5px solid currentColor;flex:none}
-.rs .in{height:56px;border-radius:16px;background:#f2f4f8;display:flex;align-items:center;padding:0 18px;font-size:17px;color:#7a8597;flex:none}
-.rs .dots{display:flex;gap:8px;justify-content:center;padding-top:4px}.rs .dots i{width:10px;height:10px;border-radius:5px;background:#d0d7e5}.rs .dots i.on{background:#2b59c3;width:26px}
-.rs .row-i{height:84px;border-bottom:2px solid #eef0f4;display:flex;flex-direction:column;justify-content:center;gap:10px;flex:none}
-.rs .row-i i{display:block;height:14px;border-radius:7px;background:#d6dbe4;width:70%}.rs .row-i i+i{width:45%;background:#e8ebf0}
-.rs .plan{border:2px solid #d9e0ee;border-radius:20px;padding:18px 20px;display:flex;flex-direction:column;gap:4px;flex:none}
-.rs .plan.on{border-color:#2b59c3;background:#eef3fd}
-.rs .plan b{font-size:19px}.rs .plan .price{font-size:30px;font-weight:700}.rs .plan span{font-size:15px;color:#5a6577}
-/* a sticky note on the canvas at 39% (canvas content, read-only in the viewer) */
-.note-sticky{position:absolute;background:var(--sticky);color:#111;padding:8px 10px;box-shadow:0 2px 6px rgba(0,0,0,.12);font-size:11px;line-height:1.45}
+/* Drawn from the running app (direction A) on 2026-11-15: its own markup and classes, still. Board contents are the demo project's screens. */
+html,body,#root{width:1440px;height:900px}
+.app *{transition:none!important}
 </style>
 </head>
 <body class="">
-<div class="app"><header class="vbar">
-  <strong class="app-title" title="relay">relay</strong>
-  <div class="page-tabs"><button class="on">Onboarding</button><button>Inbox</button></div>
-  <span class="spacer"></span>
-  <div class="tool-group"><button class="icon-btn" title="Zoom out"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button><span class="zoom">39%</span><button class="icon-btn " title="Zoom in"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button><button class="icon-btn " title="Fit all"><svg class="ic" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button></div>
-  <button class="play-btn"><svg class="ic" viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg> Play</button>
-  <span class="stamp"><svg class="ic s" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg> <span class="stamp-text">View only · exported Nov 10, 14:02</span><span class="stamp-text"> · </span><code>relay@6f9378a</code></span>
-</header>
-<div class="main"><aside class="left">
-  
-  <section class="left-boards">
-    <div class="sec-head"><span>Boards 4</span></div>
-    <label class="search"><svg class="ic s" viewBox="0 0 24 24"><path d="M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14zM20 20l-4-4"/></svg><span>Find boards (⌘K)</span></label>
-    <ul class="board-list"><li><button class="row two-line" title="home.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Home</span><span class="row-file">home.html</span></span></button></li><li><button class="row two-line on" title="onboard-1-welcome.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Onboarding 1 · Welcome</span><span class="row-file">onboard-1-welcome.html</span></span></button></li><li><button class="row two-line" title="onboard-2-goals.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Onboarding 2 · Goals</span><span class="row-file">onboard-2-goals.html</span></span></button></li><li><button class="row two-line" title="onboard-3-invite.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Onboarding 3 · Invite</span><span class="row-file">onboard-3-invite.html</span></span></button></li></ul>
-  </section>
-  <div class="made"><a>Made with Easel</a></div>
-</aside>
-<div class="canvas-wrap"><div class="canvas">
-<div class="board " style="left:16px;top:96px;width:152px;height:329px"><div class="board-label"><span class="lab-row"><span class="board-title">Home</span></span></div><div class="board-frame"><div class="rs" style="transform:scale(0.39);color:#111"><div class="hd l" style="color:#111">Home</div><div class="bd"><div class="h" style="font-size:34px">Title</div><div class="p" style="color:#6b6b6b">Description</div></div><div class="ft"><div class="cta" style="background:#c94f0c">Next</div></div></div></div></div>
-<div class="board selected" style="left:180px;top:96px;width:152px;height:329px"><div class="board-label"><span class="lab-row"><span class="board-title">Onboarding 1 · Welcome</span></span></div><div class="board-frame"><div class="rs" style="transform:scale(0.39)"><div class="hd">Skip</div><div class="bd"><div class="art"><i></i></div><div class="h">Hand off work, not the whole thread.</div><div class="p">Relay keeps the context so the next person can just start.</div><div class="dots"><i class="on"></i><i></i><i></i></div></div><div class="ft"><div class="cta">Get started</div><div class="lnk">I have an account</div></div></div></div></div>
-<div class="board " style="left:344px;top:96px;width:152px;height:329px"><div class="board-label"><span class="lab-row"><span class="board-title">Onboarding 2 · Goals</span></span></div><div class="board-frame"><div class="rs" style="transform:scale(0.39)"><div class="hd">Skip</div><div class="bd"><div class="h">What will you relay?</div><div class="opt on"><b></b>Design reviews</div><div class="opt"><b></b>Bug reports</div><div class="opt on"><b></b>Customer notes</div><div class="opt"><b></b>Weekly updates</div></div><div class="ft"><div class="cta">Continue</div></div></div></div></div>
-<div class="board " style="left:508px;top:96px;width:152px;height:329px"><div class="board-label"><span class="lab-row"><span class="board-title">Onboarding 3 · Invite</span></span></div><div class="board-frame"><div class="rs" style="transform:scale(0.39)"><div class="hd">Skip</div><div class="bd"><div class="h">Invite your team</div><div class="in">name@company.com</div><div class="in">name@company.com</div></div><div class="ft"><div class="cta">Send invites</div><div class="lnk">Later</div></div></div></div></div>
-<div class="note-sticky" style="left:672px;top:96px;width:150px;height:118px">Step 2 needs fewer options. Ask Mina before cutting.</div><div class="pin on" style="left:302px;top:100px">1</div><div class="pin" style="left:460px;top:268px">2</div><div class="pin" style="left:610px;top:360px">3</div><div class="thread" style="left:332px;top:100px">
-  <div class="thread-head"><span>Onboarding 1 · Welcome</span><span>1 of 3</span><button class="icon-btn sm" title="Close comment"><svg class="ic s" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
-  <div class="comment"><span class="who">Hyun Park <span class="when">· Nov 10, 11:20</span></span><span class="c-text">Skip is hard to see on the blue art. Try the brand blue.</span></div>
-  <div class="reply"><div class="comment"><span class="who">Mina <span class="when">· Nov 10, 12:02</span></span><span class="c-text">Agree. It also needs a bigger tap area.</span></div></div>
-</div></div>
-<div class="minimap"><svg width="200" height="130"><rect x="14" y="24" width="24" height="52" class="mm-board"/><rect x="44" y="24" width="24" height="52" class="mm-sel"/><rect x="74" y="24" width="24" height="52" class="mm-board"/><rect x="104" y="24" width="24" height="52" class="mm-board"/><rect x="8" y="10" width="134" height="96" class="mm-view"/></svg></div>
-</div><aside class="right">
-  <div class="right-tabs"><button class="on">Comments <span class="muted count">3</span></button></div>
-  <div class="inspector">
-    <ul class="c-list">
-      <li><button class="c-item on"><span class="pin">1</span><span class="c-body"><span class="where">Onboarding 1 · Welcome · 1 reply</span><span><strong>Hyun Park</strong> Skip is hard to see on the blue art. Try the brand blue.</span></span></button></li>
-      <li><button class="c-item"><span class="pin">2</span><span class="c-body"><span class="where">Onboarding 2 · Goals</span><span><strong>Hyun Park</strong> Four options feel like a lot for step 2.</span></span></button></li>
-      <li><button class="c-item"><span class="pin">3</span><span class="c-body"><span class="where">Onboarding 3 · Invite</span><span><strong>Jo</strong> Can we prefill the company domain?</span></span></button></li>
-    </ul>
-  </div>
-</aside>
-</div></div></body>
+<div id="root"><div class="app viewer oc  "><div class="canvas-wrap"><div class="canvas tool-hand" role="application" aria-label="Design canvas"><div class="world" style="transform: translate(535px, 67px) scale(0.828057);"><div class="note note-title  read-only" data-note="n1" style="left: 0px; top: -260px; max-width: 2400px;"><div class="note-text" contenteditable="false" style="font-size: 72px; font-weight: 700;">Tidy — habit tracker</div></div><div class="note note-sticky  read-only" data-note="n2" style="left: 2350px; top: 0px; width: 360px; background: rgb(255, 241, 168);"><div class="note-text" contenteditable="false" style="font-size: 22px; font-weight: 400;">Check-in should be one tap from Today.
+Keep the streak visible.</div></div><div class="note note-sticky  read-only" data-note="n3" style="left: 2350px; top: 300px; width: 360px; background: rgb(210, 228, 255);"><div class="note-text" contenteditable="false" style="font-size: 22px; font-weight: 400;">Stats: compare with last week, not with other people.</div></div><div class="note note-title  read-only" data-note="n4" style="left: 0px; top: 880px; max-width: 2400px;"><div class="note-text" contenteditable="false" style="font-size: 48px; font-weight: 700;">Onboarding &amp; marketing</div></div><div class="board selected    interactive " data-file="home.html" role="group" aria-label="Board Today (selected)" style="left: 0px; top: 0px; width: 390px; height: 844px;"><div class="board-label  " title="Today · home.html" style="transform: scale(1.20765); width: 322.942px;"><span class="lab-row"><span class="dot" aria-label="Interactive (Play)"></span><span class="board-title">Today</span><span class="board-file">home.html</span><span class="board-btns "><button class="icon-btn sm" aria-label="Play" title="Play"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 5l11 7-11 7z"></path></svg></button></span></span></div><div class="board-frame" style="border-radius: 36px;"><iframe srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;board-size&quot; content=&quot;390x844&quot;&gt;
+&lt;title&gt;Today&lt;/title&gt;
+&lt;style&gt;
+*{box-sizing:border-box}body{margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,&quot;Segoe UI&quot;,Roboto,sans-serif;color:#14161a;background:#fff;-webkit-font-smoothing:antialiased}
+.s{width:390px;height:844px;position:relative;overflow:hidden;background:#F7F6F2;display:flex;flex-direction:column}
+.bar{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-size:15px;font-weight:600}
+.h1{font-size:30px;font-weight:700;letter-spacing:-.02em;margin:4px 20px 4px}
+.sub{color:#6b6f76;font-size:15px;margin:0 20px 16px}
+.card{background:#fff;border-radius:20px;margin:0 16px 12px;padding:16px;box-shadow:0 1px 2px rgba(20,22,26,.04),0 4px 16px rgba(20,22,26,.05)}
+.row{display:flex;align-items:center;gap:12px}
+.ic{width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex:none}
+.t{font-size:16px;font-weight:600}.m{font-size:13px;color:#6b6f76;margin-top:4px}
+.chk{margin-left:auto;width:28px;height:28px;border-radius:50%;border:2px solid #d9dbe0;flex:none}
+.chk.on{background:#3E7BFA;border-color:#3E7BFA;box-shadow:inset 0 0 0 4px #fff}
+.btn{display:flex;align-items:center;justify-content:center;height:54px;border-radius:16px;background:#14161a;color:#fff;font-size:16px;font-weight:600;text-decoration:none;margin:0 16px}
+.btn.blue{background:#3E7BFA}
+.tabs{position:absolute;left:16px;right:16px;bottom:20px;height:64px;border-radius:20px;background:#fff;display:flex;align-items:center;justify-content:space-around;box-shadow:0 8px 24px rgba(20,22,26,.10)}
+.tab{font-size:12px;font-weight:600;color:#9aa0a8;display:flex;flex-direction:column;align-items:center;gap:4px}.tab.on{color:#14161a}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill{display:inline-flex;align-items:center;height:28px;padding:0 12px;border-radius:999px;background:#fff;font-size:13px;font-weight:600;margin-right:8px}
+.pill.on{background:#14161a;color:#fff}
+.ring{width:132px;height:132px;border-radius:50%;background:conic-gradient(#3E7BFA 0 72%,#E8EAF0 72% 100%);display:flex;align-items:center;justify-content:center}
+.ring&gt;div{width:104px;height:104px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.bars{display:flex;align-items:flex-end;gap:8px;height:120px;padding:0 4px}
+.bars div{flex:1;border-radius:8px;background:#E3EAFE}.bars div.on{background:#3E7BFA}
+.field{height:52px;border-radius:14px;background:#fff;border:1.5px solid #e6e7eb;display:flex;align-items:center;padding:0 16px;font-size:16px;margin:0 16px 12px;color:#14161a}
+.lab{font-size:13px;font-weight:600;color:#6b6f76;margin:8px 20px 8px}
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div class=&quot;s&quot;&gt;
+  &lt;div class=&quot;bar&quot;&gt;&lt;span&gt;9:41&lt;/span&gt;&lt;span&gt;●●●&lt;/span&gt;&lt;/div&gt;
+  &lt;div class=&quot;h1&quot;&gt;Good morning, Sam&lt;/div&gt;
+  &lt;p class=&quot;sub&quot;&gt;3 of 5 habits done · 12-day streak 🔥&lt;/p&gt;
+  &lt;div style=&quot;margin:0 20px 16px&quot;&gt;&lt;span class=&quot;pill on&quot;&gt;All&lt;/span&gt;&lt;span class=&quot;pill&quot;&gt;Morning&lt;/span&gt;&lt;span class=&quot;pill&quot;&gt;Evening&lt;/span&gt;&lt;/div&gt;
+  &lt;a class=&quot;card row&quot; href=&quot;habit.html&quot; style=&quot;text-decoration:none;color:inherit&quot;&gt;&lt;div class=&quot;ic&quot; style=&quot;background:#EEF3FF&quot;&gt;🧘&lt;/div&gt;&lt;div&gt;&lt;div class=&quot;t&quot;&gt;Meditate&lt;/div&gt;&lt;div class=&quot;m&quot;&gt;10 min · morning&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;chk on&quot;&gt;&lt;/div&gt;&lt;/a&gt;
+  &lt;a class=&quot;card row&quot; href=&quot;habit.html&quot; style=&quot;text-decoration:none;color:inherit&quot;&gt;&lt;div class=&quot;ic&quot; style=&quot;background:#E8F7F1&quot;&gt;💧&lt;/div&gt;&lt;div&gt;&lt;div class=&quot;t&quot;&gt;Drink water&lt;/div&gt;&lt;div class=&quot;m&quot;&gt;6 of 8 glasses&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;chk on&quot;&gt;&lt;/div&gt;&lt;/a&gt;
+  &lt;a class=&quot;card row&quot; href=&quot;habit.html&quot; style=&quot;text-decoration:none;color:inherit&quot;&gt;&lt;div class=&quot;ic&quot; style=&quot;background:#FFF4E5&quot;&gt;📚&lt;/div&gt;&lt;div&gt;&lt;div class=&quot;t&quot;&gt;Read&lt;/div&gt;&lt;div class=&quot;m&quot;&gt;20 pages&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;chk on&quot;&gt;&lt;/div&gt;&lt;/a&gt;
+  &lt;a class=&quot;card row&quot; href=&quot;habit.html&quot; style=&quot;text-decoration:none;color:inherit&quot;&gt;&lt;div class=&quot;ic&quot; style=&quot;background:#FDECEC&quot;&gt;🏃&lt;/div&gt;&lt;div&gt;&lt;div class=&quot;t&quot;&gt;Run&lt;/div&gt;&lt;div class=&quot;m&quot;&gt;3 km · evening&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;chk&quot;&gt;&lt;/div&gt;&lt;/a&gt;
+  &lt;a class=&quot;card row&quot; href=&quot;habit.html&quot; style=&quot;text-decoration:none;color:inherit&quot;&gt;&lt;div class=&quot;ic&quot; style=&quot;background:#F3EEFF&quot;&gt;✍️&lt;/div&gt;&lt;div&gt;&lt;div class=&quot;t&quot;&gt;Journal&lt;/div&gt;&lt;div class=&quot;m&quot;&gt;5 min · evening&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;chk&quot;&gt;&lt;/div&gt;&lt;/a&gt;
+  &lt;a class=&quot;btn blue&quot; href=&quot;new-habit.html&quot; style=&quot;position:absolute;right:20px;bottom:100px;width:56px;height:56px;border-radius:20px;margin:0;font-size:26px&quot;&gt;+&lt;/a&gt;
+  &lt;nav class=&quot;tabs&quot;&gt;&lt;a class=&quot;tab on&quot; href=&quot;home.html&quot; style=&quot;text-decoration:none&quot;&gt;&lt;span class=&quot;dot&quot;&gt;&lt;/span&gt;Today&lt;/a&gt;&lt;a class=&quot;tab&quot; href=&quot;stats.html&quot; style=&quot;text-decoration:none&quot;&gt;&lt;span class=&quot;dot&quot;&gt;&lt;/span&gt;Stats&lt;/a&gt;&lt;a class=&quot;tab&quot; href=&quot;settings.html&quot; style=&quot;text-decoration:none&quot;&gt;&lt;span class=&quot;dot&quot;&gt;&lt;/span&gt;Settings&lt;/a&gt;&lt;/nav&gt;
+&lt;/div&gt;
+
+
+&lt;/body&gt;&lt;/html&gt;" title="Today" style="pointer-events: none;"></iframe><div class="overlay"><button class="pin on" aria-label="Comment 1 by Alex" title="Can we show progress as a ring here instead of text?" style="left: 358px; top: 120px; transform: scale(1.20765);">1</button></div></div></div><div class="board      " data-file="habit.html" role="group" aria-label="Board Habit detail" style="left: 470px; top: 0px; width: 390px; height: 844px;"><div class="board-label  " title="Habit detail · habit.html" style="transform: scale(1.20765); width: 322.942px;"><span class="lab-row"><span class="board-title">Habit detail</span><span class="board-file">habit.html</span><span class="board-btns "></span></span></div><div class="board-frame" style="border-radius: 36px;"><iframe srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;board-size&quot; content=&quot;390x844&quot;&gt;
+&lt;title&gt;Habit detail&lt;/title&gt;
+&lt;style&gt;
+*{box-sizing:border-box}body{margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,&quot;Segoe UI&quot;,Roboto,sans-serif;color:#14161a;background:#fff;-webkit-font-smoothing:antialiased}
+.s{width:390px;height:844px;position:relative;overflow:hidden;background:#F7F6F2;display:flex;flex-direction:column}
+.bar{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-size:15px;font-weight:600}
+.h1{font-size:30px;font-weight:700;letter-spacing:-.02em;margin:4px 20px 4px}
+.sub{color:#6b6f76;font-size:15px;margin:0 20px 16px}
+.card{background:#fff;border-radius:20px;margin:0 16px 12px;padding:16px;box-shadow:0 1px 2px rgba(20,22,26,.04),0 4px 16px rgba(20,22,26,.05)}
+.row{display:flex;align-items:center;gap:12px}
+.ic{width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex:none}
+.t{font-size:16px;font-weight:600}.m{font-size:13px;color:#6b6f76;margin-top:4px}
+.chk{margin-left:auto;width:28px;height:28px;border-radius:50%;border:2px solid #d9dbe0;flex:none}
+.chk.on{background:#3E7BFA;border-color:#3E7BFA;box-shadow:inset 0 0 0 4px #fff}
+.btn{display:flex;align-items:center;justify-content:center;height:54px;border-radius:16px;background:#14161a;color:#fff;font-size:16px;font-weight:600;text-decoration:none;margin:0 16px}
+.btn.blue{background:#3E7BFA}
+.tabs{position:absolute;left:16px;right:16px;bottom:20px;height:64px;border-radius:20px;background:#fff;display:flex;align-items:center;justify-content:space-around;box-shadow:0 8px 24px rgba(20,22,26,.10)}
+.tab{font-size:12px;font-weight:600;color:#9aa0a8;display:flex;flex-direction:column;align-items:center;gap:4px}.tab.on{color:#14161a}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill{display:inline-flex;align-items:center;height:28px;padding:0 12px;border-radius:999px;background:#fff;font-size:13px;font-weight:600;margin-right:8px}
+.pill.on{background:#14161a;color:#fff}
+.ring{width:132px;height:132px;border-radius:50%;background:conic-gradient(#3E7BFA 0 72%,#E8EAF0 72% 100%);display:flex;align-items:center;justify-content:center}
+.ring&gt;div{width:104px;height:104px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.bars{display:flex;align-items:flex-end;gap:8px;height:120px;padding:0 4px}
+.bars div{flex:1;border-radius:8px;background:#E3EAFE}.bars div.on{background:#3E7BFA}
+.field{height:52px;border-radius:14px;background:#fff;border:1.5px solid #e6e7eb;display:flex;align-items:center;padding:0 16px;font-size:16px;margin:0 16px 12px;color:#14161a}
+.lab{font-size:13px;font-weight:600;color:#6b6f76;margin:8px 20px 8px}
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div class=&quot;s&quot;&gt;
+  &lt;div class=&quot;bar&quot;&gt;&lt;a href=&quot;home.html&quot; style=&quot;color:inherit;text-decoration:none&quot;&gt;‹ Today&lt;/a&gt;&lt;span&gt;Edit&lt;/span&gt;&lt;/div&gt;
+  &lt;div style=&quot;display:flex;flex-direction:column;align-items:center;padding:12px 0 20px&quot;&gt;
+    &lt;div class=&quot;ic&quot; style=&quot;background:#EEF3FF;width:72px;height:72px;border-radius:20px;font-size:36px&quot;&gt;🧘&lt;/div&gt;
+    &lt;div class=&quot;h1&quot; style=&quot;margin-top:16px&quot;&gt;Meditate&lt;/div&gt;
+    &lt;p class=&quot;sub&quot; style=&quot;margin:0&quot;&gt;Every morning · 10 minutes&lt;/p&gt;
+  &lt;/div&gt;
+  &lt;div class=&quot;card&quot; style=&quot;display:flex;justify-content:space-around;text-align:center&quot;&gt;
+    &lt;div&gt;&lt;div class=&quot;h1&quot; style=&quot;margin:0;font-size:24px&quot;&gt;12&lt;/div&gt;&lt;div class=&quot;m&quot;&gt;day streak&lt;/div&gt;&lt;/div&gt;
+    &lt;div&gt;&lt;div class=&quot;h1&quot; style=&quot;margin:0;font-size:24px&quot;&gt;86%&lt;/div&gt;&lt;div class=&quot;m&quot;&gt;this month&lt;/div&gt;&lt;/div&gt;
+    &lt;div&gt;&lt;div class=&quot;h1&quot; style=&quot;margin:0;font-size:24px&quot;&gt;41&lt;/div&gt;&lt;div class=&quot;m&quot;&gt;total&lt;/div&gt;&lt;/div&gt;
+  &lt;/div&gt;
+  &lt;div class=&quot;card&quot;&gt;
+    &lt;div class=&quot;t&quot; style=&quot;margin-bottom:12px&quot;&gt;Last 4 weeks&lt;/div&gt;
+    &lt;div style=&quot;display:grid;grid-template-columns:repeat(7,1fr);gap:8px&quot;&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#E3EAFE&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#E3EAFE&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#E3EAFE&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;/div&gt;
+  &lt;/div&gt;
+  &lt;a class=&quot;btn&quot; href=&quot;home.html&quot; style=&quot;margin-top:auto;margin-bottom:28px&quot;&gt;Mark as done&lt;/a&gt;
+&lt;/div&gt;
+
+
+&lt;/body&gt;&lt;/html&gt;" title="Habit detail" style="pointer-events: none;"></iframe><div class="overlay"><button class="pin " aria-label="Comment 2 by Hyun Park" title="Two stats feel like enough for this screen." style="left: 362px; top: 305px; transform: scale(1.20765);">2</button></div></div></div><div class="board      " data-file="new-habit.html" role="group" aria-label="Board New habit" style="left: 940px; top: 0px; width: 390px; height: 844px;"><div class="board-label  " title="New habit · new-habit.html" style="transform: scale(1.20765); width: 322.942px;"><span class="lab-row"><span class="board-title">New habit</span><span class="board-file">new-habit.html</span><span class="board-btns "></span></span></div><div class="board-frame" style="border-radius: 36px;"><iframe srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;board-size&quot; content=&quot;390x844&quot;&gt;
+&lt;title&gt;New habit&lt;/title&gt;
+&lt;style&gt;
+*{box-sizing:border-box}body{margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,&quot;Segoe UI&quot;,Roboto,sans-serif;color:#14161a;background:#fff;-webkit-font-smoothing:antialiased}
+.s{width:390px;height:844px;position:relative;overflow:hidden;background:#F7F6F2;display:flex;flex-direction:column}
+.bar{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-size:15px;font-weight:600}
+.h1{font-size:30px;font-weight:700;letter-spacing:-.02em;margin:4px 20px 4px}
+.sub{color:#6b6f76;font-size:15px;margin:0 20px 16px}
+.card{background:#fff;border-radius:20px;margin:0 16px 12px;padding:16px;box-shadow:0 1px 2px rgba(20,22,26,.04),0 4px 16px rgba(20,22,26,.05)}
+.row{display:flex;align-items:center;gap:12px}
+.ic{width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex:none}
+.t{font-size:16px;font-weight:600}.m{font-size:13px;color:#6b6f76;margin-top:4px}
+.chk{margin-left:auto;width:28px;height:28px;border-radius:50%;border:2px solid #d9dbe0;flex:none}
+.chk.on{background:#3E7BFA;border-color:#3E7BFA;box-shadow:inset 0 0 0 4px #fff}
+.btn{display:flex;align-items:center;justify-content:center;height:54px;border-radius:16px;background:#14161a;color:#fff;font-size:16px;font-weight:600;text-decoration:none;margin:0 16px}
+.btn.blue{background:#3E7BFA}
+.tabs{position:absolute;left:16px;right:16px;bottom:20px;height:64px;border-radius:20px;background:#fff;display:flex;align-items:center;justify-content:space-around;box-shadow:0 8px 24px rgba(20,22,26,.10)}
+.tab{font-size:12px;font-weight:600;color:#9aa0a8;display:flex;flex-direction:column;align-items:center;gap:4px}.tab.on{color:#14161a}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill{display:inline-flex;align-items:center;height:28px;padding:0 12px;border-radius:999px;background:#fff;font-size:13px;font-weight:600;margin-right:8px}
+.pill.on{background:#14161a;color:#fff}
+.ring{width:132px;height:132px;border-radius:50%;background:conic-gradient(#3E7BFA 0 72%,#E8EAF0 72% 100%);display:flex;align-items:center;justify-content:center}
+.ring&gt;div{width:104px;height:104px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.bars{display:flex;align-items:flex-end;gap:8px;height:120px;padding:0 4px}
+.bars div{flex:1;border-radius:8px;background:#E3EAFE}.bars div.on{background:#3E7BFA}
+.field{height:52px;border-radius:14px;background:#fff;border:1.5px solid #e6e7eb;display:flex;align-items:center;padding:0 16px;font-size:16px;margin:0 16px 12px;color:#14161a}
+.lab{font-size:13px;font-weight:600;color:#6b6f76;margin:8px 20px 8px}
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div class=&quot;s&quot;&gt;
+  &lt;div class=&quot;bar&quot;&gt;&lt;a href=&quot;home.html&quot; style=&quot;color:inherit;text-decoration:none&quot;&gt;Cancel&lt;/a&gt;&lt;span&gt;New habit&lt;/span&gt;&lt;span style=&quot;color:#3E7BFA&quot;&gt;Save&lt;/span&gt;&lt;/div&gt;
+  &lt;div class=&quot;lab&quot;&gt;Name&lt;/div&gt;&lt;div class=&quot;field&quot;&gt;Stretch&lt;/div&gt;
+  &lt;div class=&quot;lab&quot;&gt;Icon&lt;/div&gt;
+  &lt;div style=&quot;display:flex;gap:8px;margin:0 16px 12px&quot;&gt;&lt;div class=&quot;ic&quot; style=&quot;background:#EEF3FF;outline:2px solid #3E7BFA;outline-offset:2px&quot;&gt;🤸&lt;/div&gt;&lt;div class=&quot;ic&quot; style=&quot;background:#E8F7F1;&quot;&gt;🍎&lt;/div&gt;&lt;div class=&quot;ic&quot; style=&quot;background:#FFF4E5;&quot;&gt;🎧&lt;/div&gt;&lt;div class=&quot;ic&quot; style=&quot;background:#F3EEFF;&quot;&gt;🌙&lt;/div&gt;&lt;div class=&quot;ic&quot; style=&quot;background:#FDECEC;&quot;&gt;🚲&lt;/div&gt;&lt;/div&gt;
+  &lt;div class=&quot;lab&quot;&gt;Repeat&lt;/div&gt;
+  &lt;div style=&quot;display:flex;gap:8px;margin:0 16px 12px&quot;&gt;&lt;div style=&quot;flex:1;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;background:#14161a;color:#fff&quot;&gt;M&lt;/div&gt;&lt;div style=&quot;flex:1;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;background:#14161a;color:#fff&quot;&gt;T&lt;/div&gt;&lt;div style=&quot;flex:1;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;background:#14161a;color:#fff&quot;&gt;W&lt;/div&gt;&lt;div style=&quot;flex:1;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;background:#14161a;color:#fff&quot;&gt;T&lt;/div&gt;&lt;div style=&quot;flex:1;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;background:#14161a;color:#fff&quot;&gt;F&lt;/div&gt;&lt;div style=&quot;flex:1;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;background:#fff;color:#9aa0a8&quot;&gt;S&lt;/div&gt;&lt;div style=&quot;flex:1;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;background:#fff;color:#9aa0a8&quot;&gt;S&lt;/div&gt;&lt;/div&gt;
+  &lt;div class=&quot;lab&quot;&gt;Reminder&lt;/div&gt;&lt;div class=&quot;field&quot; style=&quot;justify-content:space-between&quot;&gt;7:30 AM &lt;span style=&quot;width:44px;height:26px;border-radius:12px;background:#3E7BFA;position:relative&quot;&gt;&lt;span style=&quot;position:absolute;right:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#fff&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;
+  &lt;a class=&quot;btn blue&quot; href=&quot;home.html&quot; style=&quot;margin-top:auto;margin-bottom:28px&quot;&gt;Create habit&lt;/a&gt;
+&lt;/div&gt;
+
+
+&lt;/body&gt;&lt;/html&gt;" title="New habit" style="pointer-events: none;"></iframe><div class="overlay"><button class="pin " aria-label="Comment 3 by Jo" title="Can we suggest a name from the icon?" style="left: 358px; top: 140px; transform: scale(1.20765);">3</button></div></div></div><div class="board      " data-file="stats.html" role="group" aria-label="Board Stats" style="left: 1410px; top: 0px; width: 390px; height: 844px;"><div class="board-label  " title="Stats · stats.html" style="transform: scale(1.20765); width: 322.942px;"><span class="lab-row"><span class="board-title">Stats</span><span class="board-file">stats.html</span><span class="board-btns "></span></span></div><div class="board-frame" style="border-radius: 36px;"><div class="board-placeholder far" style="font-size: 16.9071px;"><span class="ph-title" data-hint="Scroll closer to load">Stats</span></div></div></div><div class="board      " data-file="settings.html" role="group" aria-label="Board Settings" style="left: 1880px; top: 0px; width: 390px; height: 844px;"><div class="board-label  " title="Settings · settings.html" style="transform: scale(1.20765); width: 322.942px;"><span class="lab-row"><span class="board-title">Settings</span><span class="board-file">settings.html</span><span class="board-btns "></span></span></div><div class="board-frame" style="border-radius: 36px;"><div class="board-placeholder far" style="font-size: 16.9071px;"><span class="ph-title" data-hint="Scroll closer to load">Settings</span></div></div></div><div class="board      " data-file="empty.html" role="group" aria-label="Board Empty state" style="left: 0px; top: 1140px; width: 390px; height: 844px;"><div class="board-label  " title="Empty state · empty.html" style="transform: scale(1.20765); width: 322.942px;"><span class="lab-row"><span class="board-title">Empty state</span><span class="board-file">empty.html</span><span class="board-btns "></span></span></div><div class="board-frame" style="border-radius: 36px;"><iframe srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;board-size&quot; content=&quot;390x844&quot;&gt;
+&lt;title&gt;Empty state&lt;/title&gt;
+&lt;style&gt;
+*{box-sizing:border-box}body{margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,&quot;Segoe UI&quot;,Roboto,sans-serif;color:#14161a;background:#fff;-webkit-font-smoothing:antialiased}
+.s{width:390px;height:844px;position:relative;overflow:hidden;background:#F7F6F2;display:flex;flex-direction:column}
+.bar{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-size:15px;font-weight:600}
+.h1{font-size:30px;font-weight:700;letter-spacing:-.02em;margin:4px 20px 4px}
+.sub{color:#6b6f76;font-size:15px;margin:0 20px 16px}
+.card{background:#fff;border-radius:20px;margin:0 16px 12px;padding:16px;box-shadow:0 1px 2px rgba(20,22,26,.04),0 4px 16px rgba(20,22,26,.05)}
+.row{display:flex;align-items:center;gap:12px}
+.ic{width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex:none}
+.t{font-size:16px;font-weight:600}.m{font-size:13px;color:#6b6f76;margin-top:4px}
+.chk{margin-left:auto;width:28px;height:28px;border-radius:50%;border:2px solid #d9dbe0;flex:none}
+.chk.on{background:#3E7BFA;border-color:#3E7BFA;box-shadow:inset 0 0 0 4px #fff}
+.btn{display:flex;align-items:center;justify-content:center;height:54px;border-radius:16px;background:#14161a;color:#fff;font-size:16px;font-weight:600;text-decoration:none;margin:0 16px}
+.btn.blue{background:#3E7BFA}
+.tabs{position:absolute;left:16px;right:16px;bottom:20px;height:64px;border-radius:20px;background:#fff;display:flex;align-items:center;justify-content:space-around;box-shadow:0 8px 24px rgba(20,22,26,.10)}
+.tab{font-size:12px;font-weight:600;color:#9aa0a8;display:flex;flex-direction:column;align-items:center;gap:4px}.tab.on{color:#14161a}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill{display:inline-flex;align-items:center;height:28px;padding:0 12px;border-radius:999px;background:#fff;font-size:13px;font-weight:600;margin-right:8px}
+.pill.on{background:#14161a;color:#fff}
+.ring{width:132px;height:132px;border-radius:50%;background:conic-gradient(#3E7BFA 0 72%,#E8EAF0 72% 100%);display:flex;align-items:center;justify-content:center}
+.ring&gt;div{width:104px;height:104px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.bars{display:flex;align-items:flex-end;gap:8px;height:120px;padding:0 4px}
+.bars div{flex:1;border-radius:8px;background:#E3EAFE}.bars div.on{background:#3E7BFA}
+.field{height:52px;border-radius:14px;background:#fff;border:1.5px solid #e6e7eb;display:flex;align-items:center;padding:0 16px;font-size:16px;margin:0 16px 12px;color:#14161a}
+.lab{font-size:13px;font-weight:600;color:#6b6f76;margin:8px 20px 8px}
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div class=&quot;s&quot; style=&quot;align-items:center;justify-content:center;text-align:center;padding:0 40px&quot;&gt;
+  &lt;svg width=&quot;160&quot; height=&quot;140&quot; viewBox=&quot;0 0 160 140&quot; aria-hidden=&quot;true&quot;&gt;&lt;rect x=&quot;20&quot; y=&quot;30&quot; width=&quot;120&quot; height=&quot;90&quot; rx=&quot;20&quot; fill=&quot;#E3EAFE&quot;&gt;&lt;/rect&gt;&lt;rect x=&quot;38&quot; y=&quot;52&quot; width=&quot;60&quot; height=&quot;10&quot; rx=&quot;5&quot; fill=&quot;#fff&quot;&gt;&lt;/rect&gt;&lt;rect x=&quot;38&quot; y=&quot;72&quot; width=&quot;84&quot; height=&quot;10&quot; rx=&quot;5&quot; fill=&quot;#fff&quot;&gt;&lt;/rect&gt;&lt;circle cx=&quot;122&quot; cy=&quot;34&quot; r=&quot;18&quot; fill=&quot;#3E7BFA&quot;&gt;&lt;/circle&gt;&lt;path d=&quot;M114 34l6 6 10-11&quot; stroke=&quot;#fff&quot; stroke-width=&quot;4&quot; fill=&quot;none&quot; stroke-linecap=&quot;round&quot;&gt;&lt;/path&gt;&lt;/svg&gt;
+  &lt;div class=&quot;h1&quot; style=&quot;margin:24px 0 8px&quot;&gt;Start your first habit&lt;/div&gt;
+  &lt;p class=&quot;sub&quot; style=&quot;margin:0 0 28px&quot;&gt;Small steps every day. Pick one thing you want to do more often.&lt;/p&gt;
+  &lt;a class=&quot;btn blue&quot; href=&quot;new-habit.html&quot; style=&quot;width:100%;margin:0&quot;&gt;Add a habit&lt;/a&gt;
+&lt;/div&gt;
+
+
+&lt;/body&gt;&lt;/html&gt;" title="Empty state" style="pointer-events: none;"></iframe></div></div><div class="board      " data-file="landing.html" role="group" aria-label="Board Landing (desktop)" style="left: 470px; top: 1140px; width: 1280px; height: 800px;"><div class="board-label  " title="Landing (desktop) · landing.html" style="transform: scale(1.20765); width: 1059.91px;"><span class="lab-row"><span class="board-title">Landing (desktop)</span><span class="board-file">landing.html</span><span class="board-btns "></span></span></div><div class="board-frame" style="border-radius: 0px;"><iframe srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;board-size&quot; content=&quot;1280x800&quot;&gt;
+&lt;title&gt;Landing (desktop)&lt;/title&gt;
+&lt;style&gt;
+*{box-sizing:border-box}body{margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,&quot;Segoe UI&quot;,Roboto,sans-serif;color:#14161a;background:#fff;-webkit-font-smoothing:antialiased}
+.s{width:390px;height:844px;position:relative;overflow:hidden;background:#F7F6F2;display:flex;flex-direction:column}
+.bar{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-size:15px;font-weight:600}
+.h1{font-size:30px;font-weight:700;letter-spacing:-.02em;margin:4px 20px 4px}
+.sub{color:#6b6f76;font-size:15px;margin:0 20px 16px}
+.card{background:#fff;border-radius:20px;margin:0 16px 12px;padding:16px;box-shadow:0 1px 2px rgba(20,22,26,.04),0 4px 16px rgba(20,22,26,.05)}
+.row{display:flex;align-items:center;gap:12px}
+.ic{width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex:none}
+.t{font-size:16px;font-weight:600}.m{font-size:13px;color:#6b6f76;margin-top:4px}
+.chk{margin-left:auto;width:28px;height:28px;border-radius:50%;border:2px solid #d9dbe0;flex:none}
+.chk.on{background:#3E7BFA;border-color:#3E7BFA;box-shadow:inset 0 0 0 4px #fff}
+.btn{display:flex;align-items:center;justify-content:center;height:54px;border-radius:16px;background:#14161a;color:#fff;font-size:16px;font-weight:600;text-decoration:none;margin:0 16px}
+.btn.blue{background:#3E7BFA}
+.tabs{position:absolute;left:16px;right:16px;bottom:20px;height:64px;border-radius:20px;background:#fff;display:flex;align-items:center;justify-content:space-around;box-shadow:0 8px 24px rgba(20,22,26,.10)}
+.tab{font-size:12px;font-weight:600;color:#9aa0a8;display:flex;flex-direction:column;align-items:center;gap:4px}.tab.on{color:#14161a}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill{display:inline-flex;align-items:center;height:28px;padding:0 12px;border-radius:999px;background:#fff;font-size:13px;font-weight:600;margin-right:8px}
+.pill.on{background:#14161a;color:#fff}
+.ring{width:132px;height:132px;border-radius:50%;background:conic-gradient(#3E7BFA 0 72%,#E8EAF0 72% 100%);display:flex;align-items:center;justify-content:center}
+.ring&gt;div{width:104px;height:104px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.bars{display:flex;align-items:flex-end;gap:8px;height:120px;padding:0 4px}
+.bars div{flex:1;border-radius:8px;background:#E3EAFE}.bars div.on{background:#3E7BFA}
+.field{height:52px;border-radius:14px;background:#fff;border:1.5px solid #e6e7eb;display:flex;align-items:center;padding:0 16px;font-size:16px;margin:0 16px 12px;color:#14161a}
+.lab{font-size:13px;font-weight:600;color:#6b6f76;margin:8px 20px 8px}
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div style=&quot;width:1280px;height:800px;background:linear-gradient(180deg,#F7F6F2,#EEF3FF);display:flex;flex-direction:column&quot;&gt;
+  &lt;header style=&quot;display:flex;align-items:center;justify-content:space-between;padding:28px 64px&quot;&gt;&lt;strong style=&quot;font-size:22px&quot;&gt;● Tidy&lt;/strong&gt;&lt;nav style=&quot;display:flex;gap:32px;color:#6b6f76;font-weight:500&quot;&gt;&lt;span&gt;Features&lt;/span&gt;&lt;span&gt;Pricing&lt;/span&gt;&lt;span&gt;Blog&lt;/span&gt;&lt;/nav&gt;&lt;a class=&quot;btn&quot; style=&quot;height:44px;padding:0 20px;margin:0&quot;&gt;Get the app&lt;/a&gt;&lt;/header&gt;
+  &lt;main style=&quot;display:flex;align-items:center;gap:64px;padding:40px 64px;flex:1&quot;&gt;
+    &lt;div style=&quot;flex:1&quot;&gt;&lt;div class=&quot;pill&quot; style=&quot;margin-bottom:20px&quot;&gt;New · Streak insights&lt;/div&gt;&lt;h1 style=&quot;font-size:64px;line-height:1.05;letter-spacing:-.03em;margin:0 0 20px&quot;&gt;Habits that&lt;br&gt;actually stick.&lt;/h1&gt;&lt;p style=&quot;font-size:20px;color:#6b6f76;line-height:1.5;margin:0 0 32px;max-width:460px&quot;&gt;Tidy keeps your routine light: one tap to check in, gentle reminders, and a week view that shows real progress.&lt;/p&gt;&lt;div style=&quot;display:flex;gap:12px&quot;&gt;&lt;a class=&quot;btn blue&quot; style=&quot;margin:0;padding:0 28px&quot;&gt;Start free&lt;/a&gt;&lt;a class=&quot;btn&quot; style=&quot;margin:0;padding:0 28px;background:#fff;color:#14161a&quot;&gt;See how it works&lt;/a&gt;&lt;/div&gt;&lt;/div&gt;
+    &lt;div style=&quot;width:340px;height:560px;border-radius:44px;background:#14161a;padding:12px;box-shadow:0 30px 60px rgba(20,22,26,.25)&quot;&gt;&lt;div style=&quot;width:100%;height:100%;border-radius:36px;background:#F7F6F2;padding:28px 16px&quot;&gt;&lt;div class=&quot;h1&quot; style=&quot;margin:0 4px 16px;font-size:24px&quot;&gt;Today&lt;/div&gt;&lt;a class=&quot;card row&quot; href=&quot;habit.html&quot; style=&quot;text-decoration:none;color:inherit&quot;&gt;&lt;div class=&quot;ic&quot; style=&quot;background:#EEF3FF&quot;&gt;🧘&lt;/div&gt;&lt;div&gt;&lt;div class=&quot;t&quot;&gt;Meditate&lt;/div&gt;&lt;div class=&quot;m&quot;&gt;10 min&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;chk on&quot;&gt;&lt;/div&gt;&lt;/a&gt;&lt;a class=&quot;card row&quot; href=&quot;habit.html&quot; style=&quot;text-decoration:none;color:inherit&quot;&gt;&lt;div class=&quot;ic&quot; style=&quot;background:#E8F7F1&quot;&gt;💧&lt;/div&gt;&lt;div&gt;&lt;div class=&quot;t&quot;&gt;Drink water&lt;/div&gt;&lt;div class=&quot;m&quot;&gt;6 of 8&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;chk on&quot;&gt;&lt;/div&gt;&lt;/a&gt;&lt;a class=&quot;card row&quot; href=&quot;habit.html&quot; style=&quot;text-decoration:none;color:inherit&quot;&gt;&lt;div class=&quot;ic&quot; style=&quot;background:#FFF4E5&quot;&gt;📚&lt;/div&gt;&lt;div&gt;&lt;div class=&quot;t&quot;&gt;Read&lt;/div&gt;&lt;div class=&quot;m&quot;&gt;20 pages&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;chk&quot;&gt;&lt;/div&gt;&lt;/a&gt;&lt;/div&gt;&lt;/div&gt;
+  &lt;/main&gt;
+&lt;/div&gt;
+
+
+&lt;/body&gt;&lt;/html&gt;" title="Landing (desktop)" style="pointer-events: none;"></iframe></div></div><div class="shape " data-shape="s1" style="left: 400px; top: 300px; width: 60px; height: 1px; pointer-events: none;"><svg width="72" height="13" viewBox="-6 -6 72 13" style="position: absolute; left: -6px; top: -6px; overflow: visible;"><defs><marker id="ah-s1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#3E7BFA"></path></marker></defs><polyline points="0,0 60,0" fill="none" stroke="#3E7BFA" stroke-width="6" stroke-linecap="round" marker-end="url(#ah-s1)"></polyline></svg></div><div class="shape " data-shape="s2" style="left: 870px; top: 300px; width: 60px; height: 1px; pointer-events: none;"><svg width="72" height="13" viewBox="-6 -6 72 13" style="position: absolute; left: -6px; top: -6px; overflow: visible;"><defs><marker id="ah-s2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#3E7BFA"></path></marker></defs><polyline points="0,0 60,0" fill="none" stroke="#3E7BFA" stroke-width="6" stroke-linecap="round" marker-end="url(#ah-s2)"></polyline></svg></div><div class="thread" role="dialog" aria-label="Comment 1 by Alex" style="left: 396.645px; top: 120px; transform: scale(1.20765);"><div class="thread-head"><span>Today</span><span class="oc-of">1 of 3</span><button class="icon-btn sm" aria-label="Close comment" title="Close comment"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></div><div class="comment"><span class="who">Alex <span class="when">· Oct 10, 18:00</span></span><span class="c-text">Can we show progress as a ring here instead of text?</span></div><div class="reply"><div class="comment"><span class="who">Sam <span class="when">· Oct 10, 18:20</span></span><span class="c-text">Trying it in the Stats board first.</span></div></div></div></div></div></div><aside class="oc-card oc-left" aria-label="Pages and boards" style="max-height: 704px;"><div class="oc-head"><strong class="oc-vtitle app-title" title="Tidy — habit tracker">Tidy — habit tracker</strong></div><section class="left-boards"><div class="oc-sec"><span>Boards<span class="oc-count">7</span></span></div><label class="oc-search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14zM20 20l-4-4"></path></svg><input placeholder="Find boards (⌘K)" aria-label="Find boards" value="" style=""></label><ul class="oc-list board-list"><li><button class="row oc-row on" title="home.html" aria-current="true"><span class="row-title">Today</span><span class="row-file">home.html</span></button></li><li><button class="row oc-row " title="habit.html"><span class="row-title">Habit detail</span><span class="row-file">habit.html</span></button></li><li><button class="row oc-row " title="new-habit.html"><span class="row-title">New habit</span><span class="row-file">new-habit.html</span></button></li><li><button class="row oc-row " title="stats.html"><span class="row-title">Stats</span><span class="row-file">stats.html</span></button></li><li><button class="row oc-row " title="settings.html"><span class="row-title">Settings</span><span class="row-file">settings.html</span></button></li><li><button class="row oc-row " title="empty.html"><span class="row-title">Empty state</span><span class="row-file">empty.html</span></button></li><li><button class="row oc-row " title="landing.html"><span class="row-title">Landing (desktop)</span><span class="row-file">landing.html</span></button></li></ul></section><div class="oc-made"><a href="https://github.com/nemodleo/easel" target="_blank" rel="noopener noreferrer">Made with Easel</a></div></aside><nav class="oc-card oc-nav" aria-label="Navigation"><div class="oc-map " role="img" aria-label="Minimap: click to move there"><svg width="240" height="112"><rect x="65.08064516129033" y="8" width="18.870967741935484" height="40.83870967741935" rx="2" class="mm-sel"></rect><rect x="87.82258064516131" y="8" width="18.870967741935484" height="40.83870967741935" rx="2" class="mm-board"></rect><rect x="110.56451612903227" y="8" width="18.870967741935484" height="40.83870967741935" rx="2" class="mm-board"></rect><rect x="133.30645161290323" y="8" width="18.870967741935484" height="40.83870967741935" rx="2" class="mm-board"></rect><rect x="156.0483870967742" y="8" width="18.870967741935484" height="40.83870967741935" rx="2" class="mm-board"></rect><rect x="65.08064516129033" y="63.16129032258064" width="18.870967741935484" height="40.83870967741935" rx="2" class="mm-board"></rect><rect x="87.82258064516131" y="63.16129032258064" width="61.935483870967744" height="38.70967741935484" rx="2" class="mm-board"></rect><rect x="34.5" y="4.5" width="83" height="52" rx="3" class="mm-view"></rect></svg></div><div class="oc-zoom"><button class="icon-btn oc-ib" aria-label="Zoom out" title="Zoom out"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path></svg></button><button class="zoom" aria-label="Zoom to 100%" title="Zoom to 100%">83%</button><button class="icon-btn oc-ib" aria-label="Zoom in" title="Zoom in"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></button><button class="icon-btn oc-ib oc-fit" aria-label="Fit all" title="Fit all (⇧1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"></path></svg></button></div></nav><aside class="oc-card oc-right oc-cards " aria-label="Comments" style="max-height: 876px;"><div class="oc-chead"><span>Comments</span><span class="oc-count">3</span></div><ul class="oc-clist"><li><button class="c-item on " aria-current="true"><span class="pin on" aria-hidden="true">1</span><span class="c-body"><span class="where">Today · 1 reply</span><span><strong>Alex</strong> Can we show progress as a ring here instead of text?</span></span></button></li><li><button class="c-item  "><span class="pin " aria-hidden="true">2</span><span class="c-body"><span class="where">Habit detail</span><span><strong>Hyun Park</strong> Two stats feel like enough for this screen.</span></span></button></li><li><button class="c-item  "><span class="pin " aria-hidden="true">3</span><span class="c-body"><span class="where">New habit</span><span><strong>Jo</strong> Can we suggest a name from the icon?</span></span></button></li></ul></aside><div class="oc-dock oc-vdock" role="toolbar" aria-label="Viewer" style="left: 559px;"><span class="oc-stamp" role="note" aria-label="View only · exported Nov 15, 18:29" title="View only · exported Nov 15, 18:29. A read-only copy. Changes happen in the design files, then export again."><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"></path></svg><span class="stamp-text">View only · exported Nov 15, 18:29</span></span><span class="oc-sep" aria-hidden="true"></span><button class="play-btn" title="Try the selected board full screen (or the first one)" style="width: 72px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 5l11 7-11 7z"></path></svg>Play</button></div></div></div>
+</body>
 </html>

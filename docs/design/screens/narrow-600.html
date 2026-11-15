@@ -5,44 +5,249 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="board-size" content="600x700">
 <title>Narrow window · 600</title>
-<link rel="stylesheet" href="/assets/easel.css">
-<style>.app{width:600px;height:700px}</style>
+<link rel="stylesheet" href="../assets/easel.css">
+<style>
+/* Drawn from the running app (direction A) on 2026-11-15: its own markup and classes, still. Board contents are the demo project's screens. */
+html,body,#root{width:600px;height:700px}
+.app *{transition:none!important}
+</style>
 </head>
 <body class="">
-<div class="app narrow"><header class="toolbar">
-  <div class="tb-zone tb-left">
-    <button class="icon-btn on" title="Left panel"><svg class="ic" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM15 5v14"/></svg></button>
-    <div class="tool-group" role="radiogroup"><button class="icon-btn tool on" title="select"><svg class="ic" viewBox="0 0 24 24"><path d="M5 3l13 8-6 1.5L9.5 19z"/></svg></button><button class="icon-btn tool" title="hand"><svg class="ic" viewBox="0 0 24 24"><path d="M8 12V6.5a1.5 1.5 0 0 1 3 0V11m0-5.5V5a1.5 1.5 0 0 1 3 0v6m0-4.5a1.5 1.5 0 0 1 3 0V13a7 7 0 0 1-7 7h-.5a6 6 0 0 1-5-2.7L3.3 14a1.5 1.5 0 0 1 2.4-1.8L8 15"/></svg></button><button class="icon-btn tool" title="board"><svg class="ic" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg></button><button class="icon-btn tool" title="title"><svg class="ic" viewBox="0 0 24 24"><path d="M5 6h14M12 6v13M9 19h6"/></svg></button><button class="icon-btn tool" title="sticky"><svg class="ic" viewBox="0 0 24 24"><path d="M5 4h14v10l-5 6H5zM14 20v-6h5"/></svg></button></div>
-    <div class="tool-group"><button class="icon-btn" title="Shapes"><svg class="ic" viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/></svg><svg class="ic s" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></div>
-    <div class="tool-group undo-split"><button class="icon-btn " title="undo"><svg class="ic" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button><button class="icon-btn caret-btn" title="History"><svg class="ic s" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button><button class="icon-btn " title="redo"><svg class="ic" viewBox="0 0 24 24"><path d="M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3"/></svg></button></div>
-    <button class="new-board"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>  <svg class="ic s" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
-  </div>
-  <div class="tb-zone tb-center"><span class="app-title muted" style="font-weight:500">tidy</span></div>
-  <div class="tb-zone tb-right">
-    <div class="tool-group"><button class="icon-btn" title="Zoom out"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button><button class="icon-btn " title="Zoom in"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div>
-    <div class="share-wrap"><button class="share-btn"><svg class="ic s" viewBox="0 0 24 24"><path d="M12 15V4M8 8l4-4 4 4M5 13v6h14v-6"/></svg> <span class="share-label">Share</span></button></div>
-    <div class="tool-group"><button class="ask-ai "><svg class="ic" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg> </button><button class="icon-btn " title="View"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg></button></div>
-  </div>
-</header>
-<div class="main"><aside class="left">
-  <div class="left-tabs"><button class="on">Boards</button><button>Assets</button><button>Tokens</button></div>
-  <section class="left-pages">
-    <div class="sec-head"><span>Pages</span><button class="icon-btn sm"><svg class="ic s" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div>
-    <p class="empty">Viewing everything as one page. Use + to split it into pages.</p>
-  </section>
-  <section class="left-boards">
-    <div class="sec-head"><span>Boards 7</span></div>
-    <label class="search"><svg class="ic s" viewBox="0 0 24 24"><path d="M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14zM20 20l-4-4"/></svg><span>Find boards (⌘K)</span></label>
-    <ul class="board-list"><li><button class="row two-line on" title="home.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Today</span><span class="row-file">home.html</span></span></button></li><li><button class="row two-line" title="habit.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Habit detail</span><span class="row-file">habit.html</span></span></button></li><li><button class="row two-line" title="new-habit.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">New habit</span><span class="row-file">new-habit.html</span></span></button></li><li><button class="row two-line" title="stats.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Stats</span><span class="row-file">stats.html</span></span></button></li><li><button class="row two-line" title="settings.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Settings</span><span class="row-file">settings.html</span></span></button></li><li><button class="row two-line" title="empty.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Empty state</span><span class="row-file">empty.html</span></span></button></li><li><button class="row two-line" title="landing.html"><svg class="ic s" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></svg><span class="row-text"><span class="row-title">Landing (desktop)</span><span class="row-file">landing.html</span></span></button></li></ul>
-  </section>
-</aside>
-<div class="drawer-backdrop"></div><div class="canvas-wrap"><div class="canvas"><div class="board selected" style="left:140px;top:90px;width:234px;height:506px">
-  <div class="board-label"><span class="lab-row"><span class="dot"></span><span class="board-title">Today</span><span class="board-file" style="opacity:1">home.html</span><span class="board-btns"><button class="icon-btn sm" title="Play"><svg class="ic s" viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z"/></svg></button></span></span></div>
-  <div class="board-frame"><div class="ph"><div class="bar">Today</div><div class="hero"></div><div class="line w"></div><div class="line n"></div><div class="card"></div><div class="card"></div><div class="card"></div><div class="btn-k">Add habit</div></div></div>
-</div>
-<div class="board " style="left:400px;top:90px;width:234px;height:506px">
-  <div class="board-label"><span class="lab-row"><span class="board-title">Habit detail</span><span class="board-file" style="opacity:0">habit.html</span></span></div>
-  <div class="board-frame"><div class="ph"><div class="bar">Habit detail</div><div class="line w"></div><div class="line"></div><div class="line n"></div><div class="card"></div><div class="line w"></div><div class="line"></div><div class="btn-k">Mark done</div></div></div>
-</div>
-</div></div></div></div></body>
+<div id="root"><div class="app oc oc-n narrow "><aside class="oc-card oc-left is-collapsed " aria-label="Pages and boards"><div class="oc-head"><button class="oc-project" title="/var/folders/rk/9bfqd3tj0fx1b4bl91k0n15c0000gn/T/demo" aria-haspopup="menu"><strong class="app-title">Tidy — habit tracker</strong><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button><button class="icon-btn oc-ib " aria-label="Left panel" aria-pressed="false" title="Left panel (⌘\)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v14H4zM15 5v14"></path></svg></button></div></aside><div class="canvas-wrap"><div class="canvas tool-select" role="application" aria-label="Design canvas"><div class="world" style="transform: translate(88px, 140px) scale(0.5);"><div class="note note-title  " data-note="n1" style="left: 0px; top: -260px; max-width: 2400px;"><div class="note-text" contenteditable="false" style="font-size: 72px; font-weight: 700;">Tidy — habit tracker</div></div><div class="note note-sticky  " data-note="n2" style="left: 2350px; top: 0px; width: 360px; background: rgb(255, 241, 168);"><div class="note-text" contenteditable="false" style="font-size: 22px; font-weight: 400;">Check-in should be one tap from Today.
+Keep the streak visible.</div></div><div class="note note-sticky  " data-note="n3" style="left: 2350px; top: 300px; width: 360px; background: rgb(210, 228, 255);"><div class="note-text" contenteditable="false" style="font-size: 22px; font-weight: 400;">Stats: compare with last week, not with other people.</div></div><div class="note note-title  " data-note="n4" style="left: 0px; top: 880px; max-width: 2400px;"><div class="note-text" contenteditable="false" style="font-size: 48px; font-weight: 700;">Onboarding &amp; marketing</div></div><div class="board selected editing   interactive " data-file="home.html" role="group" aria-label="Board Today (selected) editing" style="left: 0px; top: 0px; width: 390px; height: 844px;"><div class="board-label  tagged" title="Today · home.html" style="transform: scale(2); width: 195px;"><span class="act-tags" role="group" aria-label="Who is on this board"><span class="occ-tag you " data-occ="p:g6ulujtofvq" title="You · editing"><span class="idot" aria-hidden="true"></span><span class="act-tag-text">You · editing</span></span></span><span class="lab-row"><span class="dot" aria-label="Interactive (Play)"></span><span class="board-title">Today</span><span class="board-file">home.html</span><span class="board-btns "><button class="icon-btn sm" aria-label="Play" title="Play"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 5l11 7-11 7z"></path></svg></button></span></span></div><div class="board-frame" style="border-radius: 36px;" data-inside=""><iframe title="Today" style="pointer-events: none;" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;board-size&quot; content=&quot;390x844&quot;&gt;
+&lt;title&gt;Today&lt;/title&gt;
+&lt;style&gt;
+*{box-sizing:border-box}body{margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,&quot;Segoe UI&quot;,Roboto,sans-serif;color:#14161a;background:#fff;-webkit-font-smoothing:antialiased}
+.s{width:390px;height:844px;position:relative;overflow:hidden;background:#F7F6F2;display:flex;flex-direction:column}
+.bar{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-size:15px;font-weight:600}
+.h1{font-size:30px;font-weight:700;letter-spacing:-.02em;margin:4px 20px 4px}
+.sub{color:#6b6f76;font-size:15px;margin:0 20px 16px}
+.card{background:#fff;border-radius:20px;margin:0 16px 12px;padding:16px;box-shadow:0 1px 2px rgba(20,22,26,.04),0 4px 16px rgba(20,22,26,.05)}
+.row{display:flex;align-items:center;gap:12px}
+.ic{width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex:none}
+.t{font-size:16px;font-weight:600}.m{font-size:13px;color:#6b6f76;margin-top:4px}
+.chk{margin-left:auto;width:28px;height:28px;border-radius:50%;border:2px solid #d9dbe0;flex:none}
+.chk.on{background:#3E7BFA;border-color:#3E7BFA;box-shadow:inset 0 0 0 4px #fff}
+.btn{display:flex;align-items:center;justify-content:center;height:54px;border-radius:16px;background:#14161a;color:#fff;font-size:16px;font-weight:600;text-decoration:none;margin:0 16px}
+.btn.blue{background:#3E7BFA}
+.tabs{position:absolute;left:16px;right:16px;bottom:20px;height:64px;border-radius:20px;background:#fff;display:flex;align-items:center;justify-content:space-around;box-shadow:0 8px 24px rgba(20,22,26,.10)}
+.tab{font-size:12px;font-weight:600;color:#9aa0a8;display:flex;flex-direction:column;align-items:center;gap:4px}.tab.on{color:#14161a}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill{display:inline-flex;align-items:center;height:28px;padding:0 12px;border-radius:999px;background:#fff;font-size:13px;font-weight:600;margin-right:8px}
+.pill.on{background:#14161a;color:#fff}
+.ring{width:132px;height:132px;border-radius:50%;background:conic-gradient(#3E7BFA 0 72%,#E8EAF0 72% 100%);display:flex;align-items:center;justify-content:center}
+.ring&gt;div{width:104px;height:104px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.bars{display:flex;align-items:flex-end;gap:8px;height:120px;padding:0 4px}
+.bars div{flex:1;border-radius:8px;background:#E3EAFE}.bars div.on{background:#3E7BFA}
+.field{height:52px;border-radius:14px;background:#fff;border:1.5px solid #e6e7eb;display:flex;align-items:center;padding:0 16px;font-size:16px;margin:0 16px 12px;color:#14161a}
+.lab{font-size:13px;font-weight:600;color:#6b6f76;margin:8px 20px 8px}
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div class=&quot;s&quot;&gt;
+  &lt;div class=&quot;bar&quot;&gt;&lt;span&gt;9:41&lt;/span&gt;&lt;span&gt;●●●&lt;/span&gt;&lt;/div&gt;
+  &lt;div class=&quot;h1&quot;&gt;Good morning, Sam&lt;/div&gt;
+  &lt;p class=&quot;sub&quot;&gt;3 of 5 habits done · 12-day streak 🔥&lt;/p&gt;
+  &lt;div style=&quot;margin:0 20px 16px&quot;&gt;&lt;span class=&quot;pill on&quot;&gt;All&lt;/span&gt;&lt;span class=&quot;pill&quot;&gt;Morning&lt;/span&gt;&lt;span class=&quot;pill&quot;&gt;Evening&lt;/span&gt;&lt;/div&gt;
+  &lt;a class=&quot;card row&quot; href=&quot;habit.html&quot; style=&quot;text-decoration:none;color:inherit&quot;&gt;&lt;div class=&quot;ic&quot; style=&quot;background:#EEF3FF&quot;&gt;🧘&lt;/div&gt;&lt;div&gt;&lt;div class=&quot;t&quot;&gt;Meditate&lt;/div&gt;&lt;div class=&quot;m&quot;&gt;10 min · morning&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;chk on&quot;&gt;&lt;/div&gt;&lt;/a&gt;
+  &lt;a class=&quot;card row&quot; href=&quot;habit.html&quot; style=&quot;text-decoration:none;color:inherit&quot;&gt;&lt;div class=&quot;ic&quot; style=&quot;background:#E8F7F1&quot;&gt;💧&lt;/div&gt;&lt;div&gt;&lt;div class=&quot;t&quot;&gt;Drink water&lt;/div&gt;&lt;div class=&quot;m&quot;&gt;6 of 8 glasses&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;chk on&quot;&gt;&lt;/div&gt;&lt;/a&gt;
+  &lt;a class=&quot;card row&quot; href=&quot;habit.html&quot; style=&quot;text-decoration:none;color:inherit&quot;&gt;&lt;div class=&quot;ic&quot; style=&quot;background:#FFF4E5&quot;&gt;📚&lt;/div&gt;&lt;div&gt;&lt;div class=&quot;t&quot;&gt;Read&lt;/div&gt;&lt;div class=&quot;m&quot;&gt;20 pages&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;chk on&quot;&gt;&lt;/div&gt;&lt;/a&gt;
+  &lt;a class=&quot;card row&quot; href=&quot;habit.html&quot; style=&quot;text-decoration:none;color:inherit&quot;&gt;&lt;div class=&quot;ic&quot; style=&quot;background:#FDECEC&quot;&gt;🏃&lt;/div&gt;&lt;div&gt;&lt;div class=&quot;t&quot;&gt;Run&lt;/div&gt;&lt;div class=&quot;m&quot;&gt;3 km · evening&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;chk&quot;&gt;&lt;/div&gt;&lt;/a&gt;
+  &lt;a class=&quot;card row&quot; href=&quot;habit.html&quot; style=&quot;text-decoration:none;color:inherit&quot;&gt;&lt;div class=&quot;ic&quot; style=&quot;background:#F3EEFF&quot;&gt;✍️&lt;/div&gt;&lt;div&gt;&lt;div class=&quot;t&quot;&gt;Journal&lt;/div&gt;&lt;div class=&quot;m&quot;&gt;5 min · evening&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;chk&quot;&gt;&lt;/div&gt;&lt;/a&gt;
+  &lt;a class=&quot;btn blue&quot; href=&quot;new-habit.html&quot; style=&quot;position:absolute;right:20px;bottom:100px;width:56px;height:56px;border-radius:20px;margin:0;font-size:26px&quot;&gt;+&lt;/a&gt;
+  &lt;nav class=&quot;tabs&quot;&gt;&lt;a class=&quot;tab on&quot; href=&quot;home.html&quot; style=&quot;text-decoration:none&quot;&gt;&lt;span class=&quot;dot&quot;&gt;&lt;/span&gt;Today&lt;/a&gt;&lt;a class=&quot;tab&quot; href=&quot;stats.html&quot; style=&quot;text-decoration:none&quot;&gt;&lt;span class=&quot;dot&quot;&gt;&lt;/span&gt;Stats&lt;/a&gt;&lt;a class=&quot;tab&quot; href=&quot;settings.html&quot; style=&quot;text-decoration:none&quot;&gt;&lt;span class=&quot;dot&quot;&gt;&lt;/span&gt;Settings&lt;/a&gt;&lt;/nav&gt;
+&lt;/div&gt;
+
+
+&lt;/body&gt;&lt;/html&gt;"></iframe><div class="overlay"><div class="box sel" style="left: 16px; top: 176px; width: 358px; height: 76px; --px: 2px;"></div><button class="el-move" aria-label="Move element (Alt: into the hovered box)" title="Drag to move · hold Alt to drop into the hovered box" style="left: 16px; top: 132px; transform: scale(2); transform-origin: 0px 100%;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 12V6.5a1.5 1.5 0 0 1 3 0V11m0-5.5V5a1.5 1.5 0 0 1 3 0v6m0-4.5a1.5 1.5 0 0 1 3 0V13a7 7 0 0 1-7 7h-.5a6 6 0 0 1-5-2.7L3.3 14a1.5 1.5 0 0 1 2.4-1.8L8 15"></path></svg></button><div class="el-resize e" role="slider" aria-label="Width" aria-valuetext="358 × 76" style="left: 364px; top: 204px; width: 20px; height: 20px; border-width: 3px;"></div><div class="el-resize s" role="slider" aria-label="Height" aria-valuetext="358 × 76" style="left: 185px; top: 242px; width: 20px; height: 20px; border-width: 3px;"></div><div class="el-resize se" role="slider" aria-label="Size" aria-valuetext="358 × 76" style="left: 364px; top: 242px; width: 20px; height: 20px; border-width: 3px;"></div><div class="pin" title="Can we show progress as a ring here instead of text?" style="top: 120px; transform: scale(2); left: 358px;">1</div></div></div><div class="board-resize" role="slider" aria-label="Board size" aria-valuetext="390 × 844" style="width: 24px; height: 24px; right: -12px; bottom: -12px; border-width: 3px;"></div></div><div class="board      " data-file="habit.html" role="group" aria-label="Board Habit detail" style="left: 470px; top: 0px; width: 390px; height: 844px;"><div class="board-label  " title="Habit detail · habit.html" style="transform: scale(2); width: 195px;"><span class="lab-row"><span class="board-title">Habit detail</span><span class="board-file">habit.html</span><span class="board-btns "></span></span></div><div class="board-frame" style="border-radius: 36px;"><iframe title="Habit detail" style="pointer-events: none;" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;board-size&quot; content=&quot;390x844&quot;&gt;
+&lt;title&gt;Habit detail&lt;/title&gt;
+&lt;style&gt;
+*{box-sizing:border-box}body{margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,&quot;Segoe UI&quot;,Roboto,sans-serif;color:#14161a;background:#fff;-webkit-font-smoothing:antialiased}
+.s{width:390px;height:844px;position:relative;overflow:hidden;background:#F7F6F2;display:flex;flex-direction:column}
+.bar{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-size:15px;font-weight:600}
+.h1{font-size:30px;font-weight:700;letter-spacing:-.02em;margin:4px 20px 4px}
+.sub{color:#6b6f76;font-size:15px;margin:0 20px 16px}
+.card{background:#fff;border-radius:20px;margin:0 16px 12px;padding:16px;box-shadow:0 1px 2px rgba(20,22,26,.04),0 4px 16px rgba(20,22,26,.05)}
+.row{display:flex;align-items:center;gap:12px}
+.ic{width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex:none}
+.t{font-size:16px;font-weight:600}.m{font-size:13px;color:#6b6f76;margin-top:4px}
+.chk{margin-left:auto;width:28px;height:28px;border-radius:50%;border:2px solid #d9dbe0;flex:none}
+.chk.on{background:#3E7BFA;border-color:#3E7BFA;box-shadow:inset 0 0 0 4px #fff}
+.btn{display:flex;align-items:center;justify-content:center;height:54px;border-radius:16px;background:#14161a;color:#fff;font-size:16px;font-weight:600;text-decoration:none;margin:0 16px}
+.btn.blue{background:#3E7BFA}
+.tabs{position:absolute;left:16px;right:16px;bottom:20px;height:64px;border-radius:20px;background:#fff;display:flex;align-items:center;justify-content:space-around;box-shadow:0 8px 24px rgba(20,22,26,.10)}
+.tab{font-size:12px;font-weight:600;color:#9aa0a8;display:flex;flex-direction:column;align-items:center;gap:4px}.tab.on{color:#14161a}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill{display:inline-flex;align-items:center;height:28px;padding:0 12px;border-radius:999px;background:#fff;font-size:13px;font-weight:600;margin-right:8px}
+.pill.on{background:#14161a;color:#fff}
+.ring{width:132px;height:132px;border-radius:50%;background:conic-gradient(#3E7BFA 0 72%,#E8EAF0 72% 100%);display:flex;align-items:center;justify-content:center}
+.ring&gt;div{width:104px;height:104px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.bars{display:flex;align-items:flex-end;gap:8px;height:120px;padding:0 4px}
+.bars div{flex:1;border-radius:8px;background:#E3EAFE}.bars div.on{background:#3E7BFA}
+.field{height:52px;border-radius:14px;background:#fff;border:1.5px solid #e6e7eb;display:flex;align-items:center;padding:0 16px;font-size:16px;margin:0 16px 12px;color:#14161a}
+.lab{font-size:13px;font-weight:600;color:#6b6f76;margin:8px 20px 8px}
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div class=&quot;s&quot;&gt;
+  &lt;div class=&quot;bar&quot;&gt;&lt;a href=&quot;home.html&quot; style=&quot;color:inherit;text-decoration:none&quot;&gt;‹ Today&lt;/a&gt;&lt;span&gt;Edit&lt;/span&gt;&lt;/div&gt;
+  &lt;div style=&quot;display:flex;flex-direction:column;align-items:center;padding:12px 0 20px&quot;&gt;
+    &lt;div class=&quot;ic&quot; style=&quot;background:#EEF3FF;width:72px;height:72px;border-radius:20px;font-size:36px&quot;&gt;🧘&lt;/div&gt;
+    &lt;div class=&quot;h1&quot; style=&quot;margin-top:16px&quot;&gt;Meditate&lt;/div&gt;
+    &lt;p class=&quot;sub&quot; style=&quot;margin:0&quot;&gt;Every morning · 10 minutes&lt;/p&gt;
+  &lt;/div&gt;
+  &lt;div class=&quot;card&quot; style=&quot;display:flex;justify-content:space-around;text-align:center&quot;&gt;
+    &lt;div&gt;&lt;div class=&quot;h1&quot; style=&quot;margin:0;font-size:24px&quot;&gt;12&lt;/div&gt;&lt;div class=&quot;m&quot;&gt;day streak&lt;/div&gt;&lt;/div&gt;
+    &lt;div&gt;&lt;div class=&quot;h1&quot; style=&quot;margin:0;font-size:24px&quot;&gt;86%&lt;/div&gt;&lt;div class=&quot;m&quot;&gt;this month&lt;/div&gt;&lt;/div&gt;
+    &lt;div&gt;&lt;div class=&quot;h1&quot; style=&quot;margin:0;font-size:24px&quot;&gt;41&lt;/div&gt;&lt;div class=&quot;m&quot;&gt;total&lt;/div&gt;&lt;/div&gt;
+  &lt;/div&gt;
+  &lt;div class=&quot;card&quot;&gt;
+    &lt;div class=&quot;t&quot; style=&quot;margin-bottom:12px&quot;&gt;Last 4 weeks&lt;/div&gt;
+    &lt;div style=&quot;display:grid;grid-template-columns:repeat(7,1fr);gap:8px&quot;&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#E3EAFE&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#E3EAFE&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#E3EAFE&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;div style=&quot;aspect-ratio:1;border-radius:8px;background:#3E7BFA&quot;&gt;&lt;/div&gt;&lt;/div&gt;
+  &lt;/div&gt;
+  &lt;a class=&quot;btn&quot; href=&quot;home.html&quot; style=&quot;margin-top:auto;margin-bottom:28px&quot;&gt;Mark as done&lt;/a&gt;
+&lt;/div&gt;
+
+
+&lt;/body&gt;&lt;/html&gt;"></iframe></div></div><div class="board      " data-file="new-habit.html" role="group" aria-label="Board New habit" style="left: 940px; top: 0px; width: 390px; height: 844px;"><div class="board-label  " title="New habit · new-habit.html" style="transform: scale(2); width: 195px;"><span class="lab-row"><span class="board-title">New habit</span><span class="board-file">new-habit.html</span><span class="board-btns "></span></span></div><div class="board-frame" style="border-radius: 36px;"><iframe title="New habit" style="pointer-events: none;" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;board-size&quot; content=&quot;390x844&quot;&gt;
+&lt;title&gt;New habit&lt;/title&gt;
+&lt;style&gt;
+*{box-sizing:border-box}body{margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,&quot;Segoe UI&quot;,Roboto,sans-serif;color:#14161a;background:#fff;-webkit-font-smoothing:antialiased}
+.s{width:390px;height:844px;position:relative;overflow:hidden;background:#F7F6F2;display:flex;flex-direction:column}
+.bar{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-size:15px;font-weight:600}
+.h1{font-size:30px;font-weight:700;letter-spacing:-.02em;margin:4px 20px 4px}
+.sub{color:#6b6f76;font-size:15px;margin:0 20px 16px}
+.card{background:#fff;border-radius:20px;margin:0 16px 12px;padding:16px;box-shadow:0 1px 2px rgba(20,22,26,.04),0 4px 16px rgba(20,22,26,.05)}
+.row{display:flex;align-items:center;gap:12px}
+.ic{width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex:none}
+.t{font-size:16px;font-weight:600}.m{font-size:13px;color:#6b6f76;margin-top:4px}
+.chk{margin-left:auto;width:28px;height:28px;border-radius:50%;border:2px solid #d9dbe0;flex:none}
+.chk.on{background:#3E7BFA;border-color:#3E7BFA;box-shadow:inset 0 0 0 4px #fff}
+.btn{display:flex;align-items:center;justify-content:center;height:54px;border-radius:16px;background:#14161a;color:#fff;font-size:16px;font-weight:600;text-decoration:none;margin:0 16px}
+.btn.blue{background:#3E7BFA}
+.tabs{position:absolute;left:16px;right:16px;bottom:20px;height:64px;border-radius:20px;background:#fff;display:flex;align-items:center;justify-content:space-around;box-shadow:0 8px 24px rgba(20,22,26,.10)}
+.tab{font-size:12px;font-weight:600;color:#9aa0a8;display:flex;flex-direction:column;align-items:center;gap:4px}.tab.on{color:#14161a}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill{display:inline-flex;align-items:center;height:28px;padding:0 12px;border-radius:999px;background:#fff;font-size:13px;font-weight:600;margin-right:8px}
+.pill.on{background:#14161a;color:#fff}
+.ring{width:132px;height:132px;border-radius:50%;background:conic-gradient(#3E7BFA 0 72%,#E8EAF0 72% 100%);display:flex;align-items:center;justify-content:center}
+.ring&gt;div{width:104px;height:104px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.bars{display:flex;align-items:flex-end;gap:8px;height:120px;padding:0 4px}
+.bars div{flex:1;border-radius:8px;background:#E3EAFE}.bars div.on{background:#3E7BFA}
+.field{height:52px;border-radius:14px;background:#fff;border:1.5px solid #e6e7eb;display:flex;align-items:center;padding:0 16px;font-size:16px;margin:0 16px 12px;color:#14161a}
+.lab{font-size:13px;font-weight:600;color:#6b6f76;margin:8px 20px 8px}
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div class=&quot;s&quot;&gt;
+  &lt;div class=&quot;bar&quot;&gt;&lt;a href=&quot;home.html&quot; style=&quot;color:inherit;text-decoration:none&quot;&gt;Cancel&lt;/a&gt;&lt;span&gt;New habit&lt;/span&gt;&lt;span style=&quot;color:#3E7BFA&quot;&gt;Save&lt;/span&gt;&lt;/div&gt;
+  &lt;div class=&quot;lab&quot;&gt;Name&lt;/div&gt;&lt;div class=&quot;field&quot;&gt;Stretch&lt;/div&gt;
+  &lt;div class=&quot;lab&quot;&gt;Icon&lt;/div&gt;
+  &lt;div style=&quot;display:flex;gap:8px;margin:0 16px 12px&quot;&gt;&lt;div class=&quot;ic&quot; style=&quot;background:#EEF3FF;outline:2px solid #3E7BFA;outline-offset:2px&quot;&gt;🤸&lt;/div&gt;&lt;div class=&quot;ic&quot; style=&quot;background:#E8F7F1;&quot;&gt;🍎&lt;/div&gt;&lt;div class=&quot;ic&quot; style=&quot;background:#FFF4E5;&quot;&gt;🎧&lt;/div&gt;&lt;div class=&quot;ic&quot; style=&quot;background:#F3EEFF;&quot;&gt;🌙&lt;/div&gt;&lt;div class=&quot;ic&quot; style=&quot;background:#FDECEC;&quot;&gt;🚲&lt;/div&gt;&lt;/div&gt;
+  &lt;div class=&quot;lab&quot;&gt;Repeat&lt;/div&gt;
+  &lt;div style=&quot;display:flex;gap:8px;margin:0 16px 12px&quot;&gt;&lt;div style=&quot;flex:1;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;background:#14161a;color:#fff&quot;&gt;M&lt;/div&gt;&lt;div style=&quot;flex:1;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;background:#14161a;color:#fff&quot;&gt;T&lt;/div&gt;&lt;div style=&quot;flex:1;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;background:#14161a;color:#fff&quot;&gt;W&lt;/div&gt;&lt;div style=&quot;flex:1;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;background:#14161a;color:#fff&quot;&gt;T&lt;/div&gt;&lt;div style=&quot;flex:1;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;background:#14161a;color:#fff&quot;&gt;F&lt;/div&gt;&lt;div style=&quot;flex:1;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;background:#fff;color:#9aa0a8&quot;&gt;S&lt;/div&gt;&lt;div style=&quot;flex:1;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;background:#fff;color:#9aa0a8&quot;&gt;S&lt;/div&gt;&lt;/div&gt;
+  &lt;div class=&quot;lab&quot;&gt;Reminder&lt;/div&gt;&lt;div class=&quot;field&quot; style=&quot;justify-content:space-between&quot;&gt;7:30 AM &lt;span style=&quot;width:44px;height:26px;border-radius:12px;background:#3E7BFA;position:relative&quot;&gt;&lt;span style=&quot;position:absolute;right:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#fff&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;
+  &lt;a class=&quot;btn blue&quot; href=&quot;home.html&quot; style=&quot;margin-top:auto;margin-bottom:28px&quot;&gt;Create habit&lt;/a&gt;
+&lt;/div&gt;
+
+
+&lt;/body&gt;&lt;/html&gt;"></iframe><div class="overlay"><div class="box hover" style="left: 0px; top: 0px; width: 390px; height: 844px; --px: 2px;"></div></div></div></div><div class="board      " data-file="stats.html" role="group" aria-label="Board Stats" style="left: 1410px; top: 0px; width: 390px; height: 844px;"><div class="board-label  " title="Stats · stats.html" style="transform: scale(2); width: 195px;"><span class="lab-row"><span class="board-title">Stats</span><span class="board-file">stats.html</span><span class="board-btns "></span></span></div><div class="board-frame" style="border-radius: 36px;"><div class="board-placeholder far" style="font-size: 28px;"><span class="ph-title" data-hint="Scroll closer to load">Stats</span></div></div></div><div class="board      " data-file="settings.html" role="group" aria-label="Board Settings" style="left: 1880px; top: 0px; width: 390px; height: 844px;"><div class="board-label  " title="Settings · settings.html" style="transform: scale(2); width: 195px;"><span class="lab-row"><span class="board-title">Settings</span><span class="board-file">settings.html</span><span class="board-btns "></span></span></div><div class="board-frame" style="border-radius: 36px;"><div class="board-placeholder far" style="font-size: 28px;"><span class="ph-title" data-hint="Scroll closer to load">Settings</span></div></div></div><div class="board      " data-file="empty.html" role="group" aria-label="Board Empty state" style="left: 0px; top: 1140px; width: 390px; height: 844px;"><div class="board-label  " title="Empty state · empty.html" style="transform: scale(2); width: 195px;"><span class="lab-row"><span class="board-title">Empty state</span><span class="board-file">empty.html</span><span class="board-btns "></span></span></div><div class="board-frame" style="border-radius: 36px;"><iframe title="Empty state" style="pointer-events: none;" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;board-size&quot; content=&quot;390x844&quot;&gt;
+&lt;title&gt;Empty state&lt;/title&gt;
+&lt;style&gt;
+*{box-sizing:border-box}body{margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,&quot;Segoe UI&quot;,Roboto,sans-serif;color:#14161a;background:#fff;-webkit-font-smoothing:antialiased}
+.s{width:390px;height:844px;position:relative;overflow:hidden;background:#F7F6F2;display:flex;flex-direction:column}
+.bar{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-size:15px;font-weight:600}
+.h1{font-size:30px;font-weight:700;letter-spacing:-.02em;margin:4px 20px 4px}
+.sub{color:#6b6f76;font-size:15px;margin:0 20px 16px}
+.card{background:#fff;border-radius:20px;margin:0 16px 12px;padding:16px;box-shadow:0 1px 2px rgba(20,22,26,.04),0 4px 16px rgba(20,22,26,.05)}
+.row{display:flex;align-items:center;gap:12px}
+.ic{width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex:none}
+.t{font-size:16px;font-weight:600}.m{font-size:13px;color:#6b6f76;margin-top:4px}
+.chk{margin-left:auto;width:28px;height:28px;border-radius:50%;border:2px solid #d9dbe0;flex:none}
+.chk.on{background:#3E7BFA;border-color:#3E7BFA;box-shadow:inset 0 0 0 4px #fff}
+.btn{display:flex;align-items:center;justify-content:center;height:54px;border-radius:16px;background:#14161a;color:#fff;font-size:16px;font-weight:600;text-decoration:none;margin:0 16px}
+.btn.blue{background:#3E7BFA}
+.tabs{position:absolute;left:16px;right:16px;bottom:20px;height:64px;border-radius:20px;background:#fff;display:flex;align-items:center;justify-content:space-around;box-shadow:0 8px 24px rgba(20,22,26,.10)}
+.tab{font-size:12px;font-weight:600;color:#9aa0a8;display:flex;flex-direction:column;align-items:center;gap:4px}.tab.on{color:#14161a}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill{display:inline-flex;align-items:center;height:28px;padding:0 12px;border-radius:999px;background:#fff;font-size:13px;font-weight:600;margin-right:8px}
+.pill.on{background:#14161a;color:#fff}
+.ring{width:132px;height:132px;border-radius:50%;background:conic-gradient(#3E7BFA 0 72%,#E8EAF0 72% 100%);display:flex;align-items:center;justify-content:center}
+.ring&gt;div{width:104px;height:104px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.bars{display:flex;align-items:flex-end;gap:8px;height:120px;padding:0 4px}
+.bars div{flex:1;border-radius:8px;background:#E3EAFE}.bars div.on{background:#3E7BFA}
+.field{height:52px;border-radius:14px;background:#fff;border:1.5px solid #e6e7eb;display:flex;align-items:center;padding:0 16px;font-size:16px;margin:0 16px 12px;color:#14161a}
+.lab{font-size:13px;font-weight:600;color:#6b6f76;margin:8px 20px 8px}
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div class=&quot;s&quot; style=&quot;align-items:center;justify-content:center;text-align:center;padding:0 40px&quot;&gt;
+  &lt;svg width=&quot;160&quot; height=&quot;140&quot; viewBox=&quot;0 0 160 140&quot; aria-hidden=&quot;true&quot;&gt;&lt;rect x=&quot;20&quot; y=&quot;30&quot; width=&quot;120&quot; height=&quot;90&quot; rx=&quot;20&quot; fill=&quot;#E3EAFE&quot;&gt;&lt;/rect&gt;&lt;rect x=&quot;38&quot; y=&quot;52&quot; width=&quot;60&quot; height=&quot;10&quot; rx=&quot;5&quot; fill=&quot;#fff&quot;&gt;&lt;/rect&gt;&lt;rect x=&quot;38&quot; y=&quot;72&quot; width=&quot;84&quot; height=&quot;10&quot; rx=&quot;5&quot; fill=&quot;#fff&quot;&gt;&lt;/rect&gt;&lt;circle cx=&quot;122&quot; cy=&quot;34&quot; r=&quot;18&quot; fill=&quot;#3E7BFA&quot;&gt;&lt;/circle&gt;&lt;path d=&quot;M114 34l6 6 10-11&quot; stroke=&quot;#fff&quot; stroke-width=&quot;4&quot; fill=&quot;none&quot; stroke-linecap=&quot;round&quot;&gt;&lt;/path&gt;&lt;/svg&gt;
+  &lt;div class=&quot;h1&quot; style=&quot;margin:24px 0 8px&quot;&gt;Start your first habit&lt;/div&gt;
+  &lt;p class=&quot;sub&quot; style=&quot;margin:0 0 28px&quot;&gt;Small steps every day. Pick one thing you want to do more often.&lt;/p&gt;
+  &lt;a class=&quot;btn blue&quot; href=&quot;new-habit.html&quot; style=&quot;width:100%;margin:0&quot;&gt;Add a habit&lt;/a&gt;
+&lt;/div&gt;
+
+
+&lt;/body&gt;&lt;/html&gt;"></iframe></div></div><div class="board      " data-file="landing.html" role="group" aria-label="Board Landing (desktop)" style="left: 470px; top: 1140px; width: 1280px; height: 800px;"><div class="board-label  " title="Landing (desktop) · landing.html" style="transform: scale(2); width: 640px;"><span class="lab-row"><span class="board-title">Landing (desktop)</span><span class="board-file">landing.html</span><span class="board-btns "></span></span></div><div class="board-frame" style="border-radius: 0px;"><iframe title="Landing (desktop)" style="pointer-events: none;" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;board-size&quot; content=&quot;1280x800&quot;&gt;
+&lt;title&gt;Landing (desktop)&lt;/title&gt;
+&lt;style&gt;
+*{box-sizing:border-box}body{margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,&quot;Segoe UI&quot;,Roboto,sans-serif;color:#14161a;background:#fff;-webkit-font-smoothing:antialiased}
+.s{width:390px;height:844px;position:relative;overflow:hidden;background:#F7F6F2;display:flex;flex-direction:column}
+.bar{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-size:15px;font-weight:600}
+.h1{font-size:30px;font-weight:700;letter-spacing:-.02em;margin:4px 20px 4px}
+.sub{color:#6b6f76;font-size:15px;margin:0 20px 16px}
+.card{background:#fff;border-radius:20px;margin:0 16px 12px;padding:16px;box-shadow:0 1px 2px rgba(20,22,26,.04),0 4px 16px rgba(20,22,26,.05)}
+.row{display:flex;align-items:center;gap:12px}
+.ic{width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex:none}
+.t{font-size:16px;font-weight:600}.m{font-size:13px;color:#6b6f76;margin-top:4px}
+.chk{margin-left:auto;width:28px;height:28px;border-radius:50%;border:2px solid #d9dbe0;flex:none}
+.chk.on{background:#3E7BFA;border-color:#3E7BFA;box-shadow:inset 0 0 0 4px #fff}
+.btn{display:flex;align-items:center;justify-content:center;height:54px;border-radius:16px;background:#14161a;color:#fff;font-size:16px;font-weight:600;text-decoration:none;margin:0 16px}
+.btn.blue{background:#3E7BFA}
+.tabs{position:absolute;left:16px;right:16px;bottom:20px;height:64px;border-radius:20px;background:#fff;display:flex;align-items:center;justify-content:space-around;box-shadow:0 8px 24px rgba(20,22,26,.10)}
+.tab{font-size:12px;font-weight:600;color:#9aa0a8;display:flex;flex-direction:column;align-items:center;gap:4px}.tab.on{color:#14161a}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill{display:inline-flex;align-items:center;height:28px;padding:0 12px;border-radius:999px;background:#fff;font-size:13px;font-weight:600;margin-right:8px}
+.pill.on{background:#14161a;color:#fff}
+.ring{width:132px;height:132px;border-radius:50%;background:conic-gradient(#3E7BFA 0 72%,#E8EAF0 72% 100%);display:flex;align-items:center;justify-content:center}
+.ring&gt;div{width:104px;height:104px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.bars{display:flex;align-items:flex-end;gap:8px;height:120px;padding:0 4px}
+.bars div{flex:1;border-radius:8px;background:#E3EAFE}.bars div.on{background:#3E7BFA}
+.field{height:52px;border-radius:14px;background:#fff;border:1.5px solid #e6e7eb;display:flex;align-items:center;padding:0 16px;font-size:16px;margin:0 16px 12px;color:#14161a}
+.lab{font-size:13px;font-weight:600;color:#6b6f76;margin:8px 20px 8px}
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div style=&quot;width:1280px;height:800px;background:linear-gradient(180deg,#F7F6F2,#EEF3FF);display:flex;flex-direction:column&quot;&gt;
+  &lt;header style=&quot;display:flex;align-items:center;justify-content:space-between;padding:28px 64px&quot;&gt;&lt;strong style=&quot;font-size:22px&quot;&gt;● Tidy&lt;/strong&gt;&lt;nav style=&quot;display:flex;gap:32px;color:#6b6f76;font-weight:500&quot;&gt;&lt;span&gt;Features&lt;/span&gt;&lt;span&gt;Pricing&lt;/span&gt;&lt;span&gt;Blog&lt;/span&gt;&lt;/nav&gt;&lt;a class=&quot;btn&quot; style=&quot;height:44px;padding:0 20px;margin:0&quot;&gt;Get the app&lt;/a&gt;&lt;/header&gt;
+  &lt;main style=&quot;display:flex;align-items:center;gap:64px;padding:40px 64px;flex:1&quot;&gt;
+    &lt;div style=&quot;flex:1&quot;&gt;&lt;div class=&quot;pill&quot; style=&quot;margin-bottom:20px&quot;&gt;New · Streak insights&lt;/div&gt;&lt;h1 style=&quot;font-size:64px;line-height:1.05;letter-spacing:-.03em;margin:0 0 20px&quot;&gt;Habits that&lt;br&gt;actually stick.&lt;/h1&gt;&lt;p style=&quot;font-size:20px;color:#6b6f76;line-height:1.5;margin:0 0 32px;max-width:460px&quot;&gt;Tidy keeps your routine light: one tap to check in, gentle reminders, and a week view that shows real progress.&lt;/p&gt;&lt;div style=&quot;display:flex;gap:12px&quot;&gt;&lt;a class=&quot;btn blue&quot; style=&quot;margin:0;padding:0 28px&quot;&gt;Start free&lt;/a&gt;&lt;a class=&quot;btn&quot; style=&quot;margin:0;padding:0 28px;background:#fff;color:#14161a&quot;&gt;See how it works&lt;/a&gt;&lt;/div&gt;&lt;/div&gt;
+    &lt;div style=&quot;width:340px;height:560px;border-radius:44px;background:#14161a;padding:12px;box-shadow:0 30px 60px rgba(20,22,26,.25)&quot;&gt;&lt;div style=&quot;width:100%;height:100%;border-radius:36px;background:#F7F6F2;padding:28px 16px&quot;&gt;&lt;div class=&quot;h1&quot; style=&quot;margin:0 4px 16px;font-size:24px&quot;&gt;Today&lt;/div&gt;&lt;a class=&quot;card row&quot; href=&quot;habit.html&quot; style=&quot;text-decoration:none;color:inherit&quot;&gt;&lt;div class=&quot;ic&quot; style=&quot;background:#EEF3FF&quot;&gt;🧘&lt;/div&gt;&lt;div&gt;&lt;div class=&quot;t&quot;&gt;Meditate&lt;/div&gt;&lt;div class=&quot;m&quot;&gt;10 min&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;chk on&quot;&gt;&lt;/div&gt;&lt;/a&gt;&lt;a class=&quot;card row&quot; href=&quot;habit.html&quot; style=&quot;text-decoration:none;color:inherit&quot;&gt;&lt;div class=&quot;ic&quot; style=&quot;background:#E8F7F1&quot;&gt;💧&lt;/div&gt;&lt;div&gt;&lt;div class=&quot;t&quot;&gt;Drink water&lt;/div&gt;&lt;div class=&quot;m&quot;&gt;6 of 8&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;chk on&quot;&gt;&lt;/div&gt;&lt;/a&gt;&lt;a class=&quot;card row&quot; href=&quot;habit.html&quot; style=&quot;text-decoration:none;color:inherit&quot;&gt;&lt;div class=&quot;ic&quot; style=&quot;background:#FFF4E5&quot;&gt;📚&lt;/div&gt;&lt;div&gt;&lt;div class=&quot;t&quot;&gt;Read&lt;/div&gt;&lt;div class=&quot;m&quot;&gt;20 pages&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;chk&quot;&gt;&lt;/div&gt;&lt;/a&gt;&lt;/div&gt;&lt;/div&gt;
+  &lt;/main&gt;
+&lt;/div&gt;
+
+
+&lt;/body&gt;&lt;/html&gt;"></iframe></div></div><div class="shape " data-shape="s1" style="left: 400px; top: 300px; width: 60px; height: 1px; pointer-events: auto;"><svg width="72" height="13" viewBox="-6 -6 72 13" style="position: absolute; left: -6px; top: -6px; overflow: visible;"><defs><marker id="ah-s1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#3E7BFA"></path></marker></defs><polyline points="0,0 60,0" fill="none" stroke="#3E7BFA" stroke-width="6" stroke-linecap="round" marker-end="url(#ah-s1)"></polyline></svg></div><div class="shape " data-shape="s2" style="left: 870px; top: 300px; width: 60px; height: 1px; pointer-events: auto;"><svg width="72" height="13" viewBox="-6 -6 72 13" style="position: absolute; left: -6px; top: -6px; overflow: visible;"><defs><marker id="ah-s2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#3E7BFA"></path></marker></defs><polyline points="0,0 60,0" fill="none" stroke="#3E7BFA" stroke-width="6" stroke-linecap="round" marker-end="url(#ah-s2)"></polyline></svg></div></div></div></div><div class="etb oc-context " role="toolbar" aria-label="Element" aria-orientation="horizontal" style="left: 71px;"><span class="etb-item"><button class=" " tabindex="0" title="Text" aria-haspopup="dialog" aria-expanded="false" style="width: 76px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6h14M12 6v13M9 19h6"></path></svg>Text<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button></span><span class="etb-item"><button class=" " tabindex="-1" title="Fill (background-color)" aria-label="Fill" aria-haspopup="dialog" aria-expanded="false"><span class="sw" style="background: rgb(255, 255, 255);"></span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button></span><span class="etb-item"><button class=" " tabindex="-1" title="Corner radius (border-radius)" aria-haspopup="dialog" aria-expanded="false" style="width: 71px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19V11a6 6 0 0 1 6-6h8"></path></svg>Radius</button></span><span class="etb-item"><button class=" " tabindex="-1" title="Padding · Gap" aria-haspopup="dialog" aria-expanded="false" style="width: 78px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4v16M20 4v16M8 12h8M8 12l2-2M8 12l2 2M16 12l-2-2M16 12l-2 2"></path></svg>Spacing</button></span><span class="etb-item"><span class="sep" aria-hidden="true"></span><button class="accent " tabindex="-1" title="Ask AI about this element" style="width: 68px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"></path></svg>Ask AI</button></span><span class="etb-item"><button class=" " tabindex="-1" title="Comment on this element" style="width: 87px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"></path></svg>Comment</button></span></div><aside class="oc-card oc-right is-rest " aria-label="Inspector"><div class="oc-rhead"><div class="share-wrap"><button class="share-btn " aria-haspopup="dialog" aria-expanded="false" aria-label="Share" title="Share a view-only copy (web folder, single file, PDF or PNG)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4M8 8l4-4 4 4M5 13v6h14v-6"></path></svg> </button></div><button class="ask-ai " aria-label="AI chat" aria-pressed="false" title="AI chat (⌘J)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"></path></svg> </button><button class="icon-btn " aria-label="View" aria-haspopup="menu" aria-expanded="false" title="View: zoom, history, guides, minimap, appearance, snapshot"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01"></path></svg></button></div></aside><div class="oc-dock" role="toolbar" aria-label="Tools" style="left: 34px;"><button class="new-board" aria-haspopup="menu" title="New board (choose a template)" style="width: 126px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg><span>New board</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="s"><path d="M6 9l6 6 6-6"></path></svg></button><span class="oc-sep" aria-hidden="true"></span><div class="oc-group" role="radiogroup" aria-label="Canvas tools"><button role="radio" aria-checked="true" aria-label="Select (V)" title="Select and move boards (V)" class="icon-btn tool on"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3l13 8-6 1.5L9.5 19z"></path></svg></button><button role="radio" aria-checked="false" aria-label="Hand (H)" title="Drag to pan the canvas (H)" class="icon-btn tool "><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 12V6.5a1.5 1.5 0 0 1 3 0V11m0-5.5V5a1.5 1.5 0 0 1 3 0v6m0-4.5a1.5 1.5 0 0 1 3 0V13a7 7 0 0 1-7 7h-.5a6 6 0 0 1-5-2.7L3.3 14a1.5 1.5 0 0 1 2.4-1.8L8 15"></path></svg></button><span class="oc-sep" aria-hidden="true"></span><button role="radio" aria-checked="false" aria-label="Draw board (B)" title="Drag to draw a board (B)" class="icon-btn tool "><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v14H4zM4 9h16"></path></svg></button><button role="radio" aria-checked="false" aria-label="Title (T)" title="Click to add a title (T)" class="icon-btn tool "><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6h14M12 6v13M9 19h6"></path></svg></button><button role="radio" aria-checked="false" aria-label="Note (N)" title="Click to add a sticky note (N)" class="icon-btn tool "><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h14v10l-5 6H5zM14 20v-6h5"></path></svg></button></div><span class="oc-sep" aria-hidden="true"></span><button class="icon-btn tool oc-fold " aria-label="Shapes" aria-haspopup="menu" title="Shapes"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16v12H4z"></path></svg><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="s"><path d="M6 9l6 6 6-6"></path></svg></button><span class="oc-sep" aria-hidden="true"></span><div class="oc-group undo-split"><button class="icon-btn" aria-label="Undo" title="Undo (⌘Z)" disabled=""><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"></path></svg></button><button class="icon-btn caret-btn " aria-label="History" aria-haspopup="menu" aria-expanded="false" title="History"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button><button class="icon-btn" aria-label="Redo" title="Redo (⇧⌘Z)" disabled=""><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3"></path></svg></button></div></div><div class="sr-only" role="status" aria-live="polite"></div></div><div class="toasts" role="status" aria-live="polite"></div></div>
+</body>
 </html>
