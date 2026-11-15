@@ -1023,4 +1023,10 @@ export const strings = {
     keptAll: (kind: "variant" | "fork", n: number) => (kind === "variant" ? `Kept all ${variantsLabel(n)} as boards` : n === 1 ? "Kept both versions as boards" : `Kept all ${n + 1} versions as boards`),
     undo: "Undo",
   },
+  update: {
+    out: (version: string) => `Easel ${version} is out`,
+    copy: "Copy command",
+    copied: "Copied. Run it, then restart Easel",
+    hide: "Hide until the next version",
+  },
 } as const;

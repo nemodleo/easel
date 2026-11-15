@@ -15,6 +15,7 @@ import { rootOf, toPosix } from "./fsutil.mjs";
 import { createHistory, requestScope } from "./history.mjs";
 import { createOccupancy } from "./occupancy.mjs";
 import { writeEntry } from "./registry.mjs";
+import { checkUpdate } from "./update.mjs";
 
 export const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -194,8 +195,9 @@ function noteWriters(occupancy, screensDir, step, changes) {
 /**
  * register: write the running-canvas entry (~/.easel/servers/<port>.json, or under EASEL_HOME) for MCP discovery.
  * autoPort: when the port is busy, try the next ones instead of failing (for a port the user did not choose).
+ * updateCheck: ask the npm registry once a day whether a newer Easel exists (the CLI only; see update.mjs).
  */
-export async function createServer({ dir, port, dev = true, extraRoutes = [], autoPort = false, register = false }) {
+export async function createServer({ dir, port, dev = true, extraRoutes = [], autoPort = false, register = false, updateCheck = false }) {
   if (!existsSync(dir)) throw new Error(`Design folder not found: ${dir}`);
   let history;
   const store = createBoardStore(dir, { onWrite: (p, text) => history.note(p, text) });
@@ -220,7 +222,10 @@ export async function createServer({ dir, port, dev = true, extraRoutes = [], au
   const LOCKED = /^\/api\/(board|boards\/|history\/|edit|undo|redo|place|notes|pages|comments|chat\/(revert|undo-run|redo-run))/;
   // Screens folder as the agent sees it: relative to the project root
   const screensRel = toPosix(path.relative(rootOf(dir), store.screensDir)) || "screens";
+  // Started now, answered by /api/update: never in the way of start-up, resolves to null when there is nothing to say
+  const update = updateCheck ? checkUpdate({ current: JSON.parse(await fs.readFile(path.join(TOOL_ROOT, "package.json"), "utf8")).version }) : Promise.resolve(null);
   const routes = [
+    ["GET", "/api/update", async (req, res) => sendJson(res, 200, { update: await update })],
     ["GET", "/api/health", async (req, res) => sendJson(res, 200, { ok: true, dir, root: rootOf(dir), screens: screensRel, pid: process.pid })],
     [
       "GET",
@@ -340,6 +345,7 @@ export async function createServer({ dir, port, dev = true, extraRoutes = [], au
     server,
     port: used,
     url: `http://localhost:${used}`,
+    update,
     unregister,
     async close() {
       unregister();

@@ -173,6 +173,34 @@ export function App() {
   const searchRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
   const ask = useDialog();
+  // New-version notice: a toast at launch until Copy command or × is pressed, then not again until the next version
+  useEffect(() => {
+    let off = false;
+    const KEY = "design-canvas:update-seen";
+    api
+      .update()
+      .then(({ update: u }) => {
+        if (off || !u) return;
+        try {
+          if (localStorage.getItem(KEY) === u.latest) return;
+        } catch {}
+        const seen = () => {
+          try {
+            localStorage.setItem(KEY, u.latest);
+          } catch {}
+        };
+        toast({
+          dot: true,
+          text: strings.update.out(u.latest),
+          code: u.command,
+          ms: 12000,
+          action: { label: strings.update.copy, run: () => (seen(), void navigator.clipboard.writeText(u.command).then(() => toast({ tone: "ok", text: strings.update.copied }))) },
+          close: { label: strings.update.hide, run: seen },
+        });
+      })
+      .catch(() => {});
+    return () => void (off = true);
+  }, [toast]);
   const getFrame = useCallback((f: string) => frames.current.get(f) ?? null, [frameTick]);
   const editRef = useRef<ReturnType<typeof useElementSelect> | null>(null);
   const boardRef = useRef<Board | null>(null);

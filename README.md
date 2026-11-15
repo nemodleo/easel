@@ -159,6 +159,11 @@ npm run design           # http://localhost:4317
 - It installs separately from your app, so it never touches your app's dependencies, build or deploy, and CI that skips submodules (the `actions/checkout` default) is unaffected.
 - To update: push to this repo, then run `git submodule update --remote tools/easel` in your project and commit the new pointer. Teammates run `npm run design:install` after `git pull`.
 
+## Updates
+
+`npx` keeps the copy it downloaded first, so run `npx easel-canvas@latest` to get a new version (and `npm i -D easel-canvas@latest` if you pinned it). To tell you when one is out, the canvas asks the npm registry once a day which version is the latest: one request to `registry.npmjs.org`, nothing about your project. When a newer one exists, the terminal says so at start and a toast at launch shows the update command for how you installed Easel; Copy command or × puts it away until the next version. Set `EASEL_NO_UPDATE_CHECK=1` to turn the check off; it is also off in CI and when Easel runs from a git checkout.
+
+
 <details>
 <summary><b>Keyboard shortcuts and how-tos</b></summary>
 

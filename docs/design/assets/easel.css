@@ -1111,6 +1111,13 @@ button.danger { color: var(--warn); }
 .toast.ok svg { color: var(--ok); }
 .toast.error svg { color: var(--warn); }
 .toast-action { height: 32px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: var(--text); font-weight: 600; }
+/* The new-version notice: an ink dot (news, so neither --warn nor --accent), the command in mono, an × that hides it */
+.toast:has(.toast-dot) { gap: 12px; padding-left: 16px; }
+.toast-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--text); }
+.toast-code { font: 12px/16px var(--mono); color: var(--muted); white-space: nowrap; }
+.toast:has(.toast-dot) .toast-action { margin-left: -4px; }
+.toast-close { margin-left: -8px; }
+.toast:has(.toast-close) { padding-right: 6px; }
 .dialog-backdrop { position: fixed; inset: 0; z-index: 350; background: rgba(17, 17, 17, 0.4); display: flex; align-items: center; justify-content: center; }
 .dialog { width: 400px; max-width: calc(100vw - 32px); padding: 20px; display: flex; flex-direction: column; gap: 12px; background: var(--panel); border-radius: 12px; box-shadow: var(--float); }
 .dialog h2 { margin: 0; font-size: 15px; line-height: 20px; font-weight: 600; }

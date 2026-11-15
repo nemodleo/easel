@@ -42,7 +42,9 @@
 
     "share-export.html": {"x":0,"y":4620,"w":1440,"h":900,"title":"Share · Export"},
 
-    "share-viewer.html": {"x":1520,"y":4620,"w":1440,"h":900,"title":"Share · What the viewer sees"}
+    "share-viewer.html": {"x":1520,"y":4620,"w":1440,"h":900,"title":"Share · What the viewer sees"},
+
+    "update-notice.html": {"x":3040,"y":2000,"w":1440,"h":900,"title":"Update notice · toast at launch"}
   },
   "order": [
     "canvas-light.html",
@@ -64,7 +66,8 @@
     "chat-agents.html",
     "board-occupancy.html",
     "pick-alternative.html",
-    "proposal-share-c-live.html"
+    "proposal-share-c-live.html",
+    "update-notice.html"
   ],
   "notes": {
     "a0": {"kind":"sticky","x":4240,"y":0,"w":760,"text":"Built 2026-11-15 · direction A, Open canvas\nRule: the work reaches all four edges of the window. Tools sit on top of it: two cards, one dock.\nThree decisions came with it:\na. The context line. One slot 8px above the dock holds the hint or the element toolbar, never both; nothing floats next to a selection.\nb. A card is as tall as what it has to say. At rest the inspector is its 48px header; a card grows in height only and the boards never move.\nc. Boards run under the cards. Fit all and zoom to selection keep to the clear area between them.\nEvery board on this canvas except the live link proposal is drawn from the running app.","color":"blue"},
@@ -111,7 +114,9 @@
 
     "p5a": {"kind":"sticky","x":0,"y":12220,"w":760,"text":"Live link (proposal, not built)\n1. A switch, not an export: on while Easel runs.\n2. The link, then Can view / Can comment.\n3. Who is looking now and where: cursors and selection on the canvas.\n4. Comments from the link are marked \"via link\". Files change only on this computer.\nNeeds a tunnel and this computer left on. Kept for later.","color":"yellow"},
 
-    "s1": {"kind":"sticky","x":3440,"y":1000,"w":760,"text":"Select and edit (the board left of AI chat)\n1. No Edit mode. A click on an element of any board selects it; double-click edits its text; Esc deselects.\n2. The element toolbar sits in the context line, 8px above the dock, where the hint is at other times: Text, Fill, Radius, Spacing, Ask AI, Comment. Nothing floats next to the selection.\n3. Fill shows the token swatches first, then Custom: a colour swatch and a hex field. With no tokens, only Custom.\n4. The inspector shows the file, the element's name and a breadcrumb (board › … › two parents › element), then Properties in design words. The CSS name shows on hover. More (CSS) stays folded.\n5. The board says \"You · editing\" while something on it is selected.","color":"yellow"}
+    "s1": {"kind":"sticky","x":3440,"y":1000,"w":760,"text":"Select and edit (the board left of AI chat)\n1. No Edit mode. A click on an element of any board selects it; double-click edits its text; Esc deselects.\n2. The element toolbar sits in the context line, 8px above the dock, where the hint is at other times: Text, Fill, Radius, Spacing, Ask AI, Comment. Nothing floats next to the selection.\n3. Fill shows the token swatches first, then Custom: a colour swatch and a hex field. With no tokens, only Custom.\n4. The inspector shows the file, the element's name and a breadcrumb (board › … › two parents › element), then Properties in design words. The CSS name shows on hover. More (CSS) stays folded.\n5. The board says \"You · editing\" while something on it is selected.","color":"yellow"},
+
+    "u1": {"kind":"sticky","x":3040,"y":2940,"w":560,"text":"Update notice (built 2026-11-15, from proposal c)\nOnce a day the canvas asks the npm registry for the latest easel-canvas. When it is newer: a line in the terminal at start, and this toast at launch with the command for how Easel was installed (npx, npm i -D, or global).\nIt comes back at each launch until Copy command or ×, then not again until the next version. Ink dot, never the orange.\nSilent offline, in CI, from a git checkout, or with EASEL_NO_UPDATE_CHECK=1.","color":"yellow"}
   },
   "shapes": {}
 }

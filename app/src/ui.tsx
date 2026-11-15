@@ -6,7 +6,20 @@ import { Icon, type IconName } from "./icons";
 import { strings } from "./strings";
 
 /* ---------------- Toasts ---------------- */
-export type Toast = { id: number; text: string; tone?: "info" | "ok" | "error"; action?: { label: string; run: () => void } };
+export type Toast = {
+  id: number;
+  text: string;
+  tone?: "info" | "ok" | "error";
+  action?: { label: string; run: () => void };
+  /** An ink dot before the text: news, neither a warning nor an action (the new-version notice) */
+  dot?: boolean;
+  /** A command shown in mono after the text */
+  code?: string;
+  /** An × at the end; run is called when it is pressed (the toast closes either way) */
+  close?: { label: string; run?: () => void };
+  /** How long it stays, in ms (default 3.2s, errors 6s) */
+  ms?: number;
+};
 type ToastApi = (t: Omit<Toast, "id">) => void;
 const ToastCtx = createContext<ToastApi>(() => {});
 export const useToast = () => useContext(ToastCtx);
@@ -16,7 +29,7 @@ export function ToastHost({ children }: { children: ReactNode }) {
   const push = useCallback<ToastApi>((t) => {
     const id = Date.now() + Math.random();
     setList((l) => [...l.slice(-3), { ...t, id }]);
-    setTimeout(() => setList((l) => l.filter((x) => x.id !== id)), t.tone === "error" ? 6000 : 3200);
+    setTimeout(() => setList((l) => l.filter((x) => x.id !== id)), t.ms ?? (t.tone === "error" ? 6000 : 3200));
   }, []);
   return (
     <ToastCtx.Provider value={push}>
@@ -25,7 +38,9 @@ export function ToastHost({ children }: { children: ReactNode }) {
         {list.map((t) => (
           <div key={t.id} className={`toast ${t.tone ?? "info"}`}>
             {t.tone === "error" ? <Icon name="warn" /> : t.tone === "ok" ? <Icon name="check" /> : null}
+            {t.dot && <span className="toast-dot" aria-hidden="true" />}
             <span>{t.text}</span>
+            {t.code && <code className="toast-code">{t.code}</code>}
             {t.action && (
               <button
                 className="toast-action"
@@ -35,6 +50,19 @@ export function ToastHost({ children }: { children: ReactNode }) {
                 }}
               >
                 {t.action.label}
+              </button>
+            )}
+            {t.close && (
+              <button
+                className="icon-btn oc-ib toast-close"
+                aria-label={t.close.label}
+                title={t.close.label}
+                onClick={() => {
+                  t.close!.run?.();
+                  setList((l) => l.filter((x) => x.id !== t.id));
+                }}
+              >
+                <Icon name="close" size={16} />
               </button>
             )}
           </div>
