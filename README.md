@@ -215,6 +215,7 @@ npm test             # unit tests (source patching, board format, chat parsing, 
 npm run test:e2e     # Playwright end-to-end tests against test/fixtures/design
 npm run typecheck
 npm run demo         # run the repo's demo from source
+npm run design:css   # rebuild docs/design/assets/easel.css after changing app/src/style.css, so the boards in docs/design keep matching the app
 ```
 
 - `test/fixtures/design/` intentionally keeps Korean screen content and board titles: it mimics real user content and is needed to test Korean text input (IME) and rendering. Set `DESIGN_CANVAS_E2E_DIR=<folder>` to run the e2e tests against another design folder.
@@ -226,6 +227,7 @@ npm run demo         # run the repo's demo from source
 | `server/` | API and routes, board.json, file watching, element paths and hashes, source patching, history, chat runner, tokens |
 | `app/` | Canvas UI (Vite + React + TypeScript); all UI text lives in `app/src/strings.ts` |
 | `test/` | `node --test` unit tests and Playwright e2e tests |
+| `tools/` | Repo maintenance scripts, not shipped: `mkcss.mjs` builds the design boards' stylesheet from the app's |
 
 Background reading: the original plan is in [PLAN.md](PLAN.md), a feature-by-feature comparison with Claude Design is in [PARITY.md](PARITY.md), and the work log is in [tasks.md](tasks.md).
 

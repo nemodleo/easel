@@ -25,7 +25,8 @@
     "mcp": "node bin/mcp.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node --test test/*.test.mjs",
-    "test:e2e": "node --test --test-concurrency=1 test/e2e/*.e2e.mjs"
+    "test:e2e": "node --test --test-concurrency=1 test/e2e/*.e2e.mjs",
+    "design:css": "node tools/mkcss.mjs"
   },
   "engines": {
     "node": ">=20"
