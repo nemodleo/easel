@@ -7,7 +7,7 @@
 [![npm](https://img.shields.io/npm/v/easel-canvas.svg?color=black)](https://www.npmjs.com/package/easel-canvas)
 [![License: MIT](https://img.shields.io/badge/license-MIT-black.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%E2%89%A520-black.svg)](package.json)
-[![MCP](https://img.shields.io/badge/MCP-20%20tools-3E7BFA.svg)](#connect-your-ai-agent)
+[![MCP](https://img.shields.io/badge/MCP-22%20tools-3E7BFA.svg)](#connect-your-ai-agent)
 [![Works with](https://img.shields.io/badge/works%20with-Claude%20Code%20·%20Codex-3E7BFA.svg)](#connect-your-ai-agent)
 
 <img src="docs/screenshots/demo.gif" alt="Demo: editing text in place on a mobile screen, then asking Claude Code in the AI tab to rename a heading and recolor a bar; the board redraws with the change" width="100%">
