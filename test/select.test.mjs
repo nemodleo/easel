@@ -1,5 +1,5 @@
 // AI-generated with Claude Code, 2026-11-12, reviewed by Hyun Park
-// Selecting and editing without a mode (app/src/directSelect.ts) as pure functions: click vs drag, toolbar placement and flip,
+// Selecting and editing without a mode (app/src/directSelect.ts) as pure functions: click vs drag, the context line's place,
 // breadcrumb paths, design words for CSS values, token matching and the variable reference a token writes
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
@@ -29,24 +29,17 @@ test("click vs drag: under 3 screen px is a click, from 3 on the press moves the
   assert.equal(ds.isDrag(4, 0, 6), false, "a custom slop");
 });
 
-test("toolbar placement: centred above with room for the move handle, flipped below near the top, kept inside the bounds", () => {
-  const bounds = { w: 1000, h: 700 };
-  const bar = { w: 400, h: 36 };
-  assert.deepEqual(ds.placeBar({ x: 300, y: 300, w: 200, h: 50 }, bar, bounds), { x: 200, y: 236, below: false });
-  // No room above: below the element
-  assert.deepEqual(ds.placeBar({ x: 300, y: 40, w: 200, h: 50 }, bar, bounds), { x: 200, y: 102, below: true });
-  // It would reach over the board's top edge (its title row, Use this one): below the element
-  assert.deepEqual(ds.placeBar({ x: 300, y: 300, w: 200, h: 50 }, bar, { ...bounds, top: 280 }), { x: 200, y: 362, below: true });
-  assert.equal(ds.placeBar({ x: 300, y: 300, w: 200, h: 50 }, bar, { ...bounds, top: 200 }).below, false);
-  // Near the left and right edges: clamped
-  assert.equal(ds.placeBar({ x: 0, y: 300, w: 40, h: 40 }, bar, bounds).x, 8);
-  assert.equal(ds.placeBar({ x: 980, y: 300, w: 40, h: 40 }, bar, bounds).x, 1000 - 400 - 8);
-  // An element taller than the view: the bar stays inside
-  const tall = ds.placeBar({ x: 300, y: 20, w: 200, h: 2000 }, bar, bounds);
-  assert.equal(tall.below, true);
-  assert.equal(tall.y, 700 - 36 - 8);
-  // A view smaller than the bar: pinned to the padding, never negative
-  assert.deepEqual(ds.placeBar({ x: 0, y: 0, w: 10, h: 10 }, bar, { w: 200, h: 30 }), { x: 8, y: 8, below: true });
+test("context line: centred on the window on a whole pixel, icons only when it does not fit with 8px on both sides", () => {
+  assert.deepEqual(ds.placeContext(1440, { w: 480 }), { x: 480, icons: false });
+  // An odd leftover rounds to a whole pixel, never a half
+  assert.equal(ds.placeContext(1441, { w: 480 }).x, 481);
+  assert.equal(Number.isInteger(ds.placeContext(1000, { w: 327.5 }).x), true);
+  // Labels away when the full bar (with labels) is wider than the window less 8 on each side
+  assert.equal(ds.placeContext(440, { w: 233, full: 480 }).icons, true);
+  assert.equal(ds.placeContext(600, { w: 480, full: 480 }).icons, false);
+  assert.equal(ds.placeContext(495, { w: 480 }).icons, true);
+  // A window narrower than the bar: pinned to the padding, never negative
+  assert.deepEqual(ds.placeContext(200, { w: 400 }), { x: 8, icons: true });
 });
 
 test("breadcrumb paths: nothing between board and a top-level element, the nearest parents otherwise", () => {

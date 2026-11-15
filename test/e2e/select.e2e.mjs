@@ -46,8 +46,8 @@ test("with no tokens registered: hover outlines, a click selects (toolbar, bread
   // A person is editing a board while an element is selected on it
   await page.locator(`.board[data-file="${F}"] .occ-tag.you`).waitFor();
   // The CSS name sits beside each design word (shown on hover and focus)
-  assert.equal(await page.locator(".prow", { hasText: "Corner radius" }).getAttribute("title"), "border-radius");
-  assert.match(await page.locator(".props .contrast").textContent(), /^Contrast \d+\.\d:1 with white text · AA/);
+  assert.equal(await page.locator(".oc-right .pp-row", { hasText: "Corner radius" }).getAttribute("title"), "border-radius");
+  assert.match(await page.locator(".oc-right .contrast").textContent(), /^Contrast \d+\.\d:1 with white text · AA/);
   // Fill: no palette is invented
   await bar.getByRole("button", { name: "Fill" }).click();
   const pop = page.getByRole("dialog", { name: "Fill" });
@@ -91,7 +91,7 @@ test("tokens first: the Fill popover lists the registered colours, choosing one 
   await pop.getByRole("button", { name: "Blue soft" }).click();
   assert.ok(await until(async () => (await env.read(`screens/${F}`)).includes('style="background-color:var(--blue-soft, #DFE7FB)"')), "token reference written");
   // The panel names the token beside the value
-  await page.locator(".props .fillv", { hasText: "Blue soft" }).waitFor();
+  await page.locator(".oc-right .fillv", { hasText: "Blue soft" }).waitFor();
   await page.keyboard.press("Escape");
   await page.keyboard.press("Meta+z");
   assert.ok(await until(async () => (await env.read(`screens/${F}`)) === orig), "undo restores");

@@ -1,5 +1,5 @@
 // AI-generated with Claude Code, 2026-10-09, reviewed by Hyun Park
-// Left panel (pages, board list, search), minimap, board options, single-board focus view.
+// Left card (pages, board list, search), minimap, board properties, single-board focus view.
 import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 
 import type { Rect } from "./Canvas";
@@ -32,6 +32,9 @@ export const LeftPanel = forwardRef<HTMLInputElement, {
   onGroupRename?: (key: string) => void;
   /** The dot of whoever is editing a board now, in their colour */
   dotOf?: (file: string) => { color: string; label: string } | null;
+  /** The surface: the editor's left card (oc-card oc-left …) or the viewer's panel (left) */
+  className?: string;
+  style?: React.CSSProperties;
 }>(function LeftPanel(p, searchRef) {
   const [q, setQ] = useState("");
   const [dragPage, setDragPage] = useState<string | null>(null);
@@ -79,45 +82,36 @@ export const LeftPanel = forwardRef<HTMLInputElement, {
     });
   const row = (f: string) => {
     const b = p.board.boards[f];
-    // Title first; the file name is the second line when it says something the title does not
-    const twoLine = !!b.title && b.title !== f.replace(/\.html$/, "");
+    // Title first; the file name at the right in mono when it says something the title does not
+    const file = !!b.title && b.title !== f.replace(/\.html$/, "");
+    const d = p.dotOf?.(f);
     return (
       <li key={f}>
-        <button className={`row ${twoLine ? "two-line" : ""} ${p.selected.includes(f) ? "on" : ""}`} onClick={(e) => p.onPick(f, e.shiftKey || e.metaKey)} onContextMenu={(e) => { if (!p.onBoardMenu) return; e.preventDefault(); p.onBoardMenu(f, e); }} title={f}>
-          <Icon name="board" size={14} />
-          {twoLine ? (
-            <span className="row-text">
-              <span className="row-title">{b.title}</span>
-              <span className="row-file">{f}</span>
-            </span>
-          ) : (
-            <span className="row-text">{b.title ?? f}</span>
-          )}
+        <button className={`row oc-row ${p.selected.includes(f) ? "on" : ""}`} aria-current={p.selected.includes(f) || undefined} onClick={(e) => p.onPick(f, e.shiftKey || e.metaKey)} onContextMenu={(e) => { if (!p.onBoardMenu) return; e.preventDefault(); p.onBoardMenu(f, e); }} title={f}>
+          <span className="row-title">{b.title ?? f}</span>
           {p.missing.includes(f) && <Icon name="warn" size={14} className="warn-icon" aria-label={strings.boardList.fileMissing} />}
-          {(() => {
-            const d = p.dotOf?.(f);
-            return d ? <span className="idot occ-dot" style={{ background: d.color }} role="img" aria-label={d.label} title={d.label} /> : null;
-          })()}
+          {d && <span className="idot occ-dot" style={{ background: d.color }} role="img" aria-label={d.label} title={d.label} />}
+          {file && <span className="row-file">{f}</span>}
         </button>
       </li>
     );
   };
   return (
-    <aside className="left" aria-label={strings.boardList.aria}>
+    <aside className={p.className ?? "left"} style={p.style} aria-label={strings.boardList.aria}>
       {p.header}
       {p.showPages !== false && <section className="left-pages">
-        <div className="sec-head">
+        <div className="oc-sec">
           <span>{strings.boardList.pages}</span>
           {p.onAddPage && (
-            <button className="icon-btn sm" aria-label={strings.boardList.addPage} title={strings.boardList.addPage} onClick={p.onAddPage}>
-              <Icon name="plus" size={14} />
+            <button className="icon-btn oc-ib" aria-label={strings.boardList.addPage} title={strings.boardList.addPage} onClick={p.onAddPage}>
+              <Icon name="plus" size={16} />
             </button>
           )}
         </div>
         {p.pages.length === 0 ? (
-          <p className="empty">{strings.boardList.singlePage}</p>
+          <p className="oc-empty">{strings.boardList.singlePage}</p>
         ) : (
-          <ul role="tablist" aria-label={strings.boardList.pages}>
+          <ul className="oc-list" role="tablist" aria-label={strings.boardList.pages}>
             {p.pages.map((pg, i) => (
               <li
                 key={pg.id}
@@ -143,9 +137,8 @@ export const LeftPanel = forwardRef<HTMLInputElement, {
                   setOverPage(null);
                 }}
               >
-                <button role="tab" title={strings.boardList.pageTabTitle} aria-selected={pg.id === p.currentPage} className={`row ${pg.id === p.currentPage ? "on" : ""} ${overPage === i && dragPage !== pg.id ? "drop-before" : ""}`} onClick={() => p.onPage(pg.id)} onContextMenu={(e) => { if (!p.onPageMenu) return; e.preventDefault(); p.onPageMenu(pg.id, e); }}>
-                  <Icon name="page" size={14} />
-                  <span className="row-text">{pg.name}</span>
+                <button role="tab" title={strings.boardList.pageTabTitle} aria-selected={pg.id === p.currentPage} className={`row oc-row ${pg.id === p.currentPage ? "on" : ""} ${overPage === i && dragPage !== pg.id ? "drop-before" : ""}`} onClick={() => p.onPage(pg.id)} onContextMenu={(e) => { if (!p.onPageMenu) return; e.preventDefault(); p.onPageMenu(pg.id, e); }}>
+                  <span className="row-title">{pg.name}</span>
                   <span className="row-count">{Object.values(p.board.boards).filter((b) => (b.page ?? firstPage) === pg.id).length}</span>
                 </button>
               </li>
@@ -154,11 +147,14 @@ export const LeftPanel = forwardRef<HTMLInputElement, {
         )}
       </section>}
       <section className="left-boards">
-        <div className="sec-head">
-          <span>{strings.boardList.boards(list.length)}</span>
+        <div className="oc-sec">
+          <span>
+            {strings.boardList.boardsHead}
+            <span className="oc-count">{list.length}</span>
+          </span>
         </div>
-        <label className="search">
-          <Icon name="search" size={14} />
+        <label className="oc-search">
+          <Icon name="search" size={16} />
           <input ref={searchRef} value={q} placeholder={strings.boardList.searchPlaceholder} aria-label={strings.boardList.search} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => {
             if (e.nativeEvent.isComposing) return;
             if (e.key === "Enter" && list[0]) p.onPick(list[0], false);
@@ -169,16 +165,16 @@ export const LeftPanel = forwardRef<HTMLInputElement, {
           }} />
         </label>
         {list.length === 0 ? (
-          <p className="empty">{q ? strings.boardList.noMatch(q) : strings.boardList.emptyPage}</p>
+          <p className="oc-empty">{q ? strings.boardList.noMatch(q) : strings.boardList.emptyPage}</p>
         ) : groups ? (
-          <ul className="board-list">
+          <ul className="oc-list board-list">
             {groups.map((g) => {
               const open = !closed[g.key] || g.files.some((f) => p.selected.includes(f));
               return (
                 <li key={g.key} className={`group ${open ? "open" : ""}`}>
-                  <div className="row group-head" role="button" tabIndex={0} aria-expanded={open} title={strings.boardList.groupTitle(g.files.length)} onClick={() => toggleGroup(g.key)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleGroup(g.key); } }} onDoubleClick={() => g.key && p.onGroupRename?.(g.key)} onContextMenu={(e) => { if (!p.onGroupMenu) return; e.preventDefault(); p.onGroupMenu(g.key, g.files, e); }}>
+                  <div className="row oc-row group-head" role="button" tabIndex={0} aria-expanded={open} title={strings.boardList.groupTitle(g.files.length)} onClick={() => toggleGroup(g.key)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleGroup(g.key); } }} onDoubleClick={() => g.key && p.onGroupRename?.(g.key)} onContextMenu={(e) => { if (!p.onGroupMenu) return; e.preventDefault(); p.onGroupMenu(g.key, g.files, e); }}>
                     <Icon name="chevronRight" size={14} className="chev" />
-                    <span className="row-text">{(g.key && p.board.groupNames?.[g.key]) || g.label}</span>
+                    <span className="row-title">{(g.key && p.board.groupNames?.[g.key]) || g.label}</span>
                     <span className="row-count">{g.files.length}</span>
                     {p.onGroupMenu && (
                       <button className="icon-btn sm group-more" aria-label={strings.boardList.groupMenu} title={strings.boardList.groupMenu} onClick={(e) => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); p.onGroupMenu!(g.key, g.files, { clientX: r.left, clientY: r.bottom + 4 }); }}>
@@ -186,13 +182,13 @@ export const LeftPanel = forwardRef<HTMLInputElement, {
                       </button>
                     )}
                   </div>
-                  {open && <ul>{g.files.map(row)}</ul>}
+                  {open && <ul className="oc-list oc-sub">{g.files.map(row)}</ul>}
                 </li>
               );
             })}
           </ul>
         ) : (
-          <ul className="board-list">{list.map(row)}</ul>
+          <ul className="oc-list board-list">{list.map(row)}</ul>
         )}
       </section>
       {p.footer}
@@ -201,16 +197,15 @@ export const LeftPanel = forwardRef<HTMLInputElement, {
 });
 
 /* ---------------- Minimap ---------------- */
-export function Minimap({ rects, selected, view, size, onJump }: { rects: (Rect & { file: string })[]; selected: string[]; view: View; size: { w: number; h: number }; onJump: (x: number, y: number) => void }) {
-  const W = 200;
-  const H = 130;
+export function Minimap({ rects, selected, view, size, onJump, w: W = 200, h: H = 130, inset = 0, className = "minimap" }: { rects: (Rect & { file: string })[]; selected: string[]; view: View; size: { w: number; h: number }; onJump: (x: number, y: number) => void; w?: number; h?: number; inset?: number; className?: string }) {
   const box = useMemo(() => {
     if (!rects.length) return { x: 0, y: 0, w: 1, h: 1 };
     const x = Math.min(...rects.map((r) => r.x));
     const y = Math.min(...rects.map((r) => r.y));
     return { x, y, w: Math.max(...rects.map((r) => r.x + r.w)) - x, h: Math.max(...rects.map((r) => r.y + r.h)) - y };
   }, [rects]);
-  const s = Math.min(W / box.w, H / box.h);
+  // The boards fit inside the inset; the view outline is drawn from the window, so it may cross the inset but is clipped by the map
+  const s = Math.min((W - inset * 2) / box.w, (H - inset * 2) / box.h);
   const ox = (W - box.w * s) / 2;
   const oy = (H - box.h * s) / 2;
   const vp = { x: (-view.x / view.zoom - box.x) * s + ox, y: (-view.y / view.zoom - box.y) * s + oy, w: Math.max(0, (size.w / view.zoom) * s), h: Math.max(0, (size.h / view.zoom) * s) };
@@ -222,7 +217,7 @@ export function Minimap({ rects, selected, view, size, onJump }: { rects: (Rect 
   };
   return (
     <div
-      className={`minimap ${rects.length > 30 ? "many" : ""}`}
+      className={`${className} ${rects.length > 30 ? "many" : ""}`}
       role="img"
       aria-label={strings.minimap.aria}
       onPointerDown={(e) => {
@@ -235,15 +230,17 @@ export function Minimap({ rects, selected, view, size, onJump }: { rects: (Rect 
     >
       <svg width={W} height={H}>
         {rects.map((r) => (
-          <rect key={r.file} x={(r.x - box.x) * s + ox} y={(r.y - box.y) * s + oy} width={Math.max(1, r.w * s)} height={Math.max(1, r.h * s)} className={selected.includes(r.file) ? "mm-sel" : "mm-board"} />
+          <rect key={r.file} x={(r.x - box.x) * s + ox} y={(r.y - box.y) * s + oy} width={Math.max(1, r.w * s)} height={Math.max(1, r.h * s)} rx={2} className={selected.includes(r.file) ? "mm-sel" : "mm-board"} />
         ))}
-        <rect x={vp.x} y={vp.y} width={vp.w} height={vp.h} className="mm-view" />
+        {/* a 1px outline on the pixel grid: half-pixel edges, whole-pixel size */}
+        <rect x={Math.round(vp.x) + 0.5} y={Math.round(vp.y) + 0.5} width={Math.max(0, Math.round(vp.w) - 1)} height={Math.max(0, Math.round(vp.h) - 1)} rx={3} className="mm-view" />
       </svg>
     </div>
   );
 }
 
-/* ---------------- Board options ---------------- */
+/* ---------------- Board properties ---------------- */
+/** The board's head (file, title with Rename) and its groups: Position and size, Options. Checks, guides and Layers follow in the inspector */
 export function BoardOptions(p: {
   file: string;
   item: BoardItem;
@@ -252,76 +249,96 @@ export function BoardOptions(p: {
   onPatch: (patch: Partial<BoardItem>) => void;
   onRename: () => void;
   onRenameFile: () => void;
-  onFocus: () => void;
-  onFront: () => void;
-  onBack: () => void;
-  onDuplicate: () => void;
-  onDelete: () => void;
   onLaunch: (on: boolean) => void;
 }) {
   const b = p.item;
-  const num = (k: "x" | "y" | "w" | "h" | "radius", label: string, min?: number, max?: number) => (
-    <NumField key={k + p.file + (b[k] ?? "")} label={label} value={b[k] ?? 0} min={min} max={max} onCommit={(v) => p.onPatch({ [k]: v })} />
+  const O = strings.boardOptions;
+  const num = (k: "x" | "y" | "w" | "h" | "radius", label: string, min?: number, max?: number, bare = false) => (
+    <NumField key={k + p.file + (b[k] ?? "")} label={label} bare={bare} value={b[k] ?? 0} min={min} max={max} onCommit={(v) => p.onPatch({ [k]: v })} />
   );
   return (
-    <section className="board-opts" aria-label={strings.boardOptions.aria}>
-      <div className="sec-head">
-        <span>{strings.boardOptions.heading}</span>
-      </div>
-      <button className="title-btn" onClick={p.onRename} title={strings.boardOptions.renameTitle}>
-        <strong>{b.title ?? p.file}</strong>
-        <Icon name="edit" size={14} />
-      </button>
-      <button className="link file-btn" onClick={p.onRenameFile} title={strings.boardOptions.renameFileTitle}>
-        {p.file}
-      </button>
-      <div className="grid2">
-        {num("x", "X")}
-        {num("y", "Y")}
-        {num("w", strings.boardOptions.width, 40, 8000)}
-        {num("h", strings.boardOptions.height, 40, 8000)}
-        {num("radius", strings.boardOptions.radius, 0, 200)}
-      </div>
-      <label className="check">
-        <input type="checkbox" checked={!!b.is_interactive} onChange={(e) => p.onPatch({ is_interactive: e.target.checked || undefined })} />
-        {strings.boardOptions.interactive}
-      </label>
-      <label className="check">
-        <input type="checkbox" checked={!!b.frameless} onChange={(e) => p.onPatch({ frameless: e.target.checked || undefined })} />
-        {strings.boardOptions.frameless}
-      </label>
-      <label className="check">
-        <input type="checkbox" checked={b.expand === "fill"} onChange={(e) => p.onPatch({ expand: e.target.checked ? "fill" : undefined })} />
-        {strings.boardOptions.fill}
-      </label>
-      <label className="check">
-        <input type="checkbox" checked={p.isLaunch} onChange={(e) => p.onLaunch(e.target.checked)} />
-        {strings.boardOptions.launch}
-      </label>
-      {p.pages.length > 0 && (
-        <label className="field-row">
-          <span>{strings.boardOptions.page}</span>
-          <select value={b.page ?? p.pages[0].id} onChange={(e) => p.onPatch({ page: e.target.value })}>
-            {p.pages.map((pg) => (
-              <option key={pg.id} value={pg.id}>
-                {pg.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-      <div className="btn-row">
-        <button className="icon-btn" aria-label={strings.boardOptions.focus} title={strings.boardOptions.focusTitle} onClick={p.onFocus}><Icon name="focus" /></button>
-        <button className="icon-btn" aria-label={strings.boardOptions.front} title={strings.boardOptions.frontTitle} onClick={p.onFront}><Icon name="front" /></button>
-        <button className="icon-btn" aria-label={strings.boardOptions.back} title={strings.boardOptions.backTitle} onClick={p.onBack}><Icon name="back" /></button>
-        <button className="icon-btn" aria-label={strings.boardOptions.duplicate} title={strings.boardOptions.duplicateTitle} onClick={p.onDuplicate}><Icon name="copy" /></button>
-        <button className="icon-btn danger" aria-label={strings.boardOptions.delete} title={strings.boardOptions.deleteTitle} onClick={p.onDelete}><Icon name="trash" /></button>
-      </div>
-    </section>
+    <>
+      <header className="pp-head" aria-label={O.aria}>
+        <button className="pp-file" onClick={p.onRenameFile} title={O.renameFileTitle}>
+          {p.file}
+        </button>
+        <h2 className="pp-name">
+          <span>{b.title ?? p.file}</span>
+          <button className="icon-btn pp-ib" aria-label={strings.menu.rename} title={O.renameTitle} onClick={p.onRename}>
+            <Icon name="edit" size={16} />
+          </button>
+        </h2>
+      </header>
+      <section className="pp-group">
+        <h3 className="pp-group-h">{O.positionAndSize}</h3>
+        <div className="pp-row">
+          <span className="pp-l">{O.position}</span>
+          <span className="pp-two">
+            {num("x", "X")}
+            {num("y", "Y")}
+          </span>
+        </div>
+        <div className="pp-row">
+          <span className="pp-l">{strings.boardOptions.size}</span>
+          <span className="pp-two">
+            {num("w", O.width, 40, 8000)}
+            {num("h", O.height, 40, 8000)}
+          </span>
+        </div>
+        <div className="pp-row">
+          <span className="pp-l">{O.radius}</span>
+          <span className="pp-two">{num("radius", O.radius, 0, 200, true)}</span>
+        </div>
+      </section>
+      <section className="pp-group">
+        <h3 className="pp-group-h">{O.options}</h3>
+        <Check on={!!b.is_interactive} label={O.interactive} onChange={(on) => p.onPatch({ is_interactive: on || undefined })} />
+        <Check on={!!b.frameless} label={O.frameless} onChange={(on) => p.onPatch({ frameless: on || undefined })} />
+        <Check on={b.expand === "fill"} label={O.fill} onChange={(on) => p.onPatch({ expand: on ? "fill" : undefined })} />
+        <Check on={p.isLaunch} label={O.launch} onChange={p.onLaunch} />
+        {p.pages.length > 0 && (
+          <label className="pp-row">
+            <span className="pp-l">{O.page}</span>
+            <select value={b.page ?? p.pages[0].id} onChange={(e) => p.onPatch({ page: e.target.value })}>
+              {p.pages.map((pg) => (
+                <option key={pg.id} value={pg.id}>
+                  {pg.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </section>
+    </>
   );
 }
 
-function NumField({ label, value, min, max, onCommit }: { label: string; value: number; min?: number; max?: number; onCommit: (v: number) => void }) {
+/** The board's actions in the inspector's footer: Focus view, Duplicate, Bring to front, Send to back, then Delete at the right */
+export function BoardActions(p: { onFocus: () => void; onDuplicate: () => void; onFront: () => void; onBack: () => void; onDelete: () => void }) {
+  const O = strings.boardOptions;
+  return (
+    <footer className="pp-actions" aria-label={strings.inspector.boardActions}>
+      <button className="icon-btn" aria-label={O.focus} title={O.focusTitle} onClick={p.onFocus}><Icon name="focus" /></button>
+      <button className="icon-btn" aria-label={O.duplicate} title={O.duplicateTitle} onClick={p.onDuplicate}><Icon name="copy" /></button>
+      <button className="icon-btn" aria-label={O.front} title={O.frontTitle} onClick={p.onFront}><Icon name="front" /></button>
+      <button className="icon-btn" aria-label={O.back} title={O.backTitle} onClick={p.onBack}><Icon name="back" /></button>
+      <button className="icon-btn pp-del" aria-label={O.delete} title={O.deleteTitleKey} onClick={p.onDelete}><Icon name="trash" /></button>
+    </footer>
+  );
+}
+
+/** A checkbox in A: the native box stays for keys and screen readers, the drawn box (the one control with an edge) shows it */
+export function Check(p: { on: boolean; label: string; onChange: (on: boolean) => void }) {
+  return (
+    <label className="check">
+      <input type="checkbox" checked={p.on} onChange={(e) => p.onChange(e.target.checked)} />
+      <i className={p.on ? "on" : ""} aria-hidden="true">{p.on && <Icon name="check" size={12} />}</i>
+      {p.label}
+    </label>
+  );
+}
+
+function NumField({ label, value, min, max, bare, onCommit }: { label: string; value: number; min?: number; max?: number; bare?: boolean; onCommit: (v: number) => void }) {
   const [v, setV] = useState(String(value));
   useEffect(() => setV(String(value)), [value]);
   const commit = () => {
@@ -334,8 +351,8 @@ function NumField({ label, value, min, max, onCommit }: { label: string; value: 
   };
   return (
     <label className="num">
-      <span>{label}</span>
-      <input inputMode="numeric" value={v} onChange={(e) => setV(e.target.value)} onBlur={commit} onKeyDown={(e) => {
+      {!bare && <span>{label}</span>}
+      <input inputMode="numeric" aria-label={bare ? label : undefined} value={v} onChange={(e) => setV(e.target.value)} onBlur={commit} onKeyDown={(e) => {
         if (e.nativeEvent.isComposing) return;
         if (e.key === "Enter") (e.target as HTMLInputElement).blur();
         if (e.key === "ArrowUp" || e.key === "ArrowDown") {

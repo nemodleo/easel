@@ -1,11 +1,12 @@
 // AI-generated with Claude Code, 2026-10-09, reviewed by Hyun Park
 // Design system: token registration and themes, off-token checks, accessibility checks (touch targets, contrast, labels), board tweaks.
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { api } from "./api";
 import { pathOf } from "./editor";
 import { Icon } from "./icons";
 import { strings } from "./strings";
+import { snapWidths } from "./ui";
 
 export type Tokens = {
   version: 1;
@@ -305,17 +306,20 @@ export function CheckList({ title, items, empty, onPick, onAskAI }: { title: str
 
 /** Token check when no tokens.json exists: says the checks are off and leads to the Tokens tab */
 export function TokenCheckOff({ onSetUp }: { onSetUp: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => snapWidths(ref.current, ".btn"), []);
   return (
-    <section className="board-opts" aria-label={strings.checks.tokensOffTitle}>
-      <div className="tc-off">
-        <Icon name="info" size={14} />
-        <div>
-          <strong>{strings.checks.tokensOffTitle}</strong>
-          <p className="muted small">{strings.checks.tokensOffBody}</p>
-        </div>
+    // A row of the Checks group, not a callout: a muted icon, the line, the reason, then Set up tokens
+    <div ref={ref} className="oc-tc-off" role="note" aria-label={strings.checks.tokensOffTitle}>
+      <Icon name="info" size={16} />
+      <div>
+        <strong>{strings.checks.tokensOffTitle}</strong>
+        <p>{strings.checks.tokensOffBody}</p>
       </div>
-      <button onClick={onSetUp}>{strings.checks.setUpTokens}</button>
-    </section>
+      <button className="btn" onClick={onSetUp}>
+        {strings.checks.setUpTokens}
+      </button>
+    </div>
   );
 }
 

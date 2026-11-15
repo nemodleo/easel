@@ -121,7 +121,7 @@ const { createServer } = await import("../server/index.mjs");
 const { attach, closeBrowser, extraRoutes } = await import("../server/routes.mjs");
 let app;
 try {
-  app = await createServer({ dir, port: args.port, dev: !args.prod, extraRoutes, autoPort: !args.portGiven, register: true });
+  app = await createServer({ dir, port: args.port, dev: !args.prod, extraRoutes, autoPort: !args.portGiven, register: true, updateCheck: true });
 } catch (e) {
   if (e.code !== "EADDRINUSE") throw e;
   console.error(e.message);
@@ -129,6 +129,7 @@ try {
 }
 await attach(app);
 console.log(`Easel: ${app.url}  (design folder ${dir})${app.port !== args.port ? `  port ${args.port} was busy` : ""}`);
+app.update.then((u) => u && console.log(`Easel ${u.latest} is out (you have ${u.current}). Update: ${u.command}, then restart.`));
 
 if (open && !args.noOpen) {
   const [cmd, cmdArgs] = process.platform === "darwin" ? ["open", [app.url]] : process.platform === "win32" ? ["cmd", ["/c", "start", "", app.url]] : ["xdg-open", [app.url]];

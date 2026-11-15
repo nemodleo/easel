@@ -1,13 +1,14 @@
 // AI-generated with Claude Code, 2026-11-12, reviewed by Hyun Park
-// The small toolbar over a selected element (Text · Fill · Radius · Spacing · Ask AI · Comment) with its popovers, the Fill picker
+// The element toolbar (Text · Fill · Radius · Spacing · Ask AI · Comment) in the context line above the dock, with its popovers, the Fill picker
 // (tokens first, then a custom hex) it shares with the Properties panel, and the breadcrumb board › parents › element.
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as RKeyboardEvent, type ReactNode } from "react";
 
-import { designNumber, designSpacing, designWeight, fillProp, hexOf, matchToken, placeBar, stepNumber, stepSpacing, tokenRef, type Box, type TokenColor } from "./directSelect";
+import { designNumber, designSpacing, designWeight, fillProp, hexOf, matchToken, placeContext, stepNumber, stepSpacing, tokenRef, type TokenColor } from "./directSelect";
 import { themeColors, type Tokens } from "./ds";
 import { Icon, type IconName } from "./icons";
 import type { Selection } from "./types";
 import { strings } from "./strings";
+import { snapWidths } from "./ui";
 
 type Pop = "text" | "fill" | "radius" | "spacing";
 const S = strings.select;
@@ -149,8 +150,9 @@ function Stepper(p: { label: string; css: string; value: string; placeholder?: s
 const px = (t: string) => (/^-?\d+(?:\.\d+)?$/.test(t) ? `${Number(t)}px` : t);
 
 export function ElementBar(p: {
-  anchor: Box;
-  bounds: { w: number; h: number; top?: number };
+  /** The window: the bar sits in the context line, centred, `bottom` px from the foot (8px above the dock) */
+  win: { w: number; h: number };
+  bottom: number;
   selection: Selection;
   inline: Record<string, string>;
   tokens: Tokens | null;
@@ -163,6 +165,8 @@ export function ElementBar(p: {
   const barRef = useRef<HTMLDivElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 420, h: 36 });
+  /** The bar's width with its labels, kept while it shows icons only, so it knows when the labels fit again */
+  const full = useRef(0);
   const [pop, setPop] = useState<Pop | null>(null);
   const [popAt, setPopAt] = useState<{ x: number; y: number } | null>(null);
   const [focus, setFocus] = useState(0);
@@ -175,12 +179,16 @@ export function ElementBar(p: {
     setLocal((l) => ({ ...l, [prop]: value }));
     p.onStyle(prop, value);
   };
+  const at = placeContext(p.win.w, { w: size.w, full: full.current || size.w });
   useLayoutEffect(() => {
     const el = barRef.current;
-    if (el && (Math.abs(el.offsetWidth - size.w) > 0.5 || Math.abs(el.offsetHeight - size.h) > 0.5)) setSize({ w: el.offsetWidth, h: el.offsetHeight });
+    if (!el) return;
+    snapWidths(el);
+    if (!at.icons) full.current = el.offsetWidth;
+    if (el.offsetWidth !== size.w || el.offsetHeight !== size.h) setSize({ w: el.offsetWidth, h: el.offsetHeight });
   });
-  const at = placeBar(p.anchor, size, p.bounds);
-  // The popover opens on the side away from the element, under (or over) the button that opened it, inside the bounds
+  const top = p.win.h - p.bottom - size.h;
+  // A popover opens above the bar, under the pointer's button, inside the window
   useLayoutEffect(() => {
     if (!pop) return setPopAt(null);
     const el = popRef.current;
@@ -188,11 +196,9 @@ export function ElementBar(p: {
     if (!el || !b || !barRef.current) return;
     const w = el.offsetWidth;
     const h = el.offsetHeight;
-    const x = Math.max(8, Math.min(at.x + b.offsetLeft, p.bounds.w - w - 8));
-    let y = at.below ? at.y + size.h + 6 : at.y - h - 6;
-    if (y < 8 || y + h > p.bounds.h - 8) y = at.below ? at.y - h - 6 : at.y + size.h + 6;
-    y = Math.max(8, Math.min(y, p.bounds.h - h - 8));
-    if (!popAt || Math.abs(popAt.x - x) > 0.5 || Math.abs(popAt.y - y) > 0.5) setPopAt({ x, y });
+    const x = Math.round(Math.max(8, Math.min(at.x + b.offsetLeft, p.win.w - w - 8)));
+    const y = Math.round(Math.max(8, top - h - 8));
+    if (!popAt || popAt.x !== x || popAt.y !== y) setPopAt({ x, y });
   });
   // A press anywhere else closes the popover
   useEffect(() => {
@@ -289,7 +295,7 @@ export function ElementBar(p: {
 
   return (
     <>
-      <div ref={barRef} className="etb" role="toolbar" aria-label={S.toolbar} aria-orientation="horizontal" style={{ left: at.x, top: at.y }} onKeyDown={(e) => { onKey(e); onBarKey(e); }} onPointerDown={(e) => e.stopPropagation()}>
+      <div ref={barRef} className={`etb oc-context ${at.icons ? "is-icons" : ""}`} role="toolbar" aria-label={S.toolbar} aria-orientation="horizontal" style={{ left: at.x }} onKeyDown={(e) => { onKey(e); onBarKey(e); }} onPointerDown={(e) => e.stopPropagation()}>
         {ITEMS.map((it, i) => (
           <span key={it.id} className="etb-item">
             {it.id === "ask" && <span className="sep" aria-hidden="true" />}
@@ -299,14 +305,14 @@ export function ElementBar(p: {
               tabIndex={i === tab ? 0 : -1}
               disabled={it.disabled}
               title={it.title}
-              aria-label={it.id === "fill" ? S.fill : undefined}
+              aria-label={it.id === "fill" ? S.fill : at.icons ? it.label : undefined}
               aria-haspopup={it.pop ? "dialog" : undefined}
               aria-expanded={it.pop ? pop === it.pop : undefined}
               onFocus={() => setFocus(i)}
               onClick={() => toggle(it)}
             >
               {it.id === "fill" ? <span className="sw" style={{ background: fillHex ?? "transparent" }} /> : <Icon name={it.icon!} size={14} />}
-              {it.id !== "fill" && it.label}
+              {it.id !== "fill" && !at.icons && it.label}
               {(it.id === "text" || it.id === "fill") && <Icon name="chevronDown" size={14} />}
             </button>
           </span>

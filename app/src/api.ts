@@ -27,6 +27,8 @@ async function json<T>(res: Response): Promise<T> {
 
 export const api = {
   board: () => fetch("/api/board").then((r) => json<BoardResponse>(r)),
+  /** A newer Easel on npm and the command that updates this install, or null (see server/update.mjs) */
+  update: () => fetch("/api/update").then((r) => json<{ update: { current: string; latest: string; command: string } | null }>(r)),
   saveBoard: (board: Board, label?: string) =>
     fetch("/api/board", {
       method: "PUT",

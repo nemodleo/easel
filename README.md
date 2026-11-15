@@ -46,11 +46,11 @@ npx easel-canvas --dir ./designs  # any folder of screens/*.html
 
 <table>
   <tr>
-    <td colspan="2"><img src="docs/screenshots/overview.png" alt="Easel showing a habit tracker app: five mobile screens on an infinite canvas with notes, flow arrows, a board list and a properties panel with token and accessibility checks"></td>
+    <td colspan="2"><img src="docs/screenshots/overview.png" alt="Easel showing a habit tracker app: five mobile screens on an infinite canvas with notes and flow arrows, the board list card at the left and the inspector card at the right with token and accessibility checks"></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/screenshots/select.png" alt="A card selected inside a mobile screen with its element toolbar (Text, Fill, Radius, Spacing, Ask AI, Comment) and the Properties panel with the breadcrumb, Fill, Text, Corner radius, Padding and Gap"></td>
-    <td width="50%"><img src="docs/screenshots/ai-chat.png" alt="AI chat panel: a streamed reply from Claude Code with Read and Edit tool lines, and the edited Stats screen on the canvas"></td>
+    <td width="50%"><img src="docs/screenshots/select.png" alt="A card selected inside a mobile screen, its element toolbar (Text, Fill, Radius, Spacing, Ask AI, Comment) in the line above the dock, and the inspector with the breadcrumb, Fill, Text, Corner radius, Padding and Gap"></td>
+    <td width="50%"><img src="docs/screenshots/ai-chat.png" alt="AI chat in the inspector card: a reply from Claude Code with Read and Edit tool lines, Undo this run and Compare, and the edited Today screen on the canvas"></td>
   </tr>
   <tr>
     <td><b>Edit in place.</b> Select any element, drag it, resize it, align it, retype its text or change its styles. Layers, wrap in flex/grid, cross-board copy and paste.</td>
@@ -120,7 +120,7 @@ New files with `<meta name="board-size" content="390x844">` are placed on the ca
 
 ## Share a view-only copy
 
-**Share** in the toolbar writes a static, read-only copy of the whole canvas, the current page or the selected boards to `<project>/easel-export/`: boards with their pages, notes and comments, Play, and a stamp with the export time and `repo@commit`. Nothing in it calls back to Easel, so any static host works (Vercel, GitHub Pages, a PR preview, under any sub-path), and `index.html` also opens straight from disk (comment pins then stack in their board's corner, because browsers keep `file://` frames apart). **Copy deploy command** gives you `npx vercel deploy easel-export`. Turn on **One .html file** for a single self-contained file to attach to Slack, email or a PR; its size shows before you save. **PDF** (one board per page) and **PNG** (one 2× image per board) need Playwright's Chromium.
+**Share** (at the top of the right card) writes a static, read-only copy of the whole canvas, the current page or the selected boards to `<project>/easel-export/`: boards with their pages, notes and comments, Play, and a stamp with the export time and `repo@commit`. Nothing in it calls back to Easel, so any static host works (Vercel, GitHub Pages, a PR preview, under any sub-path), and `index.html` also opens straight from disk (comment pins then stack in their board's corner, because browsers keep `file://` frames apart). **Copy deploy command** gives you `npx vercel deploy easel-export`. Turn on **One .html file** for a single self-contained file to attach to Slack, email or a PR; its size shows before you save. **PDF** (one board per page) and **PNG** (one 2× image per board) need Playwright's Chromium.
 
 The same from the terminal, with no canvas running (it works in CI):
 
@@ -159,6 +159,10 @@ npm run design           # http://localhost:4317
 - It installs separately from your app, so it never touches your app's dependencies, build or deploy, and CI that skips submodules (the `actions/checkout` default) is unaffected.
 - To update: push to this repo, then run `git submodule update --remote tools/easel` in your project and commit the new pointer. Teammates run `npm run design:install` after `git pull`.
 
+## Updates
+
+`npx` keeps the copy it downloaded first, so run `npx easel-canvas@latest` to get a new version (and `npm i -D easel-canvas@latest` if you pinned it). To tell you when one is out, the canvas asks the npm registry once a day which version is the latest: one request to `registry.npmjs.org`, nothing about your project. When a newer one exists, the terminal says so at start and a toast at launch shows the update command for how you installed Easel; Copy command or × puts it away until the next version. Set `EASEL_NO_UPDATE_CHECK=1` to turn the check off; it is also off in CI and when Easel runs from a git checkout.
+
 
 <details>
 <summary><b>Keyboard shortcuts and how-tos</b></summary>
@@ -173,19 +177,19 @@ npm run design           # http://localhost:4317
 | View | Focus view (F, ←→), Play in place (P or ▶, Esc), Play full screen (right-click) |
 | Notes and shapes | Title (T), sticky note (N, 8 colors, size, bold, italic), Rectangle (R), Oval (O), Line (L), Arrow (A), Pen (P when no board is selected), image (Assets or paste) |
 | Select elements | No mode to enter: click anything on a board (drag the board to move it). Shift-click or Shift-drag for several, Esc lets go (then of the board), ↑ parent, ↓ or Enter first child, ←→ siblings, Option+↑↓ to reorder, ⌘A for all siblings, ⌘G Wrap in flex, Tab into the element toolbar |
-| Direct editing | A toolbar over the selection: Text (size, weight), Fill (your tokens first, written as a CSS variable, then Custom), Radius, Spacing (padding, gap), Ask AI, Comment. Double-click text to edit it (Shift+Enter for a line break). Move with handles (Alt drops inside a box) and resize, 6 align options, Properties panel in design words with the breadcrumb (CSS names on hover, everything else under More (CSS), ⚠, contrast), Replace image, ⌘C/⌘V to paste into another board |
+| Direct editing | The element toolbar, in the line above the dock: Text (size, weight), Fill (your tokens first, written as a CSS variable, then Custom), Radius, Spacing (padding, gap), Ask AI, Comment. Double-click text to edit it (Shift+Enter for a line break). Move with handles (Alt drops inside a box) and resize, 6 align options, Properties panel in design words with the breadcrumb (CSS names on hover, everything else under More (CSS), ⚠, contrast), Replace image, ⌘C/⌘V to paste into another board |
 | Undo | ⌘Z / ⌘⇧Z. Canvas actions, HTML edits and board create/delete share one history (100 entries). The ▾ next to Undo lists it newest first (who, what, when; Now marks where you are): Go back to here undoes or redoes step by step to that entry, and Redo brings the rest back. The history lasts until Easel restarts |
-| Who changed what | A board changed by someone else (an agent over MCP or the in-app chat, a file edited outside Easel, another browser) gets a tag above its title, e.g. "Codex · 2m · 1 change", in that author's colour, and the changed element is outlined. Click the tag: the change ("Get started" → "Start free"), Before / After, and Undo (only that change; asks first if one of its boards changed since). Tags fade once you open them or select the board, and clear a day later |
-| Design system | Register tokens (`tokens.json`) and themes in the left "Tokens" tab, Theme menu in the toolbar, Token check and Accessibility lists on the right |
+| Who changed what | A board changed by someone else (an agent over MCP or the in-app chat, a file edited outside Easel, another browser) gets a tag above its title, e.g. "Codex · 2m · 1 change", with a person or agent mark and the name, and the changed element is outlined. Click the tag: the change ("Get started" → "Start free"), Before / After, and Undo (only that change; asks first if one of its boards changed since). Tags fade once you open them or select the board, and clear a day later |
+| Design system | Register tokens (`tokens.json`) and themes in the left "Tokens" tab, Theme in the View menu (⋯ at the top of the right card), Token check and Accessibility lists on the right |
 | Collaboration | Comments (Reply, Resolve, author), Snapshot menu (git-commits only the design folder) |
-| Share | Toolbar "Share": whole canvas, this page or the selected boards as a web folder or one .html file, PDF or PNG; Reveal, Copy deploy command, and the matching `npx easel-canvas export` line |
-| Who is on which board | A board someone is editing says so above its title, in their colour: "Claude Code is editing…", "You · editing", then "Claude Code · done 13:52"; the board list shows the same dot. An agent holds a board from its first write until its in-app run ends, or 45 s after its last write over MCP (or when it disconnects). A second agent writing a board another agent holds works on a fork beside it ("Welcome · Codex"), with an arrow back that says when and why; you are never forked. When both are done, Use this one on either keeps that version under the original's name, title, position and comments, and sends the other to trash; one Undo brings both back |
+| Share | "Share" at the top of the right card: whole canvas, this page or the selected boards as a web folder or one .html file, PDF or PNG; Reveal, Copy deploy command, and the matching `npx easel-canvas export` line |
+| Who is on which board | A board someone is editing says so above its title with a mark and the name: "Claude Code is editing…", "You · editing", then "Claude Code · done 13:52"; the board list shows a dot (blue for you, ink for anyone else). An agent holds a board from its first write until its in-app run ends, or 45 s after its last write over MCP (or when it disconnects). A second agent writing a board another agent holds works on a fork beside it ("Welcome · Codex"), with an arrow back that says when and why; you are never forked. When both are done, Use this one on either keeps that version under the original's name, title, position and comments, and sends the other to trash; one Undo brings both back |
 | Pick a variant | Variants from the AI tab land in the first free row (never on notes or boards) and each gets Use this: Apply makes it the original board and sends the other variants to trash (toast with Undo), Keep all leaves them as ordinary boards |
 | AI | Right "AI" tab (⌘J): Claude Code, Codex, Cursor Agent, Gemini CLI, or your own command; selection, boards, visible boards, comments and references go along as context; N variants; Ask AI for a review |
 | AI permissions | When Claude Code wants to run a command or edit outside what it may, the chat shows the exact request: Allow once, Always allow (that tool, or a command's first two words, until Easel restarts; never for file edits, for commands with `;` `&&` `\|` `>` and the like, or for `sh -c`-style wrappers), or Deny |
 | Undo an AI run | Each run that changed files ends with the boards it changed and added: Undo this run (one step, ⌘Z brings it back; asks first if you changed one of them since), Redo, Compare before and after. After a restart: Restore the copy from before this run (the newest 10 are kept) |
 | Custom agent | Agent menu › Custom command…: a name and a command with `{prompt}`, e.g. `aider --message {prompt} --yes`. Saved in `~/.easel/agents.json` (not in the project), run without a shell, output shown as plain text |
-| Screen | F6 to move between regions, Tab to move between boards, ⌘\\ to hide panels, Appearance (System · Light · Dark) |
+| Screen | F6 to move between regions, Tab to move between boards, ⌘\\ to fold the left card, Appearance (System · Light · Dark) |
 
 </details>
 

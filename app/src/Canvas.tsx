@@ -855,12 +855,13 @@ export function isTyping(e: KeyboardEvent) {
   return t.isContentEditable || /^(TEXTAREA|SELECT)$/.test(t.tagName);
 }
 
-/** Fit a group of boards and notes to the view */
-export function fitView(rects: Rect[], size: { w: number; h: number }, pad = 60): View {
+/** Fit a group of boards and notes to the view; `area` (window pixels) is the part the cards and the dock leave clear */
+export function fitView(rects: Rect[], size: { w: number; h: number }, pad = 60, area?: Rect): View {
   if (!rects.length) return { x: 0, y: 0, zoom: 1 };
-  if (size.w < 100 || size.h < 100) size = { w: window.innerWidth, h: Math.max(200, window.innerHeight - 48) };
-  pad = Math.min(pad, size.w * 0.08, size.h * 0.08);
+  if (size.w < 100 || size.h < 100) size = { w: window.innerWidth, h: Math.max(200, window.innerHeight) };
+  const a = area && area.w >= 100 && area.h >= 100 ? area : { x: 0, y: 0, w: size.w, h: size.h };
+  pad = Math.min(pad, a.w * 0.08, a.h * 0.08);
   const b = bounds(rects);
-  const zoom = clamp(Math.min((size.w - pad * 2) / b.w, (size.h - pad * 2) / b.h), MIN_ZOOM, MAX_ZOOM);
-  return { zoom, x: pad - b.x * zoom + (size.w - pad * 2 - b.w * zoom) / 2, y: pad - b.y * zoom + (size.h - pad * 2 - b.h * zoom) / 2 };
+  const zoom = clamp(Math.min((a.w - pad * 2) / b.w, (a.h - pad * 2) / b.h), MIN_ZOOM, MAX_ZOOM);
+  return { zoom, x: Math.round(a.x + pad - b.x * zoom + (a.w - pad * 2 - b.w * zoom) / 2), y: Math.round(a.y + pad - b.y * zoom + (a.h - pad * 2 - b.h * zoom) / 2) };
 }

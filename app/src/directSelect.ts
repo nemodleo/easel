@@ -1,5 +1,5 @@
 // AI-generated with Claude Code, 2026-11-12, reviewed by Hyun Park
-// Pure helpers for selecting and editing elements without a mode: click vs drag, toolbar placement, breadcrumb paths, design words
+// Pure helpers for selecting and editing elements without a mode: click vs drag, the context line's place, breadcrumb paths, design words
 // for CSS values ("Bold · 700", "12 · 16", "System UI"), and token colours (matching a value, writing a CSS variable reference). No imports.
 
 export type Box = { x: number; y: number; w: number; h: number };
@@ -9,15 +9,12 @@ export type TokenColor = { name: string; value: string };
 export const CLICK_SLOP = 3;
 export const isDrag = (dx: number, dy: number, slop = CLICK_SLOP) => Math.abs(dx) + Math.abs(dy) >= slop;
 
-/** Where the element toolbar goes: centred over the element with room for the move handle, flipped below when there is no room above
- * (bounds.top is the board's top edge: the bar never covers the board's title row and what sits on it), kept inside the bounds */
-export function placeBar(target: Box, bar: { w: number; h: number }, bounds: { w: number; h: number; top?: number }, gapAbove = 28, gapBelow = 12, pad = 8) {
-  const clamp = (v: number, a: number, b: number) => Math.min(Math.max(v, a), Math.max(a, b));
-  const above = target.y - gapAbove - bar.h;
-  const below = above < Math.max(pad, bounds.top ?? pad);
-  const y = clamp(below ? target.y + target.h + gapBelow : above, pad, bounds.h - bar.h - pad);
-  const x = clamp(target.x + target.w / 2 - bar.w / 2, pad, bounds.w - bar.w - pad);
-  return { x: Math.round(x), y: Math.round(y), below };
+/** The context line (one slot 8px above the dock): the element toolbar or the hint, centred on the window on a whole pixel.
+ * It drops its labels when it does not fit with `pad` on both sides (icons, the names stay in aria-label) */
+export function placeContext(winW: number, bar: { w: number; full?: number }, pad = 8) {
+  const icons = (bar.full ?? bar.w) > winW - pad * 2;
+  const x = Math.max(pad, Math.round((winW - bar.w) / 2));
+  return { x, icons };
 }
 
 /** Ancestors shown between the board and the element: none for a top-level element, otherwise the nearest `max` (more → skipped) */

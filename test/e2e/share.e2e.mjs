@@ -58,24 +58,24 @@ test("Share: open from the toolbar with the keyboard, export a web folder, the r
   await page.waitForSelector(".share-pop[role=dialog]");
   // Scope first, then the rows; the footer shows the matching CLI command
   // With a board selected, the scope starts at the selection
-  const sel = await page.$$eval(".left .board-list .row.on", (r) => r.length);
-  assert.equal(await page.locator(".share-pop .seg [aria-checked=true]").textContent(), sel ? `Selected boards (${sel})` : "Whole canvas");
-  await page.click(".share-pop .seg >> text=Whole canvas");
-  assert.equal(await page.locator(".share-pop .pop-foot code").textContent(), "npx easel-canvas export");
-  await page.click(".share-pop .seg >> text=This page");
-  assert.match(await page.locator(".share-pop .pop-foot code").textContent(), /^npx easel-canvas export --page Default$/);
-  await page.click(".share-pop .seg >> text=Whole canvas");
+  const sel = await page.$$eval(".oc-left .board-list .row.on", (r) => r.length);
+  assert.equal(await page.locator(".share-pop .oc-seg [aria-checked=true]").textContent(), sel ? `Selected boards (${sel})` : "Whole canvas");
+  await page.click(".share-pop .oc-seg >> text=Whole canvas");
+  assert.equal(await page.locator(".share-pop .oc-pfoot code").textContent(), "npx easel-canvas export");
+  await page.click(".share-pop .oc-seg >> text=This page");
+  assert.match(await page.locator(".share-pop .oc-pfoot code").textContent(), /^npx easel-canvas export --page Default$/);
+  await page.click(".share-pop .oc-seg >> text=Whole canvas");
   await page.click(".share-pop .switch");
-  assert.match(await page.locator(".share-pop .pop-foot code").textContent(), /--single-file$/);
-  await page.waitForFunction(() => /\d+ KB/.test(document.querySelector(".share-pop .out-row.first .out-text")?.textContent ?? ""));
+  assert.match(await page.locator(".share-pop .oc-pfoot code").textContent(), /--single-file$/);
+  await page.waitForFunction(() => /\d+ KB/.test(document.querySelector(".share-pop .oc-orow.first .oc-otext")?.textContent ?? ""));
   await page.click(".share-pop .switch");
-  // Ask AI stays the only filled button in the toolbar
-  const filled = await page.$$eval(".toolbar button:not(.share-pop *)", (bs) => bs.filter((b) => getComputedStyle(b).backgroundColor === getComputedStyle(document.querySelector(".ask-ai")).backgroundColor && b.offsetParent).map((b) => b.className));
+  // Ask AI stays the only filled button on the cards and the dock
+  const filled = await page.$$eval(":is(.oc-card, .oc-dock) button:not(.share-pop *)", (bs) => bs.filter((b) => getComputedStyle(b).backgroundColor === getComputedStyle(document.querySelector(".ask-ai")).backgroundColor && b.offsetParent).map((b) => b.className));
   assert.deepEqual(filled, ["ask-ai "]);
 
-  await page.click(".share-pop .out-row.first > button.primary");
-  await page.waitForSelector(".share-pop .out-row.first .result");
-  const line = await page.locator(".share-pop .out-row.first .result").textContent();
+  await page.click(".share-pop .oc-orow.first > .btn");
+  await page.waitForSelector(".share-pop .oc-orow.first .oc-res");
+  const line = await page.locator(".share-pop .oc-orow.first .oc-res").textContent();
   assert.match(line, /easel-export\/ exported/);
   assert.match(line, /Reveal/);
   assert.match(line, /Copy deploy command/);
@@ -86,7 +86,7 @@ test("Share: open from the toolbar with the keyboard, export a web folder, the r
   assert.equal(await page.evaluate(() => document.activeElement?.classList.contains("share-btn")), true);
   // The result is still there when the popover opens again
   await page.click(".share-btn");
-  await page.waitForSelector(".share-pop .out-row.first .result");
+  await page.waitForSelector(".share-pop .oc-orow.first .oc-res");
   await page.keyboard.press("Escape");
   assert.deepEqual(env.errors, []);
 });
@@ -105,8 +105,8 @@ test("the web folder from a static host under a sub-path: boards, pages, Play, a
     await page.waitForSelector(".viewer .board iframe");
     // First page: three boards, rendered from the copied screens
     await page.waitForFunction(() => [...document.querySelectorAll(".board iframe")].length === 3 && [...document.querySelectorAll(".board iframe")].every((f) => f.contentDocument?.body?.children.length));
-    assert.match((await page.locator(".stamp").textContent()).trim(), /^View only · exported /);
-    assert.equal(await page.locator(".made a").getAttribute("href"), "https://github.com/nemodleo/easel");
+    assert.match((await page.locator(".oc-stamp").textContent()).trim(), /^View only · exported /);
+    assert.equal(await page.locator(".oc-made a").getAttribute("href"), "https://github.com/nemodleo/easel");
     // Comment: a pin on the board and the list on the right, opened as a thread
     await page.waitForSelector('.board[data-file="scr-02.html"] .pin');
     assert.match(await page.locator(".c-item").first().textContent(), /Mina.*Make the list denser/);
@@ -114,7 +114,7 @@ test("the web folder from a static host under a sub-path: boards, pages, Play, a
     await page.waitForSelector(".thread");
     assert.match(await page.locator(".thread").textContent(), /Make the list denser/);
     // Pages switch
-    await page.click(".page-tabs >> text=Flow");
+    await page.click(".oc-left .oc-tabs >> text=Flow");
     await page.waitForFunction(() => document.querySelectorAll(".board").length === 1 && !!document.querySelector('.board[data-file="scr-32.html"] iframe'));
     // Play opens the board full screen
     await page.click(".play-btn");
@@ -122,8 +122,9 @@ test("the web folder from a static host under a sub-path: boards, pages, Play, a
     await page.waitForFunction(() => !!document.querySelector(".play-frame")?.contentDocument?.body?.children.length);
     await page.keyboard.press("Escape");
     await page.waitForSelector(".play", { state: "detached" });
-    // Read-only: no toolbar, no element toolbar, no inspector or chat, nothing editable
-    assert.equal(await page.locator(".toolbar, .etb, .ask-ai, .chat, .board-resize, [contenteditable=true], .share-btn").count(), 0);
+    // Read-only: no tools in the dock (only the stamp and Play), no element toolbar, no inspector or chat, nothing editable
+    assert.equal(await page.locator(".toolbar, .oc-dock:not(.oc-vdock), .oc-vdock .tool, .new-board, .etb, .ask-ai, .chat, .board-resize, [contenteditable=true], .share-btn").count(), 0);
+    assert.equal(await page.locator(".oc-dock").count(), 1, "the viewer's dock");
     await page.dblclick('.board[data-file="scr-32.html"] .board-frame');
     await wait(200);
     assert.equal(await page.locator(".board.editing, [contenteditable=true]").count(), 0);
@@ -153,11 +154,11 @@ test("the web folder from a static host under a sub-path: boards, pages, Play, a
 test("the single file opens from file://: boards render from inline HTML, Play follows a link, nothing is fetched", async () => {
   const { page: editor } = env;
   if (!(await editor.$(".share-pop"))) await editor.click(".share-btn");
-  await editor.click(".share-pop .seg >> text=Whole canvas");
+  await editor.click(".share-pop .oc-seg >> text=Whole canvas");
   await editor.click(".share-pop .switch");
-  await editor.click(".share-pop .out-row.first > button.primary");
-  await editor.waitForSelector(".share-pop .out-row.first .result");
-  assert.match(await editor.locator(".share-pop .out-row.first .result").textContent(), /canvas\.html saved/);
+  await editor.click(".share-pop .oc-orow.first > .btn");
+  await editor.waitForSelector(".share-pop .oc-orow.first .oc-res");
+  assert.match(await editor.locator(".share-pop .oc-orow.first .oc-res").textContent(), /canvas\.html saved/);
   await editor.keyboard.press("Escape");
   const file = (await fs.readdir(path.join(env.dir, "easel-export"))).find((f) => f.endsWith("-canvas.html"));
   assert.ok(file);
@@ -173,6 +174,14 @@ test("the single file opens from file://: boards render from inline HTML, Play f
     await page.goto("file://" + path.join(env.dir, "easel-export", file));
     await page.waitForFunction(() => document.querySelectorAll(".board iframe[srcdoc]").length === 3 && [...document.querySelectorAll(".board iframe")].every((f) => f.contentDocument?.body?.children.length));
     await page.waitForSelector('.board[data-file="scr-02.html"] .pin');
+    // A with the editing taken out: a card for boards, one for comments, the navigation card, a dock with the stamp and Play.
+    // Play is the one orange; the pins are ink
+    assert.equal(await page.locator(".oc-left .oc-made, .oc-nav .oc-zoom, .oc-right.oc-cards .oc-clist, .oc-vdock .oc-stamp, .oc-vdock .play-btn").count(), 5);
+    const filled = await page.evaluate(() => {
+      const acc = getComputedStyle(document.querySelector(".play-btn")).backgroundColor;
+      return [...document.querySelectorAll(".app *")].filter((e) => e.getClientRects().length && getComputedStyle(e).backgroundColor === acc).map((e) => String(e.className));
+    });
+    assert.deepEqual(filled, ["play-btn"]);
     // Play from scr-02 and follow its link to scr-32 (inline screens navigate inside the viewer)
     await page.click('.board-list button[title="scr-02.html"]');
     await page.click(".play-btn");

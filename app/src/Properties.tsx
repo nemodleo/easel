@@ -1,9 +1,11 @@
 // AI-generated with Claude Code, 2026-10-09, reviewed by Hyun Park
-// Properties panel in design words: Fill (with contrast), Text (font, size, weight, colour), Corner radius, Padding, Gap; the CSS name shows
-// on hover and focus. Every other property stays under "More (CSS)". Changing a value sends setStyle/setAttr (one undo step each).
+// Properties in design words, in the inspector's groups: Fill (with contrast), Text (font, size, weight, colour), Layout (corner radius,
+// padding, gap, align, wrap); the CSS name is each row's tooltip. Every other property stays under "More (CSS)", after the groups passed
+// in (Checks). Changing a value sends setStyle/setAttr (one undo step each). Duplicate and Delete live in the inspector's footer.
 import { useEffect, useState, type ReactNode } from "react";
 
 import { contrast, offToken, type Tokens } from "./ds";
+import { Icon, type IconName } from "./icons";
 import { cssFont, cssSpacing, designFont, designNumber, designSpacing, designWeight, hexOf, matchToken, type TokenColor } from "./directSelect";
 import { fillCss, FillPicker, tokenColors } from "./ElementBar";
 import type { Selection } from "./types";
@@ -55,13 +57,13 @@ export function gridCount(v: string | undefined): number | null {
 export const gridValue = (n: number) => `repeat(${n}, minmax(0, 1fr))`;
 
 const ALIGN = [
-  { dir: "left", label: strings.properties.alignButtons.left, glyph: "⇤" },
-  { dir: "hcenter", label: strings.properties.alignButtons.hcenter, glyph: "↔" },
-  { dir: "right", label: strings.properties.alignButtons.right, glyph: "⇥" },
-  { dir: "top", label: strings.properties.alignButtons.top, glyph: "⤒" },
-  { dir: "vcenter", label: strings.properties.alignButtons.vcenter, glyph: "↕" },
-  { dir: "bottom", label: strings.properties.alignButtons.bottom, glyph: "⤓" },
-] as const;
+  { dir: "left", label: strings.properties.alignButtons.left, icon: "alignLeft" },
+  { dir: "hcenter", label: strings.properties.alignButtons.hcenter, icon: "alignHcenter" },
+  { dir: "right", label: strings.properties.alignButtons.right, icon: "alignRight" },
+  { dir: "top", label: strings.properties.alignButtons.top, icon: "alignTop" },
+  { dir: "vcenter", label: strings.properties.alignButtons.vcenter, icon: "alignVcenter" },
+  { dir: "bottom", label: strings.properties.alignButtons.bottom, icon: "alignBottom" },
+] as const satisfies readonly { dir: string; label: string; icon: IconName }[];
 export type AlignDir = (typeof ALIGN)[number]["dir"];
 
 const ATTRS: Record<string, string[]> = { a: ["href"], img: ["src", "alt"], input: ["placeholder"], button: ["aria-label"] };
@@ -73,8 +75,6 @@ export function Properties(props: {
   onStyle: (prop: string, value: string) => void;
   onAttr: (name: string, value: string | null) => void;
   onWrap: (display: "flex" | "grid") => void;
-  onDuplicate: () => void;
-  onDelete: () => void;
   canWrap: boolean;
   onAlign: (dir: AlignDir) => void;
   onReplaceImage: (() => void) | null;
@@ -83,6 +83,8 @@ export function Properties(props: {
   bg: string;
   /** Custom properties the board defines (a token is written as its variable) */
   vars: Record<string, string>;
+  /** Groups shown between Layout and More (CSS): the Checks */
+  children?: ReactNode;
 }) {
   const s = props.selection;
   const attrNames = ATTRS[s.tag] ?? [];
@@ -104,23 +106,24 @@ export function Properties(props: {
     ratio == null ? null : fill.prop === "background" ? D.contrastWith(ratio.toFixed(1), word(s.styles.color ?? ""), D.grade(ratio)) : D.contrastOn(ratio.toFixed(1), word(props.bg), D.grade(ratio));
   const weights = [...new Set([...(props.tokens?.registered ? props.tokens.fontWeights : []), 100, 200, 300, 400, 500, 600, 700, 800, 900])].sort((a, b) => a - b);
   return (
-    <section className="props">
-      <h3>{strings.properties.title}</h3>
-      <div className="pg">
-        <div className="pg-h prow-h" title={fill.css}>
-          {D.fill} <code>{fill.css}</code>
-        </div>
-        <Swatch value={fill.value} computed={fill.prop === "color" ? s.styles.color : s.styles["background-color"]} colors={colors} css={fill.css} label={D.fill} open={open === "fill"} onToggle={() => setOpen((o) => (o === "fill" ? null : "fill"))} />
-        {open === "fill" && <FillPicker title={D.fill} value={fill.value} colors={colors} vars={props.vars} onPick={(css) => props.onStyle(fill.css, css)} />}
+    <>
+      <section className="pp-group">
+        <h3 className="pp-group-h">{D.fill}</h3>
+        <Row word={D.color} css={fill.css}>
+          <Swatch value={fill.value} computed={fill.prop === "color" ? s.styles.color : s.styles["background-color"]} colors={colors} css={fill.css} label={D.fill} open={open === "fill"} onToggle={() => setOpen((o) => (o === "fill" ? null : "fill"))} />
+        </Row>
         {contrastLine && (
-          <div className={`contrast ${ratio! >= 4.5 ? "ok" : ratio! >= 3 ? "mid" : "bad"}`} title={strings.properties.contrastTitle}>
-            {contrastLine}
+          <div className="pp-row">
+            <span className={`pp-note contrast ${ratio! >= 4.5 ? "ok" : ratio! >= 3 ? "mid" : "bad"}`} title={strings.properties.contrastTitle}>
+              {contrastLine}
+            </span>
           </div>
         )}
-      </div>
+        {open === "fill" && <FillPicker title={D.fill} value={fill.value} colors={colors} vars={props.vars} onPick={(css) => props.onStyle(fill.css, css)} />}
+      </section>
       {hasText && (
-        <div className="pg">
-          <div className="pg-h">{D.text}</div>
+        <section className="pp-group">
+          <h3 className="pp-group-h">{D.text}</h3>
           <Row word={D.font} css="font-family">
             <DesignInput key={"ff" + k} label={D.font} value={designFont(props.inline["font-family"])} placeholder={designFont(s.styles["font-family"])} onCommit={(t) => props.onStyle("font-family", t ? cssFont(t) : "")} />
           </Row>
@@ -145,43 +148,52 @@ export function Properties(props: {
               {open === "color" && <FillPicker title={D.color} value={props.inline.color || s.styles.color || ""} colors={colors} vars={props.vars} onPick={(css) => props.onStyle("color", css)} />}
             </>
           )}
-        </div>
+        </section>
       )}
-      <div className="pg">
-        <Row word={D.cornerRadius} css="border-radius" heading warn={warn("border-radius")}>
+      <section className="pp-group">
+        <h3 className="pp-group-h">{strings.properties.layout}</h3>
+        <Row word={D.cornerRadius} css="border-radius" warn={warn("border-radius")}>
           <DesignInput key={"br" + k} label={D.cornerRadius} value={designNumber(props.inline["border-radius"])} placeholder={designNumber(s.styles["border-radius"])} onCommit={(t) => props.onStyle("border-radius", pxOf(t))} />
         </Row>
-        <Row word={D.padding} css="padding" heading warn={warn("padding")}>
+        <Row word={D.padding} css="padding" warn={warn("padding")}>
           <DesignInput key={"pd" + k} label={D.padding} value={designSpacing(props.inline.padding)} placeholder={designSpacing(s.styles.padding)} onCommit={(t) => props.onStyle("padding", cssSpacing(t))} />
         </Row>
-        <Row word={D.gap} css="gap" heading warn={warn("gap")}>
+        <Row word={D.gap} css="gap" warn={warn("gap")}>
           <DesignInput key={"gp" + k} label={D.gap} value={designNumber(props.inline.gap)} placeholder={designNumber(s.styles.gap === "normal" ? "" : s.styles.gap)} onCommit={(t) => props.onStyle("gap", pxOf(t))} />
         </Row>
-      </div>
-      <div className="align-row" role="group" aria-label={strings.properties.align}>
-        {ALIGN.map((a) => (
-          <button key={a.dir} className="icon-btn sm" aria-label={a.label} title={a.label} onClick={() => props.onAlign(a.dir)}>
-            <span className="glyph">{a.glyph}</span>
-          </button>
-        ))}
-      </div>
-      {props.onReplaceImage && (
-        <button onClick={props.onReplaceImage}>
-          {strings.properties.replaceImage}
-        </button>
-      )}
-      <div className="row">
-        <button onClick={() => props.onWrap("flex")} disabled={!props.canWrap} title={strings.properties.wrapTitle}>
-          {strings.properties.wrapFlex}
-        </button>
-        <button onClick={() => props.onWrap("grid")} disabled={!props.canWrap}>
-          {strings.properties.wrapGrid}
-        </button>
-      </div>
-      <div className="row">
-        <button onClick={props.onDuplicate}>{strings.properties.duplicate}</button>
-        <button onClick={props.onDelete}>{strings.properties.delete}</button>
-      </div>
+        <div className="pp-row">
+          <span className="pp-l">{strings.properties.align}</span>
+          <span className="align-set" role="group" aria-label={strings.properties.align}>
+            {ALIGN.map((a) => (
+              <button key={a.dir} className="icon-btn" aria-label={a.label} title={a.label} onClick={() => props.onAlign(a.dir)}>
+                <Icon name={a.icon} size={16} />
+              </button>
+            ))}
+          </span>
+        </div>
+        <div className="pp-row">
+          <span className="pp-l">{strings.properties.wrap}</span>
+          <span className="pp-btns">
+            <button className="btn" onClick={() => props.onWrap("flex")} disabled={!props.canWrap} title={strings.properties.wrapTitle}>
+              {strings.properties.wrapFlex}
+            </button>
+            <button className="btn" onClick={() => props.onWrap("grid")} disabled={!props.canWrap} title={strings.properties.wrapTitle}>
+              {strings.properties.wrapGrid}
+            </button>
+          </span>
+        </div>
+        {props.onReplaceImage && (
+          <div className="pp-row">
+            <span className="pp-l">{strings.properties.image}</span>
+            <span className="pp-btns">
+              <button className="btn" onClick={props.onReplaceImage}>
+                {strings.properties.replaceImage}
+              </button>
+            </span>
+          </div>
+        )}
+      </section>
+      {props.children}
       <Collapsible id="more-css" title={D.more}>
         <div className="more-css">
           {FIELDS.map((f) => (
@@ -213,22 +225,22 @@ export function Properties(props: {
           ))}
         </div>
       </Collapsible>
-    </section>
+    </>
   );
 }
 
 /** A typed number is px; anything with its own unit (or empty, which removes the value) is written as is */
 const pxOf = (t: string) => (/^-?\d+(?:\.\d+)?$/.test(t.trim()) ? `${Number(t)}px` : t.trim());
 
-/** One row: the design word, with the CSS name beside it on hover and on keyboard focus (title for the pointer too) */
-function Row(p: { word: string; css: string; heading?: boolean; warn?: string | null; children: ReactNode }) {
+/** One row: the design word and its field; the CSS name is the row's tooltip, an off-token value a warning mark after the word */
+function Row(p: { word: string; css: string; warn?: string | null; children: ReactNode }) {
   return (
-    <label className="prow" title={p.css}>
-      <span className={p.heading ? "pg-h" : ""}>
-        {p.word} <code>{p.css}</code>
+    <label className="pp-row" title={p.css}>
+      <span className="pp-l">
+        {p.word}
         {p.warn && (
           <span className="tok-warn" title={p.warn} aria-label={strings.properties.offToken(p.warn)}>
-            ⚠
+            {" "}⚠
           </span>
         )}
       </span>
@@ -244,7 +256,6 @@ function DesignInput(p: { label: string; value: string; placeholder: string; onC
   const commit = () => v.trim() !== p.value.trim() && p.onCommit(v.trim());
   return (
     <input
-      className="num"
       aria-label={p.label}
       value={v}
       placeholder={p.placeholder}

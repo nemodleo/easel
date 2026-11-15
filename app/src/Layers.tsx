@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { api } from "./api";
+import { Icon } from "./icons";
 import { strings } from "./strings";
 
 type Node = { path: string; tag: string; cls?: string; text: string; children: Node[] };
@@ -93,7 +94,7 @@ export function Layers(props: { file: string; version: number; selected: string[
           aria-expanded={has ? !!isOpen : undefined}
           aria-level={depth + 1}
           className={`layer ${props.selected.includes(n.path) ? "on" : ""} ${over === n.path ? "over" : ""} ${cur === n.path ? "kbd-focus" : ""}`}
-          style={{ paddingLeft: 4 + depth * 12 }}
+          style={{ paddingLeft: 8 + depth * 16 }}
           draggable
           onDragStart={(e) => {
             setDragging(n.path);
@@ -129,11 +130,14 @@ export function Layers(props: { file: string; version: number; selected: string[
               setOpen((o) => ({ ...o, [n.path]: !isOpen }));
             }}
           >
-            {isOpen ? "▾" : "▸"}
+            <Icon name={isOpen ? "chevronDown" : "chevronRight"} size={14} />
           </button>
-          <code>{n.tag}</code>
-          {n.cls && <span className="muted">.{n.cls}</span>}
-          {n.text && <span className="layer-text">{n.text}</span>}
+          <span className="tag">{n.tag}</span>
+          <span className="lname">
+            {n.cls && `.${n.cls}`}
+            {n.cls && n.text && " · "}
+            {n.text}
+          </span>
         </div>
         {has && isOpen && <ul>{n.children.map((c) => row(c, depth + 1))}</ul>}
       </li>
@@ -141,10 +145,12 @@ export function Layers(props: { file: string; version: number; selected: string[
   };
 
   return (
-    <section className="layers">
-      <h3>{strings.layers.title}</h3>
-      <p className="muted small">{strings.layers.hint}</p>
-      <ul className="layer-tree" role="tree" aria-label={strings.layers.title} tabIndex={0} onKeyDown={onKey}>
+    <section className="pp-group layers">
+      {/* How to drag, multi-select and move by keys: the heading's tooltip, so the tree starts right under it */}
+      <h3 className="pp-group-h" title={strings.layers.hint}>
+        {strings.layers.title}
+      </h3>
+      <ul className="layer-tree" role="tree" aria-label={strings.layers.title} title={strings.layers.hint} tabIndex={0} onKeyDown={onKey}>
         {tree.map((n) => row(n, 0))}
       </ul>
     </section>

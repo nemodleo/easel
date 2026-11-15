@@ -57,6 +57,16 @@ export function textOf(node) {
   return (node.childNodes ?? []).map(textOf).join("");
 }
 
+// Block elements read as separate words in a label: "Meditate" + "10 min" is "Meditate 10 min", not "Meditate10 min"
+const BLOCK = new Set("address article aside blockquote dd div dl dt figcaption figure footer form h1 h2 h3 h4 h5 h6 header li main nav ol p pre section table td th tr ul".split(" "));
+
+/** Text for showing an element by name (layers list): like textOf, with a space between block children */
+export function labelOf(node) {
+  if (node.nodeName === "#text") return node.value;
+  if (node.tagName === "script" || node.tagName === "style") return "";
+  return (node.childNodes ?? []).map((c) => (BLOCK.has(c.tagName) ? ` ${labelOf(c)} ` : labelOf(c))).join("");
+}
+
 /** Tree for the layers list (depth-limited) */
 export function outline(html, maxDepth = 12) {
   const doc = parseHtml(html);
@@ -65,7 +75,7 @@ export function outline(html, maxDepth = 12) {
     elementChildren(node).map((c, i) => {
       const p = path ? `${path}/${i}` : String(i);
       const cls = c.attrs?.find((a) => a.name === "class")?.value;
-      const text = textOf(c).replace(/\s+/g, " ").trim().slice(0, 40);
+      const text = labelOf(c).replace(/\s+/g, " ").trim().slice(0, 40);
       return {
         path: p,
         tag: c.tagName,
