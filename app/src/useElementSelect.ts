@@ -184,6 +184,6 @@ export function kindLabel(el: Element) {
               : !el.children.length && el.textContent?.trim()
                 ? "text"
                 : "container";
-  const label = (el.getAttribute("aria-label") || el.getAttribute("alt") || el.getAttribute("title") || el.getAttribute("placeholder") || el.textContent || "").trim().replace(/\s+/g, " ").slice(0, 60);
+  const label = (el.getAttribute("aria-label") || el.getAttribute("alt") || el.getAttribute("title") || el.getAttribute("placeholder") || (el as HTMLElement).innerText || el.textContent || "").trim().replace(/\s+/g, " ").slice(0, 60);
   return { kind, label };
 }
