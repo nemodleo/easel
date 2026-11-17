@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="board-size" content="390x844">
+<title>My cut, daylight</title>
+<style>
+/* ===== Intercut base: the same block opens every board ===== */
+@font-face{font-family:"Anton";src:url("../assets/fonts/anton-latin-400.woff2") format("woff2");font-display:block}
+@font-face{font-family:"JetBrains Mono";src:url("../assets/fonts/jetbrains-mono-latin-400.woff2") format("woff2");font-display:block}
+:root{
+  /* colour tokens: tokens.json, theme Daylight */
+  --field:#FFFFFF; --ink:#0A0A0A; --muted:#333333; --rule:#9C9C9C; --safelight:#FF3D14; --on-safelight:#0A0A0A; --signal:#0A0A0A;
+  /* faces: swap them here, then retune the two numbers below */
+  --display:"Anton","HelveticaNeue-CondensedBlack",Impact,sans-serif;
+  --mono:"JetBrains Mono",Menlo,monospace;
+  --cap:.86;           /* cap height ÷ font size: a display line box is exactly its caps */
+  --cap-nudge:.0065em; /* moves the caps down onto the box, so cap top = box top */
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--field);color:var(--ink)}
+body{font-family:var(--mono);font-size:16px;line-height:24px;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+/* display: Anton caps in a box exactly cap-high, so stacked lines butt and the waist sits at 50% */
+.display{display:block;font-family:var(--display);font-weight:400;text-transform:uppercase;line-height:var(--cap);translate:0 var(--cap-nudge);white-space:nowrap}
+/* small print: JetBrains Mono caps */
+.mono{font-family:var(--mono);font-size:12px;line-height:16px;letter-spacing:.04em;text-transform:uppercase}
+/* the splice: one live text node cut at the cap waist by an SVG filter (the filters sit in .defs at the end of body) */
+.splice{filter:url(#splice)}
+.cut-red{color:var(--safelight)} /* the wordmark under 56px: the cut becomes colour */
+.slit{flood-color:var(--safelight)}
+.defs{position:absolute;width:0;height:0;overflow:hidden}
+/* ===== end of base ===== */
+/* ===== Home in daylight: the same board on the Daylight theme (only :root differs) ===== */
+.screen{width:390px;height:844px;position:relative;overflow:clip}
+.status{height:44px;display:flex;justify-content:space-between;align-items:center;padding:0 24px}
+.status .time{font-family:var(--display);font-size:20px;line-height:20px}
+.topbar{height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 0 0 16px;border-bottom:1px solid var(--rule)}
+.wordmark{display:flex;align-items:center;height:55px}
+.wordmark .display{font-size:28px}
+.topbar .when{margin-left:auto;padding-right:12px;text-align:right;color:var(--muted)}
+.light-switch{width:56px;height:55px;display:flex;align-items:center;justify-content:center;border-left:1px solid var(--rule)}
+.light-switch::before{content:"";width:20px;height:20px;border:2px solid var(--ink);background:linear-gradient(90deg,var(--ink) 50%,var(--field) 50%)}
+/* day strip: one 48px cell per festival day, runs off the right edge */
+.days{display:flex;height:48px;border-bottom:1px solid var(--rule);width:max-content}
+.day-cell{width:48px;height:47px;border-right:1px solid var(--rule);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0}
+.day-cell .display{font-size:20px}
+.day-cell .mono{color:var(--muted)}
+.day-cell.past{color:var(--muted)}
+.day-cell.today{background:var(--safelight);color:var(--on-safelight)}
+.day-cell.today .mono{color:var(--on-safelight)}
+/* next screening: the only spliced title on the screen */
+.next{display:block;padding:16px 0 16px}
+.next .label{padding:0 16px;color:var(--signal)}
+.next .label span{color:var(--muted)}
+.next-title{font-size:120px;padding-left:12px;margin-top:16px}
+.next-title + .next-title{margin-top:8px}
+.facts{display:grid;grid-template-columns:88px 1fr 64px 72px;border-top:1px solid var(--rule)}
+.fact{height:64px;padding:12px 0 0 16px;border-right:1px solid var(--rule)}
+.fact:last-child{border-right:0}
+.fact .mono{display:block;color:var(--muted)}
+.fact .display{font-size:28px;margin-top:8px}
+.ticket-bar{height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:var(--safelight);color:var(--on-safelight)}
+.ticket-bar .display{font-size:28px}
+/* today's cut */
+.today-head{display:flex;justify-content:space-between;padding:12px 16px 8px;color:var(--muted);border-bottom:1px solid var(--rule)}
+.film-row{height:48px;display:grid;grid-template-columns:64px 1fr 32px;align-items:center;padding:0 16px;border-bottom:1px solid var(--rule)}
+.film-row .display{font-size:28px}
+.film-row .cinema{text-align:right}
+.film-row.seen{color:var(--muted)}
+.film-row.seen .display{text-decoration:line-through;text-decoration-thickness:4px}
+.film-row.now{color:var(--signal)}
+.film-row.now .display{color:var(--safelight)}
+.tabs{position:absolute;left:0;right:0;bottom:0;height:56px;display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--rule);background:var(--field)}
+.tab{display:flex;align-items:center;justify-content:center;color:var(--muted);position:relative}
+.tab.on{color:var(--ink)}
+.tab.on::before{content:"";position:absolute;left:0;right:0;top:-1px;height:4px;background:var(--safelight)}
+</style>
+</head>
+<body>
+<main class="screen">
+  <div class="status"><span class="time">18:52</span><span class="mono">5G · 82%</span></div>
+
+  <header class="topbar">
+    <a class="wordmark" href="home.html" aria-label="Intercut, my cut"><span class="display">Inter</span><span class="display cut-red">Cut</span></a>
+    <span class="when mono">Day 3 of 11<br>Sat 06.03</span>
+    <a class="light-switch" href="home.html" aria-label="Night"></a>
+  </header>
+
+  <nav class="days" aria-label="Festival days">
+    <a class="day-cell past" href="programme.html"><span class="display">04</span><span class="mono">Th</span></a>
+    <a class="day-cell past" href="programme.html"><span class="display">05</span><span class="mono">Fr</span></a>
+    <a class="day-cell today" href="home.html"><span class="display">06</span><span class="mono">Sa</span></a>
+    <a class="day-cell" href="programme.html"><span class="display">07</span><span class="mono">Su</span></a>
+    <a class="day-cell" href="programme.html"><span class="display">08</span><span class="mono">Mo</span></a>
+    <a class="day-cell" href="programme.html"><span class="display">09</span><span class="mono">Tu</span></a>
+    <a class="day-cell" href="empty-day.html"><span class="display">10</span><span class="mono">We</span></a>
+    <a class="day-cell" href="programme.html"><span class="display">11</span><span class="mono">Th</span></a>
+    <a class="day-cell" href="programme.html"><span class="display">12</span><span class="mono">Fr</span></a>
+  </nav>
+
+  <a class="next" href="film.html">
+    <span class="label mono">Next in your cut <span>· starts in 38 min</span></span>
+    <span class="next-title display">Salt</span>
+    <span class="next-title display splice">Winter</span>
+  </a>
+
+  <div class="facts">
+    <div class="fact"><span class="mono">Time</span><span class="display">19:30</span></div>
+    <div class="fact"><span class="mono">Cinema</span><span class="display">C1 Meridian</span></div>
+    <div class="fact"><span class="mono">Seat</span><span class="display">F12</span></div>
+    <div class="fact"><span class="mono">Run</span><span class="display">112′</span></div>
+  </div>
+
+  <a class="ticket-bar" href="ticket.html"><span class="display">Show ticket</span><span class="mono">Doors 19:10</span></a>
+
+  <section class="today">
+    <h2 class="today-head mono"><span>Today · 4 films</span><span>6 h 35 min in the dark</span></h2>
+    <a class="film-row seen" href="film.html"><span class="mono">11:00</span><span class="display">Glass Orchard</span><span class="cinema mono">C5</span></a>
+    <a class="film-row seen" href="film.html"><span class="mono">14:15</span><span class="display">Nobody Swims</span><span class="cinema mono">C3</span></a>
+    <a class="film-row now" href="film.html"><span class="mono">19:30</span><span class="display">Salt Winter</span><span class="cinema mono">C1</span></a>
+    <a class="film-row" href="film.html"><span class="mono">22:45</span><span class="display">Feral Monday</span><span class="cinema mono">C6</span></a>
+  </section>
+
+  <nav class="tabs mono" aria-label="Sections">
+    <a class="tab" href="programme.html">Programme</a>
+    <a class="tab on" href="home-daylight.html">My cut</a>
+    <a class="tab" href="ticket.html">Tickets</a>
+  </nav>
+</main>
+
+<svg class="defs" aria-hidden="true" focusable="false">
+  <!-- The splice: one text node, cut at the cap waist. Fractions of the filter box; Anton's cap waist sits at 50% of it in every
+       engine, so only the slit's two y numbers retune with the face. dx = shift ÷ element width; change dx if the width changes. -->
+  <filter id="splice" x="-.2" y="-.05" width="1.6" height="1.1" primitiveUnits="objectBoundingBox" color-interpolation-filters="sRGB">
+    <feOffset in="SourceGraphic" dx="0" x="-.2" y="-.05" width="1.6" height=".5258" result="upper"/>
+    <feFlood class="slit" x="0" y=".4758" width="1" height=".0398" result="slit"/>
+    <feOffset in="SourceGraphic" dx=".1231" x="-.2" y=".5156" width="1.6" height=".5344" result="lower"/>
+    <feMerge><feMergeNode in="upper"/><feMergeNode in="slit"/><feMergeNode in="lower"/></feMerge>
+  </filter>
+</svg>
+</body>
+</html>

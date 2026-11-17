@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="board-size" content="390x844">
+<title>Ticket</title>
+<style>
+/* ===== Intercut base: the same block opens every board ===== */
+@font-face{font-family:"Anton";src:url("../assets/fonts/anton-latin-400.woff2") format("woff2");font-display:block}
+@font-face{font-family:"JetBrains Mono";src:url("../assets/fonts/jetbrains-mono-latin-400.woff2") format("woff2");font-display:block}
+:root{
+  /* colour tokens: tokens.json, theme Night */
+  --field:#0A0A0A; --ink:#FFFFFF; --muted:#9C9C9C; --rule:#333333; --safelight:#FF3D14; --on-safelight:#0A0A0A; --signal:#FF3D14;
+  /* faces: swap them here, then retune the two numbers below */
+  --display:"Anton","HelveticaNeue-CondensedBlack",Impact,sans-serif;
+  --mono:"JetBrains Mono",Menlo,monospace;
+  --cap:.86;           /* cap height ÷ font size: a display line box is exactly its caps */
+  --cap-nudge:.0065em; /* moves the caps down onto the box, so cap top = box top */
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--field);color:var(--ink)}
+body{font-family:var(--mono);font-size:16px;line-height:24px;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+/* display: Anton caps in a box exactly cap-high, so stacked lines butt and the waist sits at 50% */
+.display{display:block;font-family:var(--display);font-weight:400;text-transform:uppercase;line-height:var(--cap);translate:0 var(--cap-nudge);white-space:nowrap}
+/* small print: JetBrains Mono caps */
+.mono{font-family:var(--mono);font-size:12px;line-height:16px;letter-spacing:.04em;text-transform:uppercase}
+/* the splice: one live text node cut at the cap waist by an SVG filter (the filters sit in .defs at the end of body) */
+.splice{filter:url(#splice)}
+.cut-red{color:var(--safelight)} /* the wordmark under 56px: the cut becomes colour */
+.slit{flood-color:var(--safelight)}
+.defs{position:absolute;width:0;height:0;overflow:hidden}
+/* ===== end of base ===== */
+/* ===== Ticket: the queue screen. Safelight field, title edge to edge, a QR you can scan ===== */
+body{background:var(--safelight);color:var(--on-safelight)}
+.screen{width:390px;height:844px;position:relative;overflow:clip;background:var(--safelight);color:var(--on-safelight)}
+.status{height:44px;display:flex;justify-content:space-between;align-items:center;padding:0 24px}
+.status .time{font-family:var(--display);font-size:20px;line-height:20px}
+.film-nav{height:48px;display:flex;border-bottom:1px solid var(--on-safelight)}
+.film-nav a{display:flex;align-items:center;padding:0 16px;border-left:1px solid var(--on-safelight)}
+.film-nav .back{margin-right:auto;border-left:0}
+.ticket-title{padding:16px 0 24px}
+.ticket-title .mono{display:block;padding:0 16px 16px}
+.ticket-title .display{font-size:120px;padding-left:12px}
+.ticket-title .display + .display{margin-top:8px}
+/* the QR: ../assets/ticket-qr.svg, real modules, 8px a module with a four-module quiet zone; reuse it with the same <img> */
+.qr-panel{display:grid;grid-template-columns:264px 1fr;gap:16px;padding:0 16px}
+.qr{display:block;width:264px;height:264px}
+.qr-side{display:flex;flex-direction:column;justify-content:space-between;border-left:1px solid var(--on-safelight);padding-left:12px}
+.qr-side .display{font-size:28px}
+.qr-side .mono{display:block}
+.scan{position:absolute;left:16px;right:16px;bottom:136px;display:flex;justify-content:space-between}
+.stub{position:absolute;left:0;right:0;bottom:0;height:120px;display:grid;grid-template-columns:repeat(3,1fr);border-top:1px dashed var(--on-safelight)}
+.stub div{padding:16px 0 0 16px;border-right:1px solid var(--on-safelight)}
+.stub div:last-child{border-right:0}
+.stub .mono{display:block}
+.stub .display{font-size:56px;margin-top:16px}
+.slit-ink{flood-color:var(--ink)}
+</style>
+</head>
+<body>
+<main class="screen">
+  <div class="status"><span class="time">19:12</span><span class="mono">5G · 79%</span></div>
+
+  <nav class="film-nav mono" aria-label="Ticket">
+    <a class="back" href="home.html">← My cut</a>
+    <a href="film.html">Film</a>
+    <a href="ticket.html">Wallet</a>
+  </nav>
+
+  <header class="ticket-title">
+    <span class="mono">Admit one · Sat 06.03 · 19:30</span>
+    <h1 class="display">Salt</h1>
+    <span class="display splice">Winter</span>
+  </header>
+
+  <section class="qr-panel" aria-label="Ticket code">
+    <img class="qr" src="../assets/ticket-qr.svg" alt="Ticket code 14-0603-C1-F12">
+    <div class="qr-side">
+      <span><span class="mono">Cinema</span><span class="display">C1</span><span class="mono">Meridian</span></span>
+      <span><span class="mono">Screen</span><span class="display">1</span><span class="mono">Stalls</span></span>
+      <span><span class="mono">No.</span><span class="mono">14-0603</span><span class="mono">-C1-F12</span></span>
+    </div>
+  </section>
+
+  <p class="scan mono"><span>Scan at the door</span><span>Screen up, brightness up</span></p>
+
+  <footer class="stub">
+    <div><span class="mono">Seat</span><span class="display">F12</span></div>
+    <div><span class="mono">Doors</span><span class="display">19:10</span></div>
+    <div><span class="mono">Run</span><span class="display">112′</span></div>
+  </footer>
+</main>
+
+<svg class="defs" aria-hidden="true" focusable="false">
+  <!-- The splice: one text node, cut at the cap waist. Fractions of the filter box; Anton's cap waist sits at 50% of it in every
+       engine, so only the slit's two y numbers retune with the face. dx = shift ÷ element width; change dx if the width changes. -->
+  <filter id="splice" x="-.2" y="-.05" width="1.6" height="1.1" primitiveUnits="objectBoundingBox" color-interpolation-filters="sRGB">
+    <feOffset in="SourceGraphic" dx="0" x="-.2" y="-.05" width="1.6" height=".5258" result="upper"/>
+    <feFlood class="slit-ink" x="0" y=".4758" width="1" height=".0398" result="slit"/>
+    <feOffset in="SourceGraphic" dx=".1231" x="-.2" y=".5156" width="1.6" height=".5344" result="lower"/>
+    <feMerge><feMergeNode in="upper"/><feMergeNode in="slit"/><feMergeNode in="lower"/></feMerge>
+  </filter>
+</svg>
+</body>
+</html>

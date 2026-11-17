@@ -1,43 +1,70 @@
 {
   "version": 1,
-  "title": "Tidy — habit tracker",
+  "title": "Intercut No.14 — city film festival",
   "pages": [],
   "boards": {
-    "empty.html": {"x":0,"y":1140,"w":390,"h":844,"title":"Empty state","radius":36},
+    "brand.html": {"x":0,"y":0,"w":1440,"h":900,"title":"Brand sheet"},
 
-    "habit.html": {"x":470,"y":0,"w":390,"h":844,"title":"Habit detail","radius":36},
+    "clash.html": {"x":1960,"y":1320,"w":390,"h":844,"title":"Clash","radius":36},
 
-    "home.html": {"x":0,"y":0,"w":390,"h":844,"title":"Today","is_interactive":true,"radius":36},
+    "empty-day.html": {"x":2430,"y":1320,"w":390,"h":844,"title":"Empty day","radius":36},
 
-    "landing.html": {"x":470,"y":1140,"w":1280,"h":800,"title":"Landing (desktop)"},
+    "film.html": {"x":470,"y":1320,"w":390,"h":844,"title":"Film","radius":36},
 
-    "new-habit.html": {"x":940,"y":0,"w":390,"h":844,"title":"New habit","radius":36},
+    "home-daylight.html": {"x":2900,"y":1320,"w":390,"h":844,"title":"My cut, daylight","radius":36},
 
-    "settings.html": {"x":1880,"y":0,"w":390,"h":844,"title":"Settings","radius":36},
+    "home.html": {"x":0,"y":1320,"w":390,"h":844,"title":"My cut","is_interactive":true,"radius":36},
 
-    "stats.html": {"x":1410,"y":0,"w":390,"h":844,"title":"Stats","radius":36}
+    "poster.html": {"x":3370,"y":0,"w":1200,"h":1800,"title":"Six-sheet poster"},
+
+    "programme.html": {"x":1410,"y":1320,"w":390,"h":844,"title":"Programme","radius":36},
+
+    "site.html": {"x":1540,"y":0,"w":1440,"h":900,"title":"Site, first screen"},
+
+    "square.html": {"x":3370,"y":2120,"w":1080,"h":1080,"title":"Social square"},
+
+    "ticket.html": {"x":940,"y":1320,"w":390,"h":844,"title":"Ticket","radius":36},
+
+    "timetable.html": {"x":0,"y":2560,"w":1440,"h":900,"title":"Desktop timetable"}
   },
   "order": [
     "home.html",
-    "habit.html",
-    "new-habit.html",
-    "stats.html",
-    "settings.html",
-    "empty.html",
-    "landing.html"
+    "film.html",
+    "ticket.html",
+    "programme.html",
+    "clash.html",
+    "empty-day.html",
+    "home-daylight.html",
+    "brand.html",
+    "site.html",
+    "timetable.html",
+    "poster.html",
+    "square.html"
   ],
   "notes": {
-    "n1": {"kind":"title","x":0,"y":-260,"maxW":2400,"text":"Tidy — habit tracker"},
+    "n1": {"kind":"title","x":0,"y":-260,"maxW":3000,"text":"Intercut No.14 — identity"},
 
-    "n2": {"kind":"sticky","x":2350,"y":0,"w":360,"text":"Check-in should be one tap from Today.\nKeep the streak visible.","color":"yellow"},
+    "n2": {"kind":"title","x":0,"y":1040,"maxW":1800,"text":"The app — Play from My cut","size":48},
 
-    "n3": {"kind":"sticky","x":2350,"y":300,"w":360,"text":"Stats: compare with last week, not with other people.","color":"blue"},
+    "n3": {"kind":"title","x":1960,"y":1040,"maxW":1400,"text":"States and the daylight twin","size":48},
 
-    "n4": {"kind":"title","x":0,"y":880,"maxW":2400,"text":"Onboarding & marketing","size":48}
+    "n4": {"kind":"title","x":0,"y":2280,"maxW":1440,"text":"One product on the desk","size":48},
+
+    "n5": {"kind":"title","x":3370,"y":-260,"maxW":1200,"text":"Campaign"},
+
+    "n6": {"kind":"sticky","x":1540,"y":2560,"w":360,"text":"Only the next film is spliced. Cut two titles on one screen and the cut stops meaning \"now\".","color":"orange"},
+
+    "n7": {"kind":"sticky","x":1960,"y":2560,"w":360,"text":"Under 56px the wordmark's cut turns into colour: CUT in Safelight. At 28–40px the slit read as a strikethrough.","color":"yellow"},
+
+    "n8": {"kind":"sticky","x":2380,"y":2560,"w":360,"text":"Daylight is a theme, not a redesign: home-daylight.html differs from home.html only in :root. Small red text uses Signal so it holds 4.5:1 on white.","color":"blue"},
+
+    "n9": {"kind":"sticky","x":2800,"y":2560,"w":360,"text":"Fonts: Anton + JetBrains Mono (OFL) in assets/fonts. New display face = change --display, retune --cap, --cap-nudge and the slit's two y numbers.","color":"gray"}
   },
   "shapes": {
-    "s1": {"kind":"arrow","x":400,"y":300,"w":60,"h":0,"points":[[0,0],[60,0]],"stroke":"#3E7BFA","strokeWidth":6,"z":1},
+    "s1": {"kind":"arrow","x":400,"y":1620,"w":60,"h":0,"points":[[0,0],[60,0]],"stroke":"#FF3D14","strokeWidth":6,"z":1},
 
-    "s2": {"kind":"arrow","x":870,"y":300,"w":60,"h":0,"points":[[0,0],[60,0]],"stroke":"#3E7BFA","strokeWidth":6,"z":2}
+    "s2": {"kind":"arrow","x":870,"y":1620,"w":60,"h":0,"points":[[0,0],[60,0]],"stroke":"#FF3D14","strokeWidth":6,"z":2},
+
+    "s3": {"kind":"arrow","x":1810,"y":1620,"w":140,"h":0,"points":[[0,0],[140,0]],"stroke":"#FF3D14","strokeWidth":6,"z":3}
   }
 }

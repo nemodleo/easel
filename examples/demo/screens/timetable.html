@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="board-size" content="1440x900">
+<title>Desktop: timetable</title>
+<style>
+/* ===== Intercut base: the same block opens every board ===== */
+@font-face{font-family:"Anton";src:url("../assets/fonts/anton-latin-400.woff2") format("woff2");font-display:block}
+@font-face{font-family:"JetBrains Mono";src:url("../assets/fonts/jetbrains-mono-latin-400.woff2") format("woff2");font-display:block}
+:root{
+  /* colour tokens: tokens.json, theme Night */
+  --field:#0A0A0A; --ink:#FFFFFF; --muted:#9C9C9C; --rule:#333333; --safelight:#FF3D14; --on-safelight:#0A0A0A; --signal:#FF3D14;
+  /* faces: swap them here, then retune the two numbers below */
+  --display:"Anton","HelveticaNeue-CondensedBlack",Impact,sans-serif;
+  --mono:"JetBrains Mono",Menlo,monospace;
+  --cap:.86;           /* cap height ÷ font size: a display line box is exactly its caps */
+  --cap-nudge:.0065em; /* moves the caps down onto the box, so cap top = box top */
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--field);color:var(--ink)}
+body{font-family:var(--mono);font-size:16px;line-height:24px;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+/* display: Anton caps in a box exactly cap-high, so stacked lines butt and the waist sits at 50% */
+.display{display:block;font-family:var(--display);font-weight:400;text-transform:uppercase;line-height:var(--cap);translate:0 var(--cap-nudge);white-space:nowrap}
+/* small print: JetBrains Mono caps */
+.mono{font-family:var(--mono);font-size:12px;line-height:16px;letter-spacing:.04em;text-transform:uppercase}
+/* the splice: one live text node cut at the cap waist by an SVG filter (the filters sit in .defs at the end of body) */
+.splice{filter:url(#splice)}
+.cut-red{color:var(--safelight)} /* the wordmark under 56px: the cut becomes colour */
+.slit{flood-color:var(--safelight)}
+.defs{position:absolute;width:0;height:0;overflow:hidden}
+/* ===== end of base ===== */
+/* ===== Desktop: the day as a timetable. 240px for the cinemas, then 80px an hour from 10:00 to 01:00 ===== */
+.page{width:1440px;height:900px;position:relative;overflow:clip}
+.site-nav{height:72px;display:flex;align-items:center;border-bottom:1px solid var(--rule)}
+.wordmark{display:flex;width:240px;padding-left:24px}
+.wordmark .display{font-size:40px}
+.site-nav .links{display:flex;height:72px}
+.site-nav .links a{display:flex;align-items:center;padding:0 24px;color:var(--muted)}
+.site-nav .links a.on{color:var(--ink);box-shadow:inset 0 -4px 0 var(--safelight)}
+.site-nav .app{margin-left:auto;height:72px;display:flex;align-items:center;padding:0 24px;border-left:1px solid var(--rule)}
+.day-head{height:184px;display:grid;grid-template-columns:240px 1fr;border-bottom:1px solid var(--rule)}
+.day-head .summary{padding:24px 0 0 24px;color:var(--muted);display:flex;flex-direction:column;gap:8px}
+.day-head .summary b{font-weight:400;color:var(--ink)}
+.day-title{display:flex;align-items:flex-end;justify-content:space-between;padding:0 24px 24px 0}
+.day-title .display{font-size:160px}
+.days{display:grid;grid-template-columns:repeat(11,48px);height:64px;align-self:flex-end;border-left:1px solid var(--rule)}
+.day-cell{display:flex;flex-direction:column;align-items:center;justify-content:center;border-right:1px solid var(--rule);border-top:1px solid var(--rule)}
+.day-cell .display{font-size:28px}
+.day-cell .mono{color:var(--muted)}
+.day-cell.past{color:var(--muted)}
+.day-cell.today{background:var(--safelight);color:var(--on-safelight);border-color:var(--safelight)}
+.day-cell.today .mono{color:var(--on-safelight)}
+/* the grid: hour rules every 80px drawn behind the rows */
+.grid{position:relative;height:612px}
+.grid::before{content:"";position:absolute;left:240px;top:0;right:0;bottom:0;background:repeating-linear-gradient(90deg,var(--rule) 0 1px,transparent 1px 80px)}
+.ruler{position:relative;height:36px;border-bottom:1px solid var(--rule)}
+.ruler .mono{position:absolute;top:12px;left:calc(240px + var(--h) * 80px);padding-left:8px;color:var(--muted)}
+.cinema-row{position:relative;height:96px;border-bottom:1px solid var(--rule)}
+.cinema-label{position:absolute;left:0;top:0;width:240px;height:95px;display:flex;align-items:center;gap:16px;padding-left:24px;border-right:1px solid var(--rule);background:var(--field)}
+.cinema-label .display{font-size:56px}
+.cinema-label .mono{color:var(--muted)}
+.screening{position:absolute;top:12px;height:72px;left:calc(240px + var(--at) * 80px / 60);width:calc(var(--run) * 80px / 60);display:flex;flex-direction:column;justify-content:space-between;padding:8px;border:1px solid var(--ink);background:var(--field);overflow:hidden;z-index:2}
+.screening .display{font-size:20px;white-space:normal;line-height:1}
+.screening .mono{color:var(--muted);white-space:nowrap}
+.screening.cut{background:var(--safelight);color:var(--on-safelight);border-color:var(--safelight)}
+.screening.cut .mono{color:var(--on-safelight)}
+.screening.seen{background:var(--field);color:var(--muted);border-color:var(--rule)}
+.screening.seen .display{text-decoration:line-through;text-decoration-thickness:2px}
+.screening.seen .mono{color:var(--muted)}
+.now{position:absolute;z-index:1;top:0;bottom:-32px;left:calc(240px + var(--at) * 80px / 60);width:2px}
+.now::before{content:"";position:absolute;inset:0;background:var(--safelight)}
+.now .mono{position:absolute;bottom:8px;left:8px;color:var(--signal);white-space:nowrap}
+.legend{position:absolute;left:0;right:0;bottom:0;height:32px;display:flex;align-items:center;gap:32px;padding-left:24px;color:var(--muted);border-top:1px solid var(--rule);background:var(--field)}
+.legend .key{display:inline-block;width:12px;height:12px;margin-right:8px;translate:0 1px;border:1px solid var(--ink)}
+.legend .key.cut{background:var(--safelight);border-color:var(--safelight)}
+</style>
+</head>
+<body>
+<main class="page">
+  <nav class="site-nav mono" aria-label="Site">
+    <a class="wordmark" href="site.html" aria-label="Intercut"><span class="display">Inter</span><span class="display cut-red">Cut</span></a>
+    <span class="links">
+      <a class="on" href="timetable.html">Programme</a>
+      <a href="timetable.html">Cinemas</a>
+      <a href="site.html">Passes</a>
+      <a href="home.html">My cut</a>
+    </span>
+    <a class="app" href="home.html">Get the app</a>
+  </nav>
+
+  <header class="day-head">
+    <p class="summary mono"><span>Programme</span><span><b>30</b> screenings</span><span><b>6</b> cinemas</span><span>Your cut <b>4</b> · 6 h 35</span></p>
+    <div class="day-title">
+      <h1 class="display">Sat 06.03</h1>
+      <nav class="days" aria-label="Festival days">
+        <a class="day-cell past" href="timetable.html"><span class="display">04</span><span class="mono">Th</span></a>
+        <a class="day-cell past" href="timetable.html"><span class="display">05</span><span class="mono">Fr</span></a>
+        <a class="day-cell today" href="timetable.html"><span class="display">06</span><span class="mono">Sa</span></a>
+        <a class="day-cell" href="timetable.html"><span class="display">07</span><span class="mono">Su</span></a>
+        <a class="day-cell" href="timetable.html"><span class="display">08</span><span class="mono">Mo</span></a>
+        <a class="day-cell" href="timetable.html"><span class="display">09</span><span class="mono">Tu</span></a>
+        <a class="day-cell" href="timetable.html"><span class="display">10</span><span class="mono">We</span></a>
+        <a class="day-cell" href="timetable.html"><span class="display">11</span><span class="mono">Th</span></a>
+        <a class="day-cell" href="timetable.html"><span class="display">12</span><span class="mono">Fr</span></a>
+        <a class="day-cell" href="timetable.html"><span class="display">13</span><span class="mono">Sa</span></a>
+        <a class="day-cell" href="timetable.html"><span class="display">14</span><span class="mono">Su</span></a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="grid" aria-label="Timetable, Saturday 6 March">
+    <div class="ruler">
+      <span class="mono" style="--h:0">10</span>
+      <span class="mono" style="--h:1">11</span>
+      <span class="mono" style="--h:2">12</span>
+      <span class="mono" style="--h:3">13</span>
+      <span class="mono" style="--h:4">14</span>
+      <span class="mono" style="--h:5">15</span>
+      <span class="mono" style="--h:6">16</span>
+      <span class="mono" style="--h:7">17</span>
+      <span class="mono" style="--h:8">18</span>
+      <span class="mono" style="--h:9">19</span>
+      <span class="mono" style="--h:10">20</span>
+      <span class="mono" style="--h:11">21</span>
+      <span class="mono" style="--h:12">22</span>
+      <span class="mono" style="--h:13">23</span>
+      <span class="mono" style="--h:14">00</span>
+    </div>
+    <div class="cinema-row">
+      <div class="cinema-label"><span class="display">C1</span><span class="mono">Meridian<br>412 seats</span></div>
+      <a class="screening" href="film.html" style="--at:90;--run:98"><span class="display">Hollow Bay</span><span class="mono">11:30 98′</span></a>
+      <a class="screening" href="film.html" style="--at:240;--run:121"><span class="display">Copper Hours</span><span class="mono">14:00 121′</span></a>
+      <a class="screening" href="film.html" style="--at:405;--run:117"><span class="display">The Long Green</span><span class="mono">16:45 117′</span></a>
+      <a class="screening cut" href="film.html" style="--at:570;--run:112"><span class="display">Salt Winter</span><span class="mono">19:30 112′</span></a>
+      <a class="screening" href="film.html" style="--at:750;--run:90"><span class="display">Second Sun</span><span class="mono">22:30 90′</span></a>
+    </div>
+    <div class="cinema-row">
+      <div class="cinema-label"><span class="display">C2</span><span class="mono">Arcade<br>260 seats</span></div>
+      <a class="screening" href="film.html" style="--at:30;--run:88"><span class="display">Kites over Brine</span><span class="mono">10:30 88′</span></a>
+      <a class="screening" href="film.html" style="--at:195;--run:95"><span class="display">A Room for Swans</span><span class="mono">13:15 95′</span></a>
+      <a class="screening" href="film.html" style="--at:360;--run:102"><span class="display">Static Summer</span><span class="mono">16:00 102′</span></a>
+      <a class="screening" href="film.html" style="--at:510;--run:126"><span class="display">Eleven Ferries</span><span class="mono">18:30 126′</span></a>
+      <a class="screening" href="film.html" style="--at:675;--run:94"><span class="display">Blue Hour Union</span><span class="mono">21:15 94′</span></a>
+    </div>
+    <div class="cinema-row">
+      <div class="cinema-label"><span class="display">C3</span><span class="mono">Lantern<br>180 seats</span></div>
+      <a class="screening" href="film.html" style="--at:105;--run:85"><span class="display">Dog Days in Velle</span><span class="mono">11:45 85′</span></a>
+      <a class="screening cut seen" href="film.html" style="--at:255;--run:104"><span class="display">Nobody Swims</span><span class="mono">14:15 104′</span></a>
+      <a class="screening" href="film.html" style="--at:420;--run:110"><span class="display">Northern Interval</span><span class="mono">17:00 110′</span></a>
+      <a class="screening" href="film.html" style="--at:600;--run:99"><span class="display">Lanterns Out</span><span class="mono">20:00 99′</span></a>
+      <a class="screening" href="film.html" style="--at:750;--run:92"><span class="display">Undertow Hotel</span><span class="mono">22:30 92′</span></a>
+    </div>
+    <div class="cinema-row">
+      <div class="cinema-label"><span class="display">C4</span><span class="mono">Northlight<br>220 seats</span></div>
+      <a class="screening" href="film.html" style="--at:0;--run:75"><span class="display">Small Hours</span><span class="mono">10:00 75′</span></a>
+      <a class="screening" href="film.html" style="--at:150;--run:108"><span class="display">Red Cartographer</span><span class="mono">12:30 108′</span></a>
+      <a class="screening" href="film.html" style="--at:330;--run:97"><span class="display">Night Bus to Ostra</span><span class="mono">15:30 97′</span></a>
+      <a class="screening" href="film.html" style="--at:480;--run:89"><span class="display">Low Tide Choir</span><span class="mono">18:00 89′</span></a>
+      <a class="screening" href="film.html" style="--at:660;--run:101"><span class="display">Mirror Weather</span><span class="mono">21:00 101′</span></a>
+    </div>
+    <div class="cinema-row">
+      <div class="cinema-label"><span class="display">C5</span><span class="mono">Pavilion<br>340 seats</span></div>
+      <a class="screening cut seen" href="film.html" style="--at:60;--run:96"><span class="display">Glass Orchard</span><span class="mono">11:00 96′</span></a>
+      <a class="screening" href="film.html" style="--at:225;--run:100"><span class="display">Velvet Ration</span><span class="mono">13:45 100′</span></a>
+      <a class="screening" href="film.html" style="--at:390;--run:113"><span class="display">Lamplighters</span><span class="mono">16:30 113′</span></a>
+      <a class="screening" href="film.html" style="--at:540;--run:104"><span class="display">Pale Season</span><span class="mono">19:00 104′</span></a>
+      <a class="screening" href="film.html" style="--at:705;--run:88"><span class="display">Wide Awake Tuesday</span><span class="mono">21:45 88′</span></a>
+    </div>
+    <div class="cinema-row">
+      <div class="cinema-label"><span class="display">C6</span><span class="mono">Harbour<br>150 seats</span></div>
+      <a class="screening" href="film.html" style="--at:120;--run:70"><span class="display">Gull Island</span><span class="mono">12:00 70′</span></a>
+      <a class="screening" href="film.html" style="--at:300;--run:115"><span class="display">Mother of Rivers</span><span class="mono">15:00 115′</span></a>
+      <a class="screening" href="film.html" style="--at:465;--run:93"><span class="display">Kiln</span><span class="mono">17:45 93′</span></a>
+      <a class="screening" href="film.html" style="--at:615;--run:105"><span class="display">Last Orders</span><span class="mono">20:15 105′</span></a>
+      <a class="screening cut" href="film.html" style="--at:765;--run:83"><span class="display">Feral Monday</span><span class="mono">22:45 83′</span></a>
+    </div>
+    <span class="now" style="--at:532"><span class="mono">Now 18:52</span></span>
+  </section>
+
+  <footer class="legend mono">
+    <span><span class="key cut"></span>Your cut</span>
+    <span><span class="key"></span>On the programme</span>
+    <span>Struck out: seen</span>
+    <span>Start, run in minutes</span>
+  </footer>
+</main>
+
+</body>
+</html>
