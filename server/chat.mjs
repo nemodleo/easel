@@ -2,7 +2,8 @@
 // In-canvas chat: spawns claude -p / codex exec and turns their output (JSONL) into uniform events streamed over WS.
 // Attaches the selection, visible boards, comments, references and errors as context; for "N variants" it first creates copies side by side.
 // Each run copies the tracked files to .easel/runs/<id>/ first (POST /api/chat/revert), and everything it changes becomes one undo step
-// that "Undo this run" takes back. Claude Code's permission prompts come back through bin/mcp.mjs --permission as cards in the chat.
+// that "Undo this run" takes back. A Claude Code run gets Easel's canvas tools from bin/mcp.mjs --chat, bound to this canvas and run,
+// and its permission prompts come back through the same server as cards in the chat.
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
@@ -35,26 +36,30 @@ export const INSTALL_URL = {
   cursor: "https://cursor.com/cli",
   gemini: "https://github.com/google-gemini/gemini-cli#-installation",
 };
-/** MCP server name for the run's permission prompts: distinct from a project-configured "easel" server */
-export const PERMISSION_SERVER = "easel-chat";
+/** MCP server name of a Claude Code run's own Easel tools and permission prompts: distinct from a project-configured "easel" server */
+export const RUN_SERVER = "easel-chat";
+/** Names `easel-canvas connect` (and older setups) give Easel's MCP server: denied in a run, which has its own, so the model sees one set */
+export const OTHER_EASEL_SERVERS = ["easel", "design-canvas"];
 const fakeAgents = () => (process.env.DESIGN_CANVAS_AGENT_CMD ? JSON.parse(process.env.DESIGN_CANVAS_AGENT_CMD) : {});
 
 /** Model names passed to --model / -m: aliases or full ids only (they reach a shell on Windows) */
 export const validModel = (m) => (typeof m === "string" && /^[\w.:/[\]-]{1,100}$/.test(m.trim()) ? m.trim() : "");
 
-/** Inline --mcp-config for a Claude Code run: this package's MCP server with only the permission tool, bound to this canvas and run */
-export function permissionMcpConfig({ port, runId }) {
+/** Inline --mcp-config for a Claude Code run: this package's MCP server (canvas tools and the permission tool), bound to this canvas and run */
+export function runMcpConfig({ port, runId }) {
   const env = { DESIGN_CANVAS_PORT: String(port), EASEL_RUN_ID: runId };
-  return JSON.stringify({ mcpServers: { [PERMISSION_SERVER]: { type: "stdio", command: process.execPath, args: [path.join(TOOL_ROOT, "bin/mcp.mjs"), "--permission", "--port", String(port)], env } } });
+  return JSON.stringify({ mcpServers: { [RUN_SERVER]: { type: "stdio", command: process.execPath, args: [path.join(TOOL_ROOT, "bin/mcp.mjs"), "--chat", "--port", String(port)], env } } });
 }
 
 /**
  * Agent launch command. Tests override it with DESIGN_CANVAS_AGENT_CMD='{"claude":["node","fake.mjs"]}'.
- * permission: { port, runId } routes Claude Code's permission prompts to the chat (anything else is refused in headless mode)
+ * run: { port, runId } gives a Claude Code run its own Easel tools for this canvas and routes its permission prompts to the chat
+ * (anything else is refused in headless mode); any other easel server the project or the user configured is denied, so there is one set
  */
-export function agentCommand(agent, { prompt, resume, root, images = [], model = "", permission = null }) {
+export function agentCommand(agent, { prompt, resume, root, images = [], model = "", run = null }) {
   const override = fakeAgents()[agent];
-  if (override) return { cmd: override[0], args: [...override.slice(1), prompt] };
+  // A stand-in for claude gets the run's --mcp-config too, so tests reach the canvas tools the way a real run does
+  if (override) return { cmd: override[0], args: [...override.slice(1), ...(agent === "claude" && run ? ["--mcp-config", runMcpConfig(run)] : []), prompt] };
   if (agent === "codex") {
     const common = ["--json", "--skip-git-repo-check", "-s", "workspace-write", ...(model ? ["-m", model] : []), ...images.flatMap((i) => ["-i", i])];
     return resume ? { cmd: "codex", args: ["exec", "resume", resume, ...common, prompt] } : { cmd: "codex", args: ["exec", ...common, "-C", root, prompt] };
@@ -75,9 +80,9 @@ export function agentCommand(agent, { prompt, resume, root, images = [], model =
       "--permission-mode",
       "acceptEdits",
       "--allowedTools",
-      "mcp__easel",
-      "mcp__design-canvas",
-      ...(permission ? ["--mcp-config", permissionMcpConfig(permission), "--permission-prompt-tool", `mcp__${PERMISSION_SERVER}__permission`] : []),
+      ...(run
+        ? [`mcp__${RUN_SERVER}`, "--disallowedTools", ...OTHER_EASEL_SERVERS.map((n) => `mcp__${n}`), "--mcp-config", runMcpConfig(run), "--permission-prompt-tool", `mcp__${RUN_SERVER}__permission`]
+        : OTHER_EASEL_SERVERS.map((n) => `mcp__${n}`)),
       ...(model ? ["--model", model] : []),
       ...(resume ? ["--resume", resume] : []),
     ],
@@ -238,12 +243,15 @@ export function parseLine(agent, line, st) {
   } else if (o.type === "stream_event" && o.event?.type === "message_start") out.push({ kind: "break" });
   else if (o.type === "assistant") {
     for (const c of o.message?.content ?? []) {
-      if (c.type === "tool_use") out.push({ kind: "tool", name: c.name, detail: short(c.input?.file_path ?? c.input?.path ?? c.input?.command ?? c.input) });
+      if (c.type === "tool_use") out.push({ kind: "tool", name: easelToolName(c.name), detail: short(c.input?.file_path ?? c.input?.path ?? c.input?.command ?? c.input) });
       else if (c.type === "text" && !st.streamed) out.push({ kind: "text", text: c.text });
     }
   } else if (o.type === "result") out.push(o.is_error ? { kind: "error", text: o.result ?? o.subtype } : { kind: "done", cost: o.total_cost_usd });
   return out;
 }
+
+/** mcp__easel-chat__check_tokens → check_tokens: Easel's own tools read as their names in the chat; other MCP tools stay as they are */
+export const easelToolName = (name) => String(name ?? "").replace(new RegExp(`^mcp__(?:${[RUN_SERVER, ...OTHER_EASEL_SERVERS].join("|")})__`), "");
 
 /** Windows shell argument: wrap in double quotes and double any inner double quotes */
 export const winQuote = (a) => (/^[\w./:=-]+$/.test(a) ? a : `"${String(a).replace(/"/g, '""')}"`);
@@ -291,8 +299,10 @@ export async function buildPrompt(ctx, body, state) {
   }
   // Design tokens from tokens.json. Without one the AI gets no default palette, only "keep to the file's styles"
   const tk = await readTokens(ctx.dir);
+  // A Claude Code run always has Easel's tools (its own inline server); other agents only when the project is connected
+  const claudeRun = AGENTS.includes(body.agent) ? body.agent === "claude" : !String(body.agent ?? "").startsWith("custom:");
   const palette = Object.entries(tk.themes?.[tk.active] ?? {}).map(([n, v]) => `${n} ${v}`).join(", ");
-  const tokenRule = tk.registered ? `Use the design tokens (theme "${tk.active}"): colors ${palette}; font sizes ${tk.fontSizes.join("/")}px; radii ${tk.radii.join("/")}px; spacing in multiples of 4; font ${tk.fontFamily}. Check with check_tokens if available.` : NO_TOKENS_NOTE;
+  const tokenRule = tk.registered ? `Use the design tokens (theme "${tk.active}"): colors ${palette}; font sizes ${tk.fontSizes.join("/")}px; radii ${tk.radii.join("/")}px; spacing in multiples of 4; font ${tk.fontFamily}. ${claudeRun ? "Check with check_tokens." : "Check with check_tokens if available."}` : NO_TOKENS_NOTE;
   lines.push(
     `Rules: Only edit design files inside ${rel}/screens. Change only what is asked and leave everything else as is. New screens must include <meta name="board-size" content="390x844">; after creating one, use place_board to set its name and position. ${tokenRule}`,
     "",
@@ -381,7 +391,7 @@ export function chatRoutes({ getSelection } = {}) {
           const prompt = await buildPrompt(ctx, body, state);
           const images = (body.attach?.refs ?? []).filter((r) => r.kind === "image").map((r) => path.join(ctx.dir, r.value));
           const model = custom ? "" : validModel(body.model);
-          const { cmd, args } = custom ? customArgv(custom.command, prompt) : agentCommand(agent, { prompt, resume: body.resume, root: rootOf(ctx.dir), images, model, permission: { port: req.socket.localPort, runId: id } });
+          const { cmd, args } = custom ? customArgv(custom.command, prompt) : agentCommand(agent, { prompt, resume: body.resume, root: rootOf(ctx.dir), images, model, run: { port: req.socket.localPort, runId: id } });
           let proc;
           try {
             // Windows: claude/codex are .cmd wrappers so a shell is needed, and there is no process-group kill so detached is not used.
@@ -483,7 +493,7 @@ export function chatRoutes({ getSelection } = {}) {
         },
       ],
       ["GET", "/api/chat", async (req, res, url) => sendJson(res, 200, { events: runs.get(url.searchParams.get("id"))?.events ?? [] })],
-      // Claude Code asks (through bin/mcp.mjs --permission, header X-Easel-Run): a card in the chat, or an answer right away when
+      // Claude Code asks (through bin/mcp.mjs --chat, header X-Easel-Run): a card in the chat, or an answer right away when
       // a remembered "Always allow" rule covers it. The MCP tool then polls GET until the user answers
       [
         "POST",

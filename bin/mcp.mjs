@@ -2,7 +2,8 @@
 // AI-generated with Claude Code, 2026-10-09, reviewed by Hyun Park
 // MCP server (stdio): exposes boards, selection, screenshots, comments and placement through the app server API (http://localhost:<port>). PLAN.md ch. 6.
 // The agent creates and edits HTML by writing files directly. This server only observes, points at things, and places boards.
-// With --permission it exposes a single tool instead: the permission prompt of an in-app chat run, answered in the Easel chat.
+// With --chat (an in-app Claude Code run) it also carries the run's permission prompt, answered in the Easel chat, under the name easel-chat;
+// --permission (older) carries only that permission tool.
 // No port needed: the canvas for the folder the agent runs in is found through the registry (server/registry.mjs) on each call.
 import { readFileSync } from "node:fs";
 import fs from "node:fs/promises";
@@ -69,12 +70,14 @@ async function call(method, path, body) {
 const callJson = async (m, p, b) => JSON.parse(await call(m, p, b));
 const ok = (data) => ({ content: [{ type: "text", text: typeof data === "string" ? data : JSON.stringify(data, null, 2) }] });
 
-// --permission: started by an in-app Claude Code run (inline --mcp-config) for its permission prompts only, under its own name
-const server = new McpServer({ name: args.permission ? "easel-chat" : "easel", version: pkg.version });
-/** The canvas tools; none of them in --permission mode (the project's own easel server already has them) */
-const tool = args.permission ? () => {} : (...a) => server.registerTool(...a);
+// --chat: started by an in-app Claude Code run (inline --mcp-config), bound to its canvas and run: the canvas tools and the permission tool,
+// under a name of its own (the run denies any other easel server, so the model sees one set). --permission: the permission tool only
+const permissionOnly = args.permission && !args.chat;
+const server = new McpServer({ name: args.chat || args.permission ? "easel-chat" : "easel", version: pkg.version });
+/** The canvas tools; none of them in --permission mode */
+const tool = permissionOnly ? () => {} : (...a) => server.registerTool(...a);
 
-if (args.permission)
+if (args.chat || args.permission)
   server.registerTool(
     "permission",
     {
@@ -344,7 +347,7 @@ let leaving = false;
 const leave = async () => {
   if (leaving) return;
   leaving = true;
-  if (!args.permission && port)
+  if (!permissionOnly && port)
     await fetch(`http://127.0.0.1:${port}/api/boards/release`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ client: CLIENT }), signal: AbortSignal.timeout(1000) }).catch(() => {});
   process.exit(0);
 };
