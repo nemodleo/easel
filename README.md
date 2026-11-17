@@ -2,29 +2,31 @@
 
 # Easel
 
-**An infinite canvas for HTML screens. Your AI agent writes the designs; you see and tweak them live.**
+**A design canvas where your coding agents and you work on the same real HTML.**
+
+No export, no hand-off, no design file: screens are HTML files in your repo, and Claude Code, Codex, Cursor and Gemini edit them on the same canvas you do.
 
 [![npm](https://img.shields.io/npm/v/easel-canvas.svg?color=black)](https://www.npmjs.com/package/easel-canvas)
 [![License: MIT](https://img.shields.io/badge/license-MIT-black.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%E2%89%A520-black.svg)](package.json)
 [![MCP](https://img.shields.io/badge/MCP-22%20tools-3E7BFA.svg)](#connect-your-ai-agent)
-[![Works with](https://img.shields.io/badge/works%20with-Claude%20Code%20·%20Codex-3E7BFA.svg)](#connect-your-ai-agent)
+[![Works with](https://img.shields.io/badge/works%20with-Claude%20Code%20·%20Codex%20·%20Cursor%20·%20Gemini-3E7BFA.svg)](#connect-your-ai-agent)
 
-<img src="docs/screenshots/demo.gif" alt="Demo: editing text in place on a mobile screen, then asking Claude Code in the AI tab to rename a heading and recolor a bar; the board redraws with the change" width="100%">
+<img src="docs/screenshots/demo.gif" alt="Demo: the Intercut No.14 film festival identity on one canvas, then a zoom to its phone app; retyping the spliced title on My cut in place and taking it back, changing the ticket bar's fill to a token, asking Claude Code in the AI tab to turn the home screen into the ticket while the board redraws red with the QR code and the chat lists its tool calls, check_tokens among them; undoing and redoing that whole run, then exporting a view-only copy from Share" width="100%">
 
-<sub>A real Claude Code run on the bundled demo (the agent's thinking time is sped up 4×).</sub>
+<sub>A real Claude Code run on the bundled demo. The agent's working time is sped up 16× (about 93 seconds shown in 6); everything else plays at real speed.</sub>
 
 </div>
 
-Easel turns a folder of plain HTML files into a design canvas. Claude Code or Codex writes a screen, and it shows up on the canvas a moment later. Drag, resize, retype or restyle anything on the canvas, and **only that part of the source file changes**. There is no export step and no proprietary file format: your designs stay in your repo as HTML and merge with git like any other code.
+Easel turns a folder of plain HTML files into a design canvas. Your agent writes a screen and it shows up on the canvas a moment later. Drag, resize, retype or restyle anything on the canvas, and **only that part of the source file changes**. Your designs stay in your repo as HTML and merge with git like any other code.
 
 ## Try it in 30 seconds
 
 ```bash
-npx easel-canvas --demo
+npx easel-canvas@latest --demo
 ```
 
-That copies the "Tidy" habit tracker demo to `./easel-demo` and opens it at http://localhost:4317. Open the **AI** tab (⌘J) and ask Claude Code or Codex for a change, or click anything on a screen and start editing.
+That copies the demo to `./easel-demo` and opens it at http://localhost:4317: Intercut No.14, a film festival identity with a phone app, a desktop timetable and campaign pieces, 12 boards set in bundled open-licence fonts. Click anything on a screen and start editing, or open the **AI** tab (⌘J) and ask your agent for a change. (`@latest` makes npx fetch the newest version instead of reusing a copy it cached; see [Updates](#updates).)
 
 Already have HTML screens? Run it in your project:
 
@@ -36,28 +38,41 @@ npx easel-canvas --dir ./designs  # any folder of screens/*.html
 
 ## Why Easel
 
-- **HTML is the source of truth.** Each `screens/*.html` file is one board. What you see is exactly what ships to the browser, and there's nothing to export or keep in sync.
-- **Built for AI agents.** An MCP server with 22 tools lets agents see the boards, read what you selected, leave comments, check tokens and arrange the canvas. An in-app chat runs `claude -p`, `codex exec`, `cursor-agent -p`, `gemini -p` or your own command with your selection as context; Claude Code's permission requests come up as cards you answer in the chat.
-- **Surgical edits.** Changes are patched into the exact source range (parse5 locations), so formatting, comments and the rest of the file stay untouched. If an agent edits the same element first, your edit is rejected instead of overwriting it.
-- **Git-friendly by design.** Layout, notes and comments live in small JSON files written one entry per line, so two branches moving different boards merge without conflicts.
-- **Local-first.** It runs on `127.0.0.1` and works directly on the files in your repo. No account, no cloud, no lock-in.
+- **HTML is the source of truth.** Each `screens/*.html` file is one board. What you see is what ships to the browser, with nothing to export or keep in sync.
+- **Built for AI agents.** An MCP server with 22 tools lets agents see the boards, read your selection, comment, check tokens and arrange the canvas. The in-app chat runs Claude Code, Codex, Cursor Agent, Gemini CLI or your own command with your selection as context. A Claude Code run started there carries Easel's tools for that canvas without `connect`, and its permission requests come up as cards you answer there.
+- **Several agents and people, no overwrites.** One writer per board: a second agent gets a fork beside it, not your file. Every change is tagged with who made it, and an agent's whole run undoes in one step.
+- **Surgical edits.** Changes are patched into the exact source range (parse5 locations), so formatting, comments and the rest of the file stay as they were. If an agent changed the same element first, your edit is refused instead of overwriting it.
+- **A copy anyone can open.** Share exports a view-only canvas you can host anywhere, or one `.html` file to attach to a message or a PR.
+- **Git-friendly.** Layout, notes and comments live in small JSON files, one entry per line, so branches that move different boards merge without conflicts.
+- **Local-first.** It runs on `127.0.0.1` against the files in your repo. No account, no cloud, no lock-in.
 
 ## Features
 
 <table>
   <tr>
-    <td colspan="2"><img src="docs/screenshots/overview.png" alt="Easel showing a habit tracker app: five mobile screens on an infinite canvas with notes and flow arrows, the board list card at the left and the inspector card at the right with token and accessibility checks"></td>
+    <td colspan="2"><img src="docs/screenshots/overview.png" alt="Easel showing the Intercut No.14 film festival identity: the brand sheet and the site's first screen, the phone app's seven screens joined by flow arrows, the desktop timetable and sticky notes on one canvas, the board list card at the left and the inspector card at the right with the Brand sheet's position, options, token check and accessibility check"></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/screenshots/select.png" alt="A card selected inside a mobile screen, its element toolbar (Text, Fill, Radius, Spacing, Ask AI, Comment) in the line above the dock, and the inspector with the breadcrumb, Fill, Text, Corner radius, Padding and Gap"></td>
-    <td width="50%"><img src="docs/screenshots/ai-chat.png" alt="AI chat in the inspector card: a reply from Claude Code with Read and Edit tool lines, Undo this run and Compare, and the edited Today screen on the canvas"></td>
+    <td colspan="2"><b>See every screen at once.</b> Each HTML file in <code>screens/</code> is a board on one canvas, next to notes and arrows, with token and accessibility checks for the one you pick.</td>
   </tr>
   <tr>
-    <td><b>Edit in place.</b> Select any element, drag it, resize it, align it, retype its text or change its styles. Layers, wrap in flex/grid, cross-board copy and paste.</td>
-    <td><b>Chat with your agent.</b> Pick Claude Code or Codex, send the selection, boards and comments as context, watch the edit stream in, ask for N variants side by side.</td>
+    <td width="50%"><img src="docs/screenshots/select.png" alt="The Show ticket bar selected inside the My cut phone screen, its element toolbar (Text, Fill, Radius, Spacing, Ask AI, Comment) in the line above the dock, and the inspector with the breadcrumb, Fill set to the Safelight token with its contrast, Text, Corner radius, Padding and Gap"></td>
+    <td width="50%"><img src="docs/screenshots/ai-chat.png" alt="AI chat in the inspector card after a real Claude Code run: its reply about turning My cut into the ticket with a larger scannable QR code, Changed 1 board with Undo this run and Compare, and the My cut screen redrawn red with the QR code next to the Film and Ticket screens, under a Claude Code activity tag"></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/screenshots/dark-mode.png" alt="Dark mode with a board context menu: Select inside, Ask AI for a review, Focus view, Ask AI, Go to board, Rename, Rename file, Duplicate, Bring to front, Send to back, Delete"></td>
+    <td><b>Edit the real screen.</b> Click any element to drag, resize, align, retype or restyle it; only that part of the HTML changes. Layers, wrap in flex or grid, copy and paste across boards.</td>
+    <td><b>Ask your agent.</b> Claude Code, Codex, Cursor Agent or Gemini CLI get your selection, boards and comments as context. Watch the board redraw, ask for variants side by side, and undo the whole run in one step.</td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/agents.png" alt="Two agents on one canvas: the Social square held by Claude Code (Claude Code is editing…) and Codex working on a fork beside it, Social square · Codex (Codex is editing…), with a dashed arrow back, the note Forked — Codex started while Claude Code was editing, and Use this one on both"></td>
+    <td width="50%"><img src="docs/screenshots/share.png" alt="The Share popover under the inspector header with Selected boards (2): Web folder exported to intercut/easel-export/ with Reveal and Copy deploy command, One .html file, PDF and PNG, and the matching npx easel-canvas export --boards home.html,ticket.html command"></td>
+  </tr>
+  <tr>
+    <td><b>Work alongside several agents.</b> One writer per board: a second agent works on a fork beside it, every change is tagged with who made it, and Use this one keeps the version you want.</td>
+    <td><b>Share a view-only copy.</b> Export the canvas, a page or the selected boards as a static site to host anywhere, or as one <code>.html</code> file to attach; PDF and PNG too.</td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/dark-mode.png" alt="Dark mode on the film festival's phone screens with the Ticket board's context menu: Select inside, Ask AI for a review, Focus view, Ask AI, Go to board, Rename, Rename file, Duplicate, Bring to front, Send to back, Delete"></td>
     <td width="50%">
       <b>Everything a canvas should do.</b>
       <ul>
@@ -81,6 +96,8 @@ Then, in your project folder:
 ```bash
 npx easel-canvas connect
 ```
+
+The in-app chat does not need this for Claude Code: each run it starts gets its own copy of these tools, bound to that canvas and that run, and a project's `easel` server is set aside for the run so the agent sees one set. Codex, Cursor Agent and Gemini CLI runs from the chat use the tools only once the project is connected.
 
 It adds the Easel MCP server to your agents' configs and leaves everything else in those files as it was: `.mcp.json` (Claude Code), `.cursor/mcp.json` (Cursor) and `.gemini/settings.json` (Gemini CLI) in the project, and `[mcp_servers.easel]` in `~/.codex/config.toml` (Codex). Cursor, Gemini CLI and Codex are written only when they are found on your machine; pick agents with `--agents claude,cursor,gemini,codex`, or preview with `--dry-run`. Restart your agent afterwards.
 
@@ -113,8 +130,8 @@ Using Easel as a submodule (below)? Point `args` at `tools/easel/bin/mcp.mjs` wi
 Then try:
 
 > "Fix what I selected on the canvas: make the button text shorter."
-> "Make three variants of the Stats screen."
-> "Create an onboarding screen at 390×844 and put it next to Today."
+> "Make three variants of the sign-up screen."
+> "Create an onboarding screen at 390×844 and put it next to Home."
 
 New files with `<meta name="board-size" content="390x844">` are placed on the canvas automatically at that size.
 
@@ -128,7 +145,7 @@ The same from the terminal, with no canvas running (it works in CI):
 npx easel-canvas export                          # web folder in ./easel-export
 npx easel-canvas export --single-file            # one self-contained .html
 npx easel-canvas export --page Onboarding --pdf --png
-npx easel-canvas export --boards home.html,stats.html --out dist/design-preview
+npx easel-canvas export --boards home.html,ticket.html --out dist/design-preview
 ```
 
 Exporting again replaces what the previous export of the same kind wrote there (a small `.easel-export.json` lists it) and leaves anything else in the folder alone; a non-empty folder Easel did not create is never cleared. Dot folders (`.easel/`, `.thumbs/`…) and files outside the design folder are never copied. A single file inlines the screens' images, fonts, CSS and scripts but not HTML embedded with `<iframe>`; the export lists what it skipped.
@@ -189,7 +206,7 @@ npm run design           # http://localhost:4317
 | AI permissions | When Claude Code wants to run a command or edit outside what it may, the chat shows the exact request: Allow once, Always allow (that tool, or a command's first two words, until Easel restarts; never for file edits, for commands with `;` `&&` `\|` `>` and the like, or for `sh -c`-style wrappers), or Deny |
 | Undo an AI run | Each run that changed files ends with the boards it changed and added: Undo this run (one step, ⌘Z brings it back; asks first if you changed one of them since), Redo, Compare before and after. After a restart: Restore the copy from before this run (the newest 10 are kept) |
 | Custom agent | Agent menu › Custom command…: a name and a command with `{prompt}`, e.g. `aider --message {prompt} --yes`. Saved in `~/.easel/agents.json` (not in the project), run without a shell, output shown as plain text |
-| Screen | F6 to move between regions, Tab to move between boards, ⌘\\ to fold the left card, Appearance (System · Light · Dark) |
+| Screen | F6 to move between regions, Tab to move between boards, ⌘\\ to fold both cards away and back, Appearance (System · Light · Dark) |
 
 </details>
 
@@ -208,6 +225,10 @@ your-project/docs/design/
 - The canvas is a Vite + React app. Each board is an iframe of the real HTML, so scripts, links and CSS behave exactly as in a browser.
 - The server listens on 127.0.0.1 only and refuses changes (and the live connection) from other web pages open in your browser: only requests with no `Origin` (the CLI, the MCP server) or from the canvas page itself, on a local host name, get through. Boards are your project's own HTML and run inside the canvas page, with the same access to it as you have, so open only design folders you trust.
 
+## Easel and Claude Design
+
+Claude Design makes designs inside Claude, as artifacts. Easel keeps them as HTML files in your repo, edited by whichever agent you use, and exports a static copy when you want to show them. A feature-by-feature comparison is in [PARITY.md](PARITY.md) (last checked on 2026-10-09, before 0.2.0).
+
 ## Development
 
 ```bash
@@ -215,10 +236,11 @@ npm test             # unit tests (source patching, board format, chat parsing, 
 npm run test:e2e     # Playwright end-to-end tests against test/fixtures/design
 npm run typecheck
 npm run demo         # run the repo's demo from source
+npm run design:css   # rebuild docs/design/assets/easel.css after changing app/src/style.css, so the boards in docs/design keep matching the app
 ```
 
 - `test/fixtures/design/` intentionally keeps Korean screen content and board titles: it mimics real user content and is needed to test Korean text input (IME) and rendering. Set `DESIGN_CANVAS_E2E_DIR=<folder>` to run the e2e tests against another design folder.
-- `examples/demo/` is the "Tidy" demo used for the screenshots above.
+- `examples/demo/` is Intercut No.14, the project `--demo` copies and the one in the demo video and the screenshots above. Its two fonts are bundled under the SIL Open Font License (see [License](#license)).
 
 | Folder | Contents |
 | --- | --- |
@@ -226,11 +248,14 @@ npm run demo         # run the repo's demo from source
 | `server/` | API and routes, board.json, file watching, element paths and hashes, source patching, history, chat runner, tokens |
 | `app/` | Canvas UI (Vite + React + TypeScript); all UI text lives in `app/src/strings.ts` |
 | `test/` | `node --test` unit tests and Playwright e2e tests |
+| `tools/` | Repo maintenance scripts, not shipped: `mkcss.mjs` builds the design boards' stylesheet from the app's |
 
-Background reading: the original plan is in [PLAN.md](PLAN.md), a feature-by-feature comparison with Claude Design is in [PARITY.md](PARITY.md), and the work log is in [tasks.md](tasks.md).
+Background reading: the original plan is in [PLAN.md](PLAN.md) and the work log is in [tasks.md](tasks.md).
 
 Contributions are welcome: open an issue or a pull request.
 
 ## License
 
 [MIT](LICENSE) © Hyun Park
+
+The demo bundles two fonts in `examples/demo/assets/fonts/`, each under the [SIL Open Font License 1.1](https://openfontlicense.org) with its licence text beside it: [Anton](https://github.com/googlefonts/AntonFont) (`OFL-Anton.txt`) and [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) (`OFL-JetBrainsMono.txt`), both taken from the Fontsource 5.3.0 packages.

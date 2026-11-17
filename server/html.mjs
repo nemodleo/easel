@@ -57,7 +57,7 @@ export function textOf(node) {
   return (node.childNodes ?? []).map(textOf).join("");
 }
 
-// Block elements read as separate words in a label: "Meditate" + "10 min" is "Meditate 10 min", not "Meditate10 min"
+// Block elements read as separate words in a label: "Salt Winter" + "19:30" is "Salt Winter 19:30", not "Salt Winter19:30"
 const BLOCK = new Set("address article aside blockquote dd div dl dt figcaption figure footer form h1 h2 h3 h4 h5 h6 header li main nav ol p pre section table td th tr ul".split(" "));
 
 /** Text for showing an element by name (layers list): like textOf, with a space between block children */

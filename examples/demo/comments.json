@@ -3,19 +3,39 @@
     {
       "id": "c1",
       "file": "home.html",
-      "path": "0/3",
-      "text": "Can we show progress as a ring here instead of text?",
-      "author": "Alex",
-      "createdAt": "2026-10-10T09:00:00.000Z",
+      "path": "0/5",
+      "text": "Can the ticket bar show the seat too? In the queue people look for F12, not the doors time.",
+      "author": "Mara",
+      "createdAt": "2027-02-18T09:00:00.000Z",
       "resolved": false,
       "replies": [
         {
           "id": "r1",
           "author": "Sam",
-          "text": "Trying it in the Stats board first.",
-          "createdAt": "2026-10-10T09:20:00.000Z"
+          "text": "Yes, and keep Doors on the right. Asking the agent.",
+          "createdAt": "2027-02-18T09:20:00.000Z"
         }
       ]
+    },
+    {
+      "id": "c2",
+      "file": "timetable.html",
+      "path": "0/2/4/5",
+      "text": "Mirror Weather overlaps Salt Winter by 22 min. Hatch the overlap here like the Clash screen does.",
+      "author": "Mara",
+      "createdAt": "2027-02-18T10:05:00.000Z",
+      "resolved": false,
+      "replies": []
+    },
+    {
+      "id": "c3",
+      "file": "programme.html",
+      "path": "0/3",
+      "text": "Add a \"Free now\" filter next to All: only films I can still make tonight without a clash.",
+      "author": "Jon",
+      "createdAt": "2027-02-19T08:40:00.000Z",
+      "resolved": false,
+      "replies": []
     }
   ]
 }

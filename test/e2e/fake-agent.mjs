@@ -1,7 +1,7 @@
 // AI-generated with Claude Code, 2026-10-09 and 2026-11-11, reviewed by Hyun Park
 // Fake agent for e2e: prints output shaped like claude -p --output-format stream-json and edits screens/scr-02.html.
 // If the request contains "go slow", it waits 30 seconds (cancel test). "ask permission" first asks to run `npm install lucide-static`
-// through the real permission tool (bin/mcp.mjs --permission, as Claude Code would) and reports the answer; "then stop" ends there.
+// through the real permission tool (bin/mcp.mjs --chat, the run's own server, as Claude Code would) and reports the answer; "then stop" ends there.
 // "markdown answer" streams a markdown reply; "two boards" also edits screens/scr-15.html.
 import fs from "node:fs";
 import path from "node:path";
@@ -25,7 +25,7 @@ if (prompt.includes("ask permission")) {
   const { StdioClientTransport } = await import("@modelcontextprotocol/sdk/client/stdio.js");
   const tool = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../bin/mcp.mjs");
   const client = new Client({ name: "claude-code", version: "1.0.0" });
-  await client.connect(new StdioClientTransport({ command: process.execPath, args: [tool, "--permission", "--port", process.env.DESIGN_CANVAS_PORT], env: { ...process.env }, stderr: "ignore" }));
+  await client.connect(new StdioClientTransport({ command: process.execPath, args: [tool, "--chat", "--port", process.env.DESIGN_CANVAS_PORT], env: { ...process.env }, stderr: "ignore" }));
   const input = { command: prompt.includes("with operators") ? "npm install lucide-static && rm -rf dist" : "npm install lucide-static", description: "Install the icon set" };
   out({ type: "assistant", message: { content: [{ type: "tool_use", name: "Bash", input }] } });
   const r = await client.callTool({ name: "permission", arguments: { tool_name: "Bash", input, tool_use_id: "toolu_fake" } });

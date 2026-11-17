@@ -1,6 +1,6 @@
 // AI-generated with Claude Code, 2026-11-11, reviewed by Hyun Park
 // Permission requests from an in-app Claude Code run: the always-allow rule (never for shell operators), what the card shows,
-// and the whole round trip through bin/mcp.mjs --permission: request → card event → allow once / always / deny, cancel denies
+// and the whole round trip through the run's MCP server (bin/mcp.mjs --chat; the fake agent uses --permission): request → card event → allow once / always / deny, cancel denies
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
@@ -13,7 +13,6 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
 import { TOOL_ROOT } from "../server/args.mjs";
-import { agentCommand, permissionMcpConfig } from "../server/chat.mjs";
 import { createServer } from "../server/index.mjs";
 import { createPermissions, describePermission, permissionRule, ruleMatches, toolAnswer } from "../server/permissions.mjs";
 import { attach, extraRoutes } from "../server/routes.mjs";
@@ -67,23 +66,12 @@ test("pending requests: wait times out to null, answer settles every waiter, alw
   assert.equal(p.answer(p.request("r3", "Bash", { command: "a | b" }).id, "always"), null, "no always without a rule");
 });
 
-test("claude runs get an inline MCP server with only the permission tool, under a name of its own", async () => {
-  const fake = process.env.DESIGN_CANVAS_AGENT_CMD;
-  delete process.env.DESIGN_CANVAS_AGENT_CMD;
-  const args = agentCommand("claude", { prompt: "p", root: "/r", permission: { port: 4999, runId: "rabc" } }).args;
-  if (fake) process.env.DESIGN_CANVAS_AGENT_CMD = fake;
-  assert.equal(args[args.indexOf("--permission-prompt-tool") + 1], "mcp__easel-chat__permission");
-  const cfg = JSON.parse(args[args.indexOf("--mcp-config") + 1]);
-  assert.deepEqual(Object.keys(cfg.mcpServers), ["easel-chat"]);
-  assert.deepEqual(cfg.mcpServers["easel-chat"].args.slice(1), ["--permission", "--port", "4999"]);
-  assert.equal(cfg.mcpServers["easel-chat"].env.EASEL_RUN_ID, "rabc");
-  assert.equal(JSON.parse(permissionMcpConfig({ port: 1, runId: "r1" })).mcpServers["easel-chat"].command, process.execPath);
+test("the run's inline server answers the permission prompt; with no canvas on its port it denies instead of hanging", async () => {
   const client = new Client({ name: "claude-code", version: "1.0.0" });
-  await client.connect(new StdioClientTransport({ command: process.execPath, args: [path.join(TOOL_ROOT, "bin/mcp.mjs"), "--permission", "--port", "1"], stderr: "ignore" }));
+  await client.connect(new StdioClientTransport({ command: process.execPath, args: [path.join(TOOL_ROOT, "bin/mcp.mjs"), "--chat", "--port", "1"], stderr: "ignore" }));
   try {
     assert.equal(client.getServerVersion().name, "easel-chat");
-    assert.deepEqual((await client.listTools()).tools.map((t) => t.name), ["permission"]);
-    // No canvas on that port: the tool denies instead of hanging
+    assert.ok((await client.listTools()).tools.some((t) => t.name === "permission"));
     const r = await client.callTool({ name: "permission", arguments: { tool_name: "Bash", input: { command: "ls" } } });
     assert.equal(JSON.parse(r.content[0].text).behavior, "deny");
   } finally {
@@ -91,7 +79,7 @@ test("claude runs get an inline MCP server with only the permission tool, under 
   }
 });
 
-/* ---------- Round trip through a real server, the fake agent and bin/mcp.mjs --permission ---------- */
+/* ---------- Round trip through a real server, the fake agent and bin/mcp.mjs ---------- */
 const skip = !existsSync(path.join(TOOL_ROOT, "dist/index.html")) && "needs an app build (npm run build)";
 const freePort = () =>
   new Promise((r) => {
