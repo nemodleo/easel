@@ -2,7 +2,7 @@
 // Several agents on one canvas, driven like a user: two MCP clients (the real bin/mcp.mjs, as Claude Code and Codex) write the same
 // board → a fork appears beside it with the arrow and both labels, list dots → both disconnect (done) → Use this one on the fork →
 // the original has the fork's content, the fork is in trash, the toast's Undo brings both back. Then the chat's variants: Use this →
-// confirm → toast → Undo, and Keep all.
+// confirm → toast → Undo, and Keep all. Last, three agents on one board: their two forks sit side by side in one row.
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -135,4 +135,26 @@ test("variants from the chat land in a free row; Use this → confirm → toast 
   await page.waitForFunction(() => !document.querySelector('.board[data-file^="scr-32"] .use-btn'));
   for (const f of files) assert.equal(await board(page, f).count(), 1);
   assert.deepEqual(env.errors, []);
+});
+
+test("three agents on one board: the two forks sit side by side in one row, each with its agent's tag", async () => {
+  const { page } = env;
+  const orig = await env.read("screens/f-3.html");
+  const agents = [await agent("claude-code"), await agent("codex-mcp-client"), await agent("cursor-vscode")];
+  const by = ["Claude Code", "Codex", "Cursor"];
+  try {
+    const rs = [];
+    for (const [i, a] of agents.entries()) rs.push(reply(await a.callTool({ name: "write_board", arguments: { file: "f-3.html", html: orig.replace("</body>", `<p>by ${by[i]}</p></body>`) } })));
+    assert.deepEqual(rs.map((r) => [r.file, r.forked]), [["f-3.html", false], ["f-3-codex.html", true], ["f-3-cursor.html", true]]);
+    const bd = JSON.parse(await env.read("board.json")).boards;
+    const [a, b] = [bd["f-3-codex.html"], bd["f-3-cursor.html"]];
+    assert.equal(b.y, a.y, "one row");
+    assert.equal(b.x, a.x + a.w + 80, "right beside the first fork");
+    for (const [f, who] of [["f-3.html", "Claude Code"], ["f-3-codex.html", "Codex"], ["f-3-cursor.html", "Cursor"]]) {
+      await board(page, f).locator(".occ-tag", { hasText: `${who} is editing…` }).waitFor({ timeout: 8000 });
+    }
+    assert.deepEqual(env.errors, []);
+  } finally {
+    for (const c of agents) await c.close();
+  }
 });
