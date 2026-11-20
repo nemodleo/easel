@@ -1,7 +1,8 @@
 // AI-generated with Claude Code, 2026-11-12, reviewed by Hyun Park
 // Several people and agents on one canvas: who is on which board (an in-app run, an MCP client going quiet or disconnecting, a person
-// in Edit mode), one writer per board (the fork decision, a fork beside the original, later writes redirected), "Use this" for forks
-// and variants as one undoable step, Keep all, origins surviving rename / duplicate / delete, and placement that keeps clear of notes
+// in Edit mode), one writer per board (the fork decision, a fork beside the original and later forks in one block with it, later writes
+// redirected), "Use this" for forks and variants as one undoable step, Keep all, origins surviving rename / duplicate / delete, and
+// placement that keeps clear of notes
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
@@ -12,10 +13,10 @@ import { after, before, test } from "node:test";
 
 import { stepName } from "../server/activity.mjs";
 import { TOOL_ROOT } from "../server/args.mjs";
-import { choiceGroup, decideWrite } from "../server/forks.mjs";
+import { choiceGroup, decideWrite, forkSiblings } from "../server/forks.mjs";
 import { createServer } from "../server/index.mjs";
 import { createOccupancy } from "../server/occupancy.mjs";
-import { besideSpot, freeRow, freeSpot, noteRect, placeNew } from "../server/place.mjs";
+import { besideSpot, forkSpot, freeRow, freeSpot, noteRect, obstacles, placeNew } from "../server/place.mjs";
 import { attach, extraRoutes } from "../server/routes.mjs";
 
 const skip = !existsSync(path.join(TOOL_ROOT, "dist/index.html")) && "needs an app build (npm run build)";
@@ -140,6 +141,71 @@ test("placement: forks, variants and new screens never land on a note or another
   assert.ok(placeNew(auto, { w: 390, h: 844 }).x > 470 + 200);
 });
 
+test("forks of one board form one block: a row beside the first fork, the next row under it when the row is blocked, following moved forks", () => {
+  const B = (x, y, extra = {}) => ({ x, y, w: 390, h: 844, ...extra });
+  const fork = (x, y, at, extra = {}) => B(x, y, { origin: { kind: "fork", of: "o.html", by: "A", at: `2026-11-19T10:00:0${at}Z` }, ...extra });
+  const spot = (bd, exists) => {
+    const at = forkSpot(bd, bd.boards["o.html"], forkSiblings(bd, "o.html", exists));
+    return [at.x, at.y];
+  };
+  // The first fork as before: right of the original when free, below when the row is full
+  const open = { pages: [], boards: { "o.html": B(0, 0) }, notes: {} };
+  assert.deepEqual(spot(open), [470, 0]);
+  const full = { pages: [], boards: { "o.html": B(0, 0), "p.html": B(470, 0), "q.html": B(940, 0) }, notes: {} };
+  assert.deepEqual(spot(full), [0, 964]);
+  // The second and third sit in one row beside the first, even where "below the original" or "right of the original" would differ
+  full.boards["f1.html"] = fork(0, 964, 1);
+  assert.deepEqual(spot(full), [470, 964]);
+  full.boards["f2.html"] = fork(470, 964, 2);
+  assert.deepEqual(spot(full), [940, 964]);
+  // A board in the next spot: the next row starts under the block's first fork
+  full.boards["r.html"] = B(1410, 964);
+  full.boards["f3.html"] = fork(940, 964, 3);
+  assert.deepEqual(spot(full), [0, 1928]);
+  // A note in the next spot does the same, and the new row keeps clear of what is under the block
+  const noted = { pages: [], boards: { "o.html": B(0, 0), "f1.html": fork(470, 0, 1) }, notes: { n: { kind: "sticky", x: 940, y: 100, w: 300, text: "In the way" }, m: { kind: "sticky", x: 470, y: 900, w: 300, h: 200, text: "Under" } } };
+  const [nx, ny] = spot(noted);
+  assert.equal(nx, 470);
+  assert.ok(ny >= 900 + 200 + 80, `new row past the note under the block: ${ny}`);
+  // Forks the person moved: the block follows them
+  const moved = { pages: [], boards: { "o.html": B(0, 0), "f1.html": fork(5000, 3000, 1), "f2.html": fork(5470, 3000, 2) }, notes: {} };
+  assert.deepEqual(spot(moved), [5940, 3000]);
+  // Scattered: the group holding the last-made fork is the block (an old fork dragged away alone does not pull the next one)
+  const scattered = { pages: [], boards: { "o.html": B(0, 0), "f1.html": fork(9000, 9000, 1), "f2.html": fork(470, 0, 2), "f3.html": fork(940, 0, 3) }, notes: {} };
+  assert.deepEqual(spot(scattered), [1410, 0]);
+  scattered.boards["f3.html"] = fork(-4000, 5000, 3); // the newest dragged away: the next joins it
+  assert.deepEqual(spot(scattered), [-3530, 5000]);
+  // A fork on another page, or whose file is gone, is not a sibling: placement starts from the original again
+  const paged = { pages: [{ id: "p1" }, { id: "p2" }], boards: { "o.html": B(0, 0), "f1.html": fork(470, 0, 1, { page: "p2" }), "f2.html": fork(5000, 5000, 2) }, notes: {} };
+  assert.deepEqual(spot(paged, (f) => f !== "f2.html"), [470, 0]);
+  assert.deepEqual(spot(paged), [5470, 5000], "with the file there, f2 is the block");
+  // Variants of the same board are not forks
+  const variants = { pages: [], boards: { "o.html": B(0, 0), "v1.html": B(5000, 0, { origin: { kind: "variant", of: "o.html" } }) }, notes: {} };
+  assert.deepEqual(spot(variants), [470, 0]);
+});
+
+test("forks on the demo: four agents on empty-day.html → two forks side by side below it, the third starts the next row; none covers a board or a note", async () => {
+  const bd = JSON.parse(await fs.readFile(path.join(TOOL_ROOT, "examples/demo/board.json"), "utf8"));
+  const o = bd.boards["empty-day.html"];
+  assert.deepEqual([o.x, o.y], [2430, 1320]);
+  const made = [];
+  for (let i = 1; i <= 3; i++) {
+    const at = forkSpot(bd, o, forkSiblings(bd, "empty-day.html"));
+    for (const ob of obstacles(bd)) {
+      const apart = at.x >= ob.x + ob.w + 80 || at.x + at.w + 80 <= ob.x || at.y >= ob.y + ob.h + 80 || at.y + at.h + 80 <= ob.y;
+      assert.ok(apart, `fork ${i} at ${at.x},${at.y} is clear of ${JSON.stringify(ob)}`);
+    }
+    made.push([at.x, at.y]);
+    bd.boards[`empty-day-${i}.html`] = { ...at, origin: { kind: "fork", of: "empty-day.html", by: `A${i}`, at: `2026-11-19T10:00:0${i}Z` } };
+  }
+  // (3370, 2935) is square.html, so the third fork starts the next row under the first
+  assert.deepEqual(made, [
+    [2430, 2935],
+    [2900, 2935],
+    [2430, 3899],
+  ]);
+});
+
 /* ---------- Through the server ---------- */
 let dir, app, base, ws;
 const events = [];
@@ -157,7 +223,7 @@ before(async () => {
   if (skip) return;
   dir = await fs.mkdtemp(path.join(os.tmpdir(), "dc-occ-"));
   await fs.mkdir(path.join(dir, "screens"));
-  for (const f of ["a", "b", "c", "v"]) await fs.writeFile(path.join(dir, `screens/${f}.html`), W(f.toUpperCase()));
+  for (const f of ["a", "b", "c", "d", "v"]) await fs.writeFile(path.join(dir, `screens/${f}.html`), W(f.toUpperCase()));
   await fs.writeFile(path.join(dir, "screens/c-codex.html"), W("taken")); // a fork name already in use
   await fs.writeFile(
     path.join(dir, "board.json"),
@@ -165,8 +231,8 @@ before(async () => {
       version: 1,
       title: "t",
       pages: [],
-      boards: { "a.html": { x: 0, y: 0, w: 390, h: 844, title: "Alpha" }, "b.html": { x: 3000, y: 0, w: 390, h: 844, title: "Beta" }, "c.html": { x: 6000, y: 0, w: 390, h: 844, title: "Gamma" }, "c-codex.html": { x: 9000, y: 0, w: 390, h: 844 }, "v.html": { x: 0, y: 3000, w: 390, h: 844, title: "Welcome" } },
-      order: ["a.html", "b.html", "c.html", "c-codex.html", "v.html"],
+      boards: { "a.html": { x: 0, y: 0, w: 390, h: 844, title: "Alpha" }, "b.html": { x: 3000, y: 0, w: 390, h: 844, title: "Beta" }, "c.html": { x: 6000, y: 0, w: 390, h: 844, title: "Gamma" }, "c-codex.html": { x: 9000, y: 0, w: 390, h: 844 }, "v.html": { x: 0, y: 3000, w: 390, h: 844, title: "Welcome" }, "d.html": { x: 12000, y: 0, w: 390, h: 844, title: "Delta" } },
+      order: ["a.html", "b.html", "c.html", "c-codex.html", "v.html", "d.html"],
       notes: { n1: { kind: "sticky", x: 470, y: 0, w: 300, text: "A note right of Alpha" } },
     }),
   );
@@ -245,6 +311,16 @@ test("two agents on one board: the second gets a fork beside it (clear of the no
   const busy = await api("POST", "/api/boards/use", { file: "a-codex.html" });
   assert.equal(busy.status, 409);
   assert.match(busy.body.error, /still editing/);
+});
+
+test("three more agents write one board at the same moment: each sees the forks made before it, so they line up in one row", { skip }, async () => {
+  assert.equal((await api("POST", "/api/boards/write", { file: "d.html", html: W("Delta by Claude") }, as("Claude Code", "mcp-cc"))).body.forked, false);
+  const rs = await Promise.all(["Codex", "Cursor", "Gemini CLI"].map((a) => api("POST", "/api/boards/write", { file: "d.html", html: W(`Delta by ${a}`) }, as(a, `mcp-${a}`))));
+  assert.deepEqual(rs.map((r) => [r.status, r.body.forked]), [[200, true], [200, true], [200, true]]);
+  const bd = await board();
+  const spots = rs.map((r) => [bd.boards[r.body.file].x, bd.boards[r.body.file].y]).sort((p, q) => p[0] - q[0]);
+  assert.deepEqual(spots, [[12470, 0], [12940, 0], [13410, 0]], "one row, no two on one spot");
+  for (const a of ["Codex", "Cursor", "Gemini CLI"]) await api("POST", "/api/boards/release", { client: `mcp-${a}` });
 });
 
 test("Use this one on the fork: its content becomes the original (name, title, position, comments stay), the fork goes to trash; one Undo brings both back", { skip }, async () => {

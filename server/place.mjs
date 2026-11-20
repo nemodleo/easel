@@ -67,6 +67,31 @@ export function besideSpot(board, o) {
   return down.y - o.y < right.x - o.x ? down : right;
 }
 
+/** Two boxes count as one block when the gap between them is at most half their sizes (forks placed side by side or in rows are) */
+const near = (a, b) => a.x < b.x + b.w + (a.w + b.w) / 2 && b.x < a.x + a.w + (a.w + b.w) / 2 && a.y < b.y + b.h + (a.h + b.h) / 2 && b.y < a.y + a.h + (a.h + b.h) / 2;
+
+/**
+ * Spot for a new fork of board o, given its existing forks on the same page (sibs: { x, y, w, h, at }). The forks of one board form
+ * one block: the first goes beside the original (besideSpot); a later one goes right of the last fork in the block's lowest row when
+ * that exact spot is free, otherwise it starts the block's next row, under the block's first column, at the first free spot going down.
+ * The block is the group of forks lying near one another that holds the last-made one, so it follows forks the person has moved, and a
+ * fork dragged away on its own does not pull the next one after it unless it is the newest.
+ */
+export function forkSpot(board, o, sibs = []) {
+  if (!sibs.length) return besideSpot(board, o);
+  const latest = sibs.reduce((a, b) => (String(b.at ?? "") > String(a.at ?? "") ? b : a));
+  const block = [latest];
+  for (let i = 0; i < block.length; i++) for (const s of sibs) if (!block.includes(s) && near(s, block[i])) block.push(s);
+  const low = block.reduce((a, b) => (b.y > a.y ? b : a));
+  const last = block.filter((s) => Math.abs(s.y - low.y) < low.h / 2).reduce((a, b) => (b.x > a.x ? b : a));
+  const x = last.x + last.w + GAP_X;
+  const right = freeSpot(board, { x, y: last.y, w: o.w, h: o.h }, { page: o.page });
+  if (right.x === Math.round(x) && right.y === Math.round(last.y)) return right;
+  const left = Math.min(...block.map((s) => s.x));
+  const bottom = Math.max(...block.map((s) => s.y + s.h));
+  return freeSpot(board, { x: left, y: bottom + GAP_Y, w: o.w, h: o.h }, { dir: "down", page: o.page });
+}
+
 /** Spot for a new screen: right of the last auto-placed board, otherwise a new row below everything; either way clear of boards and notes */
 export function placeNew(board, size, page) {
   const all = Object.values(board.boards);

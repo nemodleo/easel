@@ -12,7 +12,7 @@ import { isTrackedRel } from "./copies.mjs";
 import { rootOf, toPosix, writeAtomic } from "./fsutil.mjs";
 import { requestScope } from "./history.mjs";
 import { readBody, safeJoin, sendJson } from "./index.mjs";
-import { besideSpot } from "./place.mjs";
+import { forkSpot } from "./place.mjs";
 
 const read = (p) => fs.readFile(p, "utf8").catch(() => null);
 /** A board name a request may use: an .html under screens/, no dot segments */
@@ -49,7 +49,19 @@ export function choiceGroup(board, file) {
   return alts.length ? { original: file, kind: "fork", chosen: file, alts } : null;
 }
 
-/** Creates the fork of file for agent by (html: its first content) beside the original, as one history step; returns its file name */
+/** The forks of file already on the canvas, on the original's page, whose files exist: where the next fork joins them */
+export function forkSiblings(board, file, exists = () => true) {
+  const first = board.pages?.[0]?.id;
+  const pageOf = (it) => it?.page ?? first;
+  return Object.entries(board.boards)
+    .filter(([f, b]) => b.origin?.kind === "fork" && b.origin.of === file && pageOf(b) === pageOf(board.boards[file]) && exists(f))
+    .map(([, b]) => ({ x: b.x, y: b.y, w: b.w, h: b.h, at: b.origin.at }));
+}
+
+/**
+ * Creates the fork of file for agent by (html: its first content) beside the original, or in one block with its earlier forks, as one
+ * history step; returns its file name. Callers run inside store.exclusive, so a second fork made right after sees the first one
+ */
 export async function createFork(ctx, file, { by, whileBy, html }) {
   const { board } = await ctx.store.syncBoardNow();
   const { origin, autoPlaced, x, y, title, ...o } = board.boards[file] ?? { x: 0, y: 0, w: 390, h: 844 };
@@ -57,8 +69,9 @@ export async function createFork(ctx, file, { by, whileBy, html }) {
   const name = await uniqueName(ctx.store.screensDir, `${stem}-${slug(by)}.html`);
   const p = safeJoin(ctx.store.screensDir, name);
   await fs.mkdir(path.dirname(p), { recursive: true });
+  const sibs = forkSiblings(board, file, (f) => existsSync(path.join(ctx.store.screensDir, f)));
   await writeAtomic(p, html);
-  const at = besideSpot(board, { ...o, x, y });
+  const at = forkSpot(board, { ...o, x, y }, sibs);
   await commitBoard(
     ctx,
     `Fork ${file} for ${by}`,
