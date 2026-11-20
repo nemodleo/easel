@@ -192,17 +192,18 @@ test("forks on the demo: four agents on empty-day.html → two forks side by sid
   for (let i = 1; i <= 3; i++) {
     const at = forkSpot(bd, o, forkSiblings(bd, "empty-day.html"));
     for (const ob of obstacles(bd)) {
-      const apart = at.x >= ob.x + ob.w + 80 || at.x + at.w + 80 <= ob.x || at.y >= ob.y + ob.h + 80 || at.y + at.h + 80 <= ob.y;
+      const apart = at.x >= ob.x + ob.w + 80 || at.x + at.w + 80 <= ob.x || at.y >= ob.y + ob.h + 120 || at.y + at.h + 120 <= ob.y;
       assert.ok(apart, `fork ${i} at ${at.x},${at.y} is clear of ${JSON.stringify(ob)}`);
     }
     made.push([at.x, at.y]);
     bd.boards[`empty-day-${i}.html`] = { ...at, origin: { kind: "fork", of: "empty-day.html", by: `A${i}`, at: `2026-11-19T10:00:0${i}Z` } };
   }
-  // (3370, 2935) is square.html, so the third fork starts the next row under the first
+  // 120 under the blue note's estimated bottom (2815.3, rounded up); (3370, 2936) is beside square.html (3370, 2120, 1080 × 1080), so
+  // the third fork starts the next row under the first
   assert.deepEqual(made, [
-    [2430, 2935],
-    [2900, 2935],
-    [2430, 3899],
+    [2430, 2936],
+    [2900, 2936],
+    [2430, 3900],
   ]);
 });
 

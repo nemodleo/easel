@@ -967,11 +967,15 @@ button.danger { color: var(--warn); }
 .play-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 88%, var(--text)); }
 .play-btn:active:not(:disabled) { background: color-mix(in srgb, var(--accent) 76%, var(--text)); }
 .play-btn svg { fill: currentColor; }
-/* 6 · On the boards. Tags above a board's title: who (glyph and name), when, how many; they wrap and the label grows upward */
+/* 6 · On the boards. Tags above a board's title: who (glyph and name), when, how many; they wrap and the label grows upward. On forks and
+   their originals the tags are one row that never wraps (the activity tags shrink first, the occupancy tag stays), and zoomed out
+   (compact) their label is one row: the title, or for a fork its agent */
 .board-label .lab-row { display: flex; align-items: center; gap: 4px; width: 100%; min-width: 0; }
 .board-label.tagged { height: auto; min-height: 56px; flex-direction: column; align-items: flex-start; justify-content: flex-end; gap: 4px; }
 .board-label.tagged .lab-row { flex: none; height: 24px; }
 .act-tags { flex: none; display: flex; flex-wrap: wrap; gap: 4px; max-width: 100%; }
+.board-label.fork-scene .act-tags { flex-wrap: nowrap; overflow: hidden; }
+.board-label.fork-scene .act-tags > .occ-tag { flex-shrink: 0; }
 .act-tag, .occ-tag { position: relative; flex: 0 1 auto; display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; height: 24px; padding: 0 8px 0 6px; border: 0; border-radius: 8px; background: var(--panel); color: var(--text); font-size: 12px; line-height: 16px; font-weight: 600; white-space: nowrap; }
 .act-tag { cursor: pointer; }
 .act-tag::before { content: ""; position: absolute; inset: -2px 0; } /* 24 drawn, 28 to hit */
@@ -985,6 +989,9 @@ button.danger { color: var(--warn); }
 .occ-tag.you .idot { background: var(--select); }
 .occ-tag.done { background: transparent; color: var(--muted); font-weight: 400; }
 .occ-tag .spinner { width: 12px; height: 12px; margin: 0 2px; color: var(--text); }
+.board-label .occ-tag.fork-who { margin-left: -6px; }
+.board-label .occ-tag.fork-who.done { color: var(--text); font-weight: 600; }
+.board.selected .occ-tag.fork-who { color: var(--select); }
 /* The tag's popover: who and when, the change, Before / After and Undo, on the shared surface */
 .callout { position: fixed; z-index: 260; width: 288px; max-width: calc(100vw - 16px); display: flex; flex-direction: column; gap: 8px; padding: 4px 8px 12px 16px; border-radius: 12px; background: var(--panel); box-shadow: var(--float); line-height: 16px; }
 .callout-top { display: flex; align-items: center; gap: 6px; min-width: 0; height: 28px; font-size: 12px; font-weight: 600; }
@@ -1006,7 +1013,8 @@ button.danger { color: var(--warn); }
 .lab-row:has(.board-btns.pinned) .board-file { display: none; } /* the file name gives way, so the title keeps a few letters */
 .lab-row:has(.board-btns.pinned) .board-title { flex: 1 1 auto; min-width: 3em; }
 .board:not(:hover):not(.selected):not(.editing) .board-btns.pinned > :not(.use-btn) { display: none; }
-.oc .board-btns .use-btn { width: auto; gap: 4px; padding: 0 8px; }
+.oc .board-btns .icon-btn.use-btn { width: auto; gap: 4px; padding: 0 8px; } /* wins over the 24px .icon-btn below */
+.oc .board-btns .icon-btn.use-btn.icon-only { width: 24px; padding: 0; }
 .board-btns .use-label { font-size: 12px; font-weight: 600; }
 .oc .board-btns .use-btn.pressed { background: var(--pressed); }
 .board-btns .use-btn[aria-disabled="true"] { opacity: 0.4; cursor: default; }
@@ -1018,12 +1026,11 @@ button.danger { color: var(--warn); }
 .confirm .btn { height: 28px; padding: 0 8px; border: 0; border-radius: 8px; background: var(--panel-2); color: var(--text); font-size: 13px; }
 .confirm .btn.oc-strong { font-weight: 600; }
 .confirm .btn.oc-plain { background: transparent; }
-/* A fork: the dashed arrow from the original, its caption on the paper */
+/* Forks: per block of forks the dashed arrow from the original and one caption under the block, one line on the paper */
 .fork-link { position: absolute; left: 0; top: 0; pointer-events: none; }
 .fork-svg { position: absolute; overflow: visible; fill: none; stroke: var(--line-strong); stroke-linecap: round; stroke-linejoin: round; }
-.fork-caption { position: absolute; display: flex; justify-content: center; font-size: 12px; line-height: 16px; color: var(--muted); text-align: center; white-space: normal; }
-.fork-caption.below { justify-content: flex-start; text-align: left; }
-.fork-caption span { padding: 0 4px; background: var(--bg); box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.fork-caption { position: absolute; font-size: 12px; line-height: 16px; color: var(--muted); white-space: nowrap; }
+.fork-caption span { margin-left: -4px; padding: 0 4px; background: var(--bg); }
 
 /* ---------------------------------------------------------------- 3 · The dock */
 .oc-dock { position: absolute; z-index: 20; bottom: 12px; height: 48px; display: flex; align-items: center; gap: 2px; padding: 6px; background: var(--panel); border-radius: 16px; box-shadow: var(--float); white-space: nowrap; }

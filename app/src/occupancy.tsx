@@ -1,11 +1,13 @@
 // AI-generated with Claude Code, 2026-11-12, reviewed by Hyun Park
-// Who is on which board: labels above a board ("Codex is editing…", "You · editing", "Claude Code · done 13:52"), the arrow from an
-// original to its fork, and picking one version — "Use this one" for a fork, "Use this" for a variant — with its confirm popover.
+// Who is on which board: labels above a board ("Codex is editing…", "You · editing", "Claude Code · done 13:52"), the arrow and the
+// caption for each block of forks of an original, and picking one version — "Use this one" for a fork, "Use this" for a variant —
+// with its confirm popover.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { whoIcon } from "./activity";
 import { browserId } from "./api";
 import { Icon } from "./icons";
+import { blocks, bounds, captionTexts, chooseCaption, firstOf } from "./forkBlocks";
 import { strings } from "./strings";
 import type { Board, BoardItem } from "./types";
 
@@ -59,17 +61,21 @@ export const busyIn = (occ: Occupancy, g: Group) => [g.original, ...g.alts].flat
 /** "Variant 2: bold CTA" → "Variant 2" for the toast */
 export const shortTitle = (t: string) => t.replace(/:.*$/, "");
 
-/** The button in the row above a variant (Use this) or a fork and its original (Use this one); waits while a writer is still on either */
-export function UseButton({ file, group, busy, open, onOpen }: { file: string; group: Group; busy: Holder | null; open: boolean; onOpen: () => void }) {
+/**
+ * The button in the row above a variant (Use this) or a fork and its original (Use this one); waits while a writer is still on either.
+ * In a compact label (zoomed out) it is the check alone, named by its title and aria-label
+ */
+export function UseButton({ file, group, busy, open, onOpen, compact = false }: { file: string; group: Group; busy: Holder | null; open: boolean; onOpen: () => void; compact?: boolean }) {
   const label = group.kind === "variant" ? strings.occupancy.useThis : strings.occupancy.useThisOne;
   return (
     <button
-      className={`icon-btn sm use-btn ${busy ? "" : "ready"} ${open ? "pressed" : ""}`}
+      className={`icon-btn sm use-btn ${busy ? "" : "ready"} ${open ? "pressed" : ""} ${compact ? "icon-only" : ""}`}
       data-use={file}
       aria-disabled={busy ? true : undefined}
       aria-haspopup="dialog"
       aria-expanded={open}
-      title={busy ? strings.occupancy.waitFor(holderName(busy)) : group.kind === "variant" ? strings.occupancy.useThisTitle : strings.occupancy.useThisOneTitle}
+      aria-label={compact ? label : undefined}
+      title={busy ? strings.occupancy.waitFor(holderName(busy)) : compact ? label : group.kind === "variant" ? strings.occupancy.useThisTitle : strings.occupancy.useThisOneTitle(group.alts.length)}
       onPointerDown={(e) => e.stopPropagation()}
       onDoubleClick={(e) => e.stopPropagation()}
       onClick={(e) => {
@@ -78,7 +84,7 @@ export function UseButton({ file, group, busy, open, onOpen }: { file: string; g
       }}
     >
       <Icon name="check" size={14} />
-      <span className="use-label">{label}</span>
+      {!compact && <span className="use-label">{label}</span>}
     </button>
   );
 }
@@ -98,7 +104,7 @@ export function UseConfirm(p: { file: string; group: Group; board: Board; busy: 
       ? [s.confirmVariant(t(g.chosen), o), s.confirmVariantBody(o, g.alts.length - 1)]
       : g.chosen === g.original
         ? [s.confirmKeep(o), s.confirmKeepBody(g.alts.map(t).join(", "), g.alts.length)]
-        : [s.confirmFork(t(g.chosen), o), s.confirmForkBody(o)];
+        : [s.confirmFork(t(g.chosen), o), s.confirmForkBody(o, g.alts.length - 1)];
   // Follows its button as the canvas moves (whole pixels)
   useLayoutEffect(() => {
     const a = anchor();
@@ -142,77 +148,86 @@ export function UseConfirm(p: { file: string; group: Group; board: Board; busy: 
           {s.apply}
         </button>
         <button className="btn oc-plain" disabled={p.busy} onClick={p.onKeepAll}>
-          {g.kind === "variant" ? s.keepAll : s.keepBoth}
+          {g.kind === "variant" || g.alts.length > 1 ? s.keepAll : s.keepBoth}
         </button>
       </div>
     </div>
   );
 }
 
-/** The dashed arrow from an original to each of its forks, with "Forked 14:02 — Codex started while Claude Code was editing" (world coordinates) */
+/**
+ * The forks of each original as blocks (forkBlocks.ts): per block one dashed arrow from the original to the block's first fork, and one
+ * caption under the block, "3 forks of Empty day · made while Claude Code was editing" (world coordinates). A fork dragged away from
+ * its block is a block of its own, with its own arrow and "Fork of Empty day".
+ */
 export function ForkLinks({ board, files, zoom }: { board: Board; files: string[]; zoom: number }) {
   const shown = new Set(files);
-  const links = files.flatMap((f) => {
-    const b = board.boards[f];
-    const o = b.origin;
-    return o?.kind === "fork" && shown.has(o.of) && board.boards[o.of] ? [{ f, from: board.boards[o.of], to: b, origin: o }] : [];
-  });
-  if (!links.length) return null;
+  const forksOf = new Map<string, (BoardItem & { f: string })[]>();
+  for (const f of files) {
+    const o = board.boards[f].origin;
+    if (o?.kind === "fork" && shown.has(o.of) && board.boards[o.of]) forksOf.set(o.of, [...(forksOf.get(o.of) ?? []), { ...board.boards[f], f }]);
+  }
+  if (!forksOf.size) return null;
   return (
     <>
-      {links.map((l) => (
-        <ForkLink key={l.f} {...l} board={board} zoom={Math.max(zoom, 0.05)} />
-      ))}
+      {[...forksOf].flatMap(([of, forks]) => blocks(forks).map((bl) => <ForkBlock key={bl.map((b) => b.f).join(" ")} of={of} from={board.boards[of]} forks={bl} zoom={Math.max(zoom, 0.05)} board={board} />))}
     </>
   );
 }
 
-function ForkLink({ f, from, to, origin, board, zoom }: { f: string; from: BoardItem; to: BoardItem; origin: NonNullable<BoardItem["origin"]>; board: Board; zoom: number }) {
+function ForkBlock({ of, from, forks, zoom, board }: { of: string; from: BoardItem; forks: (BoardItem & { f: string })[]; zoom: number; board: Board }) {
   const ref = useRef<HTMLDivElement>(null);
-  const cap = useRef<HTMLDivElement>(null);
-  const [below, setBelow] = useState(false);
-  const pts = route(from, to);
-  const straight = pts.length === 2;
-  const a = pts[0];
-  const c = pts[pts.length - 1];
-  const len = Math.hypot(c.x - a.x, c.y - a.y);
-  // The caption keeps its screen size (11px text, at most 260px wide) and fits between the boards when it can
-  const w = Math.max(140, Math.min(260, len * zoom - 16));
-  const mid = { x: (a.x + c.x) / 2, y: (a.y + c.y) / 2 + 10 / zoom };
-  // Under a straight arrow, as long as nothing sits there; with notes or a board between the two (or an arrow around the side) it goes under the fork
+  const cap = useRef<HTMLSpanElement>(null);
+  const first = firstOf(forks);
+  const box = bounds(forks);
+  const n = forks.length;
+  const title = from.title ?? of;
+  const texts = captionTexts(n, title, forks.map((b) => b.origin?.while), strings.occupancy);
+  // One line that keeps its screen size (12px): the long text when it fits the block's width, else the medium one (which may run past
+  // the block's right edge), else the short one, each only where no board, label or note is in the way; hidden when all three are.
+  // Measured when the zoom, the block, its texts or the board change (a moved board or note), not while the canvas pans
+  const [text, setText] = useState<string | null>(texts.medium);
+  const at = { left: box.x, top: box.y + box.h + 10 / zoom, transform: `scale(${1 / zoom})`, transformOrigin: "0 0" };
   useLayoutEffect(() => {
+    const el = cap.current;
     const o = ref.current?.getBoundingClientRect();
-    if (!o) return;
-    const h = cap.current?.getBoundingClientRect().height ?? 32;
-    const l = o.left + mid.x * zoom - w / 2;
-    const t = o.top + mid.y * zoom;
-    const hit = [...document.querySelectorAll(".canvas .note, .canvas .board-frame")].some((el) => {
-      const r = el.getBoundingClientRect();
-      return r.left < l + w && r.right > l && r.top < t + h && r.bottom > t;
-    });
-    setBelow(!straight || hit);
-  }, [board, zoom, w, mid.x, mid.y, straight]);
-  if (len < 4) return null;
+    if (!el || !o) return;
+    const ctx = document.createElement("canvas").getContext("2d");
+    const cs = getComputedStyle(el);
+    const pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+    if (ctx) ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+    const h = parseFloat(cs.lineHeight) || 16;
+    const l = o.left + box.x * zoom;
+    const top = o.top + (box.y + box.h) * zoom + 10;
+    const obstacles = [...document.querySelectorAll(".canvas .note, .canvas .board-frame, .canvas .board-label")].map((e) => e.getBoundingClientRect());
+    const next = chooseCaption(
+      texts,
+      box.w * zoom,
+      (x) => (ctx ? ctx.measureText(x).width : x.length * 7) + pad,
+      (w) => obstacles.some((r) => r.left < l + w && r.right > l && r.top < top + h && r.bottom > top),
+    );
+    if (next !== text) setText(next);
+  }, [zoom, box.x, box.y, box.w, box.h, texts.long, texts.medium, texts.short, board]);
+  const pts = route(from, first);
+  const c = pts[pts.length - 1];
+  const a = pts[0];
+  if (Math.hypot(c.x - a.x, c.y - a.y) < 4) return null;
   const sw = 1.5 / zoom;
   const p = pts[pts.length - 2];
   const ang = Math.atan2(c.y - p.y, c.x - p.x);
   const head = 6 / zoom;
   const x0 = Math.min(...pts.map((q) => q.x)) - head;
   const y0 = Math.min(...pts.map((q) => q.y)) - head;
-  const text = strings.occupancy.forked(strings.occupancy.clock(Date.parse(origin.at ?? "") || Date.now()), origin.by ?? strings.occupancy.someone, origin.while ?? strings.occupancy.someone);
-  const at = below
-    ? { left: to.x, top: to.y + to.h + 10 / zoom, width: Math.max(140, Math.min(260, to.w * zoom)), transform: `scale(${1 / zoom})`, transformOrigin: "0 0" }
-    : { left: mid.x, top: mid.y, width: w, transform: `translateX(-50%) scale(${1 / zoom})`, transformOrigin: "50% 0" };
   return (
-    <div ref={ref} className="fork-link" data-fork={f} aria-label={text} role="img">
+    <div ref={ref} className="fork-link" data-fork={first.f} data-forks={forks.map((b) => b.f).join(" ")} aria-label={texts.long ?? texts.medium} role="img">
       <svg className="fork-svg" style={{ left: x0, top: y0, width: Math.max(...pts.map((q) => q.x)) + head - x0, height: Math.max(...pts.map((q) => q.y)) + head - y0 }} aria-hidden="true">
         <g transform={`translate(${-x0} ${-y0})`}>
           <path d={pts.map((q, i) => `${i ? "L" : "M"}${q.x} ${q.y}`).join("")} strokeWidth={sw} strokeDasharray={`${4 * sw} ${4 * sw}`} />
           <path d={`M${c.x - head * Math.cos(ang - 0.6)} ${c.y - head * Math.sin(ang - 0.6)}L${c.x} ${c.y}L${c.x - head * Math.cos(ang + 0.6)} ${c.y - head * Math.sin(ang + 0.6)}`} strokeWidth={sw} />
         </g>
       </svg>
-      <div ref={cap} className={`fork-caption ${below ? "below" : ""}`} style={at}>
-        <span>{text}</span>
+      <div className="fork-caption" style={{ ...at, visibility: text ? undefined : "hidden" }} aria-hidden="true">
+        <span ref={cap}>{text ?? texts.short}</span>
       </div>
     </div>
   );

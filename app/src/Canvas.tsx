@@ -16,6 +16,9 @@ export const MAX_ZOOM = 4;
 export const IFRAME_MIN_ZOOM = 0.25;
 /** ...unless the board itself is this big on screen (CSS px, long side): then only a few boards fit and a thumbnail would look soft */
 export const LIVE_MIN_SCREEN_PX = 640;
+/** Below this zoom the labels of forks and their originals are one 24px row (compact): rows of forks placed 120px apart leave it room
+ * from 23% up, a full label (title and a tag row, 56px) only from 47%. Other boards keep their tags */
+export const COMPACT_LABEL_ZOOM = 0.5;
 /** Thumbnail resolutions the server renders (long side, device px). A board asks for the smallest one that covers it on screen */
 export const THUMB_SIZES = [600, 1200, 2400];
 export const thumbSize = (screenPx: number) => THUMB_SIZES.find((s) => s >= screenPx) ?? THUMB_SIZES[THUMB_SIZES.length - 1];
@@ -67,14 +70,16 @@ type Props = {
   onCreateNote: (kind: Note["kind"], at: { x: number; y: number }) => void;
   onContext: (t: ContextTarget, e: { clientX: number; clientY: number }) => void;
   renderBoardOverlay?: (f: string) => ReactNode;
-  /** Tags stacked above a board's title (who changed it); not drawn while the label is too small to show the title */
+  /** Tags stacked above a board's title (who changed it); not drawn while the label is too small to show the title, or compact */
   renderBoardTags?: (f: string) => ReactNode;
-  /** Buttons that stay visible in a board's label row (Use this), before Play */
-  renderBoardButtons?: (f: string) => ReactNode;
+  /** Buttons that stay visible in a board's label row (Use this), before Play; compact: the label is one row (zoomed out) */
+  renderBoardButtons?: (f: string, compact: boolean) => ReactNode;
   /** Colour of the ring around a board an agent is writing right now */
   boardRing?: (f: string) => string | null;
   /** Things drawn over boards (shapes) — world coordinates */
   worldLayer?: ReactNode;
+  /** Things drawn under notes and boards (the fork arrows) — world coordinates */
+  underLayer?: ReactNode;
   iframeRef?: (f: string, el: HTMLIFrameElement | null) => void;
   onSize?: (s: { w: number; h: number }) => void;
   /** View-only (exported viewer): dragging pans, a press selects, nothing moves, resizes or edits */
@@ -358,6 +363,15 @@ export function Canvas(p: Props) {
     else if (pr.kind === "label" && p.editFile === f) p.onSelect([f], "replace");
   };
 
+  // The fork scene: forks, and originals with a fork on this page. Their labels go compact when zoomed out; every other board keeps its tags
+  const shownBoards = new Set(p.visibleBoards);
+  const forkScene = new Set<string>();
+  for (const f of p.visibleBoards) {
+    const o = p.board.boards[f]?.origin;
+    if (o?.kind !== "fork") continue;
+    forkScene.add(f);
+    if (shownBoards.has(o.of)) forkScene.add(o.of);
+  }
   return (
     <div
       ref={rootRef}
@@ -376,6 +390,7 @@ export function Canvas(p: Props) {
       aria-label={strings.canvas.aria}
     >
       <div ref={worldRef} className="world" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }}>
+        {p.underLayer}
         {p.visibleNotes.map((id) => (
           <NoteView
             key={id}
@@ -422,8 +437,10 @@ export function Canvas(p: Props) {
               onRename={() => p.onRename(f)}
               onContext={(e) => p.onContext({ type: "board", file: f }, e)}
               overlay={p.renderBoardOverlay?.(f)}
-              tags={b.w * view.zoom >= 48 && p.playing !== f ? p.renderBoardTags?.(f) : null}
-              buttons={p.readOnly ? null : p.renderBoardButtons?.(f)}
+              compact={b.w * view.zoom >= 48 && view.zoom < COMPACT_LABEL_ZOOM && forkScene.has(f)}
+              forkScene={forkScene.has(f)}
+              tags={b.w * view.zoom >= 48 && !(view.zoom < COMPACT_LABEL_ZOOM && forkScene.has(f)) && p.playing !== f ? p.renderBoardTags?.(f) : null}
+              buttons={p.readOnly ? null : p.renderBoardButtons?.(f, view.zoom < COMPACT_LABEL_ZOOM && forkScene.has(f))}
               ring={p.boardRing?.(f) ?? null}
               iframeRef={(el) => p.iframeRef?.(f, el)}
             />
@@ -460,6 +477,10 @@ function BoardView(props: {
   typing?: boolean;
   playing?: boolean;
   near?: boolean;
+  /** Zoomed out in the fork scene: the label is one row */
+  compact?: boolean;
+  /** A fork or the original of one: its tags stay in one row */
+  forkScene?: boolean;
   reloadKey: number;
   onPress: (e: RPointerEvent, from: "frame" | "label") => void;
   onPressMove: (e: RPointerEvent) => void;
@@ -483,6 +504,11 @@ function BoardView(props: {
   const { item: b, zoom } = props;
   const resize = useDrag(zoom);
   const title = b.title ?? props.file;
+  const tiny = b.w * zoom < 48;
+  const compact = !tiny && !!props.compact;
+  // A fork's label: zoomed out it shows its agent (a spinner while an agent writes it); its whole story is the label's tooltip
+  const fork = b.origin?.kind === "fork" && b.origin.by ? b.origin : null;
+  const story = fork ? strings.occupancy.forked(strings.occupancy.clock(Date.parse(fork.at ?? "") || Date.now()), fork.by!, fork.while ?? strings.occupancy.someone) : null;
   const ctx = (e: RMouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -496,30 +522,39 @@ function BoardView(props: {
       data-file={props.file}
       role="group"
       aria-label={strings.canvas.board(title, !!props.selected, !!props.editing, !!props.playing)}
+      aria-description={story ?? undefined}
     >
       <div
-        className={`board-label ${b.w * zoom < 48 ? "tiny" : ""} ${props.tags ? "tagged" : ""}`}
+        className={`board-label ${tiny ? "tiny" : ""} ${compact ? "compact" : ""} ${props.tags ? "tagged" : ""} ${props.forkScene ? "fork-scene" : ""}`}
         style={{ transform: `scale(${1 / zoom})`, width: b.w * zoom }}
         onPointerDown={(e) => props.onPress(e, "label")}
         onPointerMove={props.onPressMove}
         onPointerUp={props.onRelease}
         onContextMenu={ctx}
-        title={`${title} · ${props.file}`}
+        title={`${title} · ${props.file}${story ? `\n${story}` : ""}`}
       >
         {props.tags}
         <span className="lab-row">
           {b.is_interactive && <span className="dot" aria-label={strings.canvas.interactive} />}
-          <span
-            className="board-title"
-            onDoubleClick={(e) => {
-              e.stopPropagation();
-              if (!props.readOnly) props.onRename();
-            }}
-          >
-            {title}
-          </span>
-          {b.w * zoom >= 160 && title !== props.file && <span className="board-file">{props.file}</span>}
-          {b.w * zoom >= 110 && (
+          {compact && fork ? (
+            <span className={`occ-tag fork-who ${props.ring ? "" : "done"}`} onDoubleClick={(e) => e.stopPropagation()}>
+              {props.ring ? <span className="spinner" aria-hidden="true" /> : <Icon name="comment" size={16} />}
+              <span className="act-tag-text">{fork.by}</span>
+            </span>
+          ) : (
+            <span
+              className="board-title"
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                if (!props.readOnly) props.onRename();
+              }}
+            >
+              {title}
+            </span>
+          )}
+          {b.w * zoom >= 160 && title !== props.file && !(compact && fork) && <span className="board-file">{props.file}</span>}
+          {compact && props.selected && props.buttons && <span className="board-btns pinned">{props.buttons}</span>}
+          {!compact && b.w * zoom >= 110 && (
             <span className={`board-btns ${props.buttons ? "pinned" : ""}`}>
               {props.buttons}
               {b.is_interactive && (

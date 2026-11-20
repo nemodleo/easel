@@ -4,8 +4,10 @@
 
 export const GAP_X = 80;
 export const GAP_Y = 120;
-/** Clearance kept around boards and notes (board labels and tags sit above a board) */
-const CLEAR = 80;
+/** Clearance kept beside boards and notes, and above and below them: the extra room vertically is for the label row above a board
+ * (one 24px row fits 120 from 23% zoom up) */
+const CLEAR_X = 80;
+const CLEAR_Y = 120;
 
 /** Rough width of one character at a font size: wide scripts (CJK, Hangul) take a full em */
 const charW = (ch, size) => ((ch.codePointAt(0) ?? 0) >= 0x2e80 ? size : size * 0.6);
@@ -40,7 +42,7 @@ export function obstacles(board, page, ignore = []) {
   return boxes;
 }
 
-const hits = (r, o) => r.x < o.x + o.w + CLEAR && r.x + r.w + CLEAR > o.x && r.y < o.y + o.h + CLEAR && r.y + r.h + CLEAR > o.y;
+const hits = (r, o) => r.x < o.x + o.w + CLEAR_X && r.x + r.w + CLEAR_X > o.x && r.y < o.y + o.h + CLEAR_Y && r.y + r.h + CLEAR_Y > o.y;
 
 /**
  * The first spot for rect (x, y, w, h) that is clear of the page's boards and notes, moving right past whatever is in the way
@@ -52,8 +54,8 @@ export function freeSpot(board, rect, { dir = "right", page, ignore = [] } = {})
   for (let k = 0; k < 1000; k++) {
     const hit = obs.filter((o) => hits(r, o));
     if (!hit.length) return r;
-    if (dir === "down") r.y = Math.round(Math.max(...hit.map((o) => o.y + o.h)) + GAP_Y);
-    else r.x = Math.round(Math.max(...hit.map((o) => o.x + o.w)) + GAP_X);
+    if (dir === "down") r.y = Math.ceil(Math.max(...hit.map((o) => o.y + o.h)) + GAP_Y); // up, so a note's fractional height never leaves it short
+    else r.x = Math.ceil(Math.max(...hit.map((o) => o.x + o.w)) + GAP_X);
   }
   return r;
 }
@@ -67,8 +69,9 @@ export function besideSpot(board, o) {
   return down.y - o.y < right.x - o.x ? down : right;
 }
 
-/** Two boxes count as one block when the gap between them is at most half their sizes (forks placed side by side or in rows are) */
-const near = (a, b) => a.x < b.x + b.w + (a.w + b.w) / 2 && b.x < a.x + a.w + (a.w + b.w) / 2 && a.y < b.y + b.h + (a.h + b.h) / 2 && b.y < a.y + a.h + (a.h + b.h) / 2;
+/** Two boxes count as one block when the gap between them is at most half their sizes (forks placed side by side or in rows are).
+ * app/src/forkBlocks.ts has a copy for the canvas; test/forkBlocks.test.mjs keeps the two the same */
+export const near = (a, b) => a.x < b.x + b.w + (a.w + b.w) / 2 && b.x < a.x + a.w + (a.w + b.w) / 2 && a.y < b.y + b.h + (a.h + b.h) / 2 && b.y < a.y + a.h + (a.h + b.h) / 2;
 
 /**
  * Spot for a new fork of board o, given its existing forks on the same page (sibs: { x, y, w, h, at }). The forks of one board form
