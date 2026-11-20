@@ -1364,7 +1364,7 @@ export function App() {
       if (editFile && g.alts.includes(editFile)) setEditFile(null);
       await load();
       setLocate([g.original]); // the original, now holding the chosen version, comes into view selected
-      const text = g.chosen === g.original ? strings.occupancy.kept(title(g.original)) : strings.occupancy.applied(shortTitle(title(g.chosen)), title(g.original));
+      const text = g.chosen === g.original ? strings.occupancy.kept(title(g.original), g.alts.length) : strings.occupancy.applied(shortTitle(title(g.chosen)), title(g.original));
       toast({ tone: "ok", text, action: r.step ? { label: strings.occupancy.undo, run: () => void undoStep(r.step!, text, [g.original, ...g.alts]) } : undoAction });
     } catch (e) {
       setUseOpen((c) => c && { ...c, busy: false });
@@ -1970,14 +1970,14 @@ export function App() {
               const lead = occ[f]?.length ? <OccTags list={occ[f]} /> : null;
               return act.tagsOf(f).length || lead ? <BoardTags file={f} act={act} me={me} onOpen={openTag} lead={lead} /> : null;
             }}
-            renderBoardButtons={(f) => {
+            renderBoardButtons={(f, compact) => {
               const g = choiceGroup(board, f);
-              return g ? <UseButton file={f} group={g} busy={busyIn(occ, g)} open={useOpen?.file === f} onOpen={() => setUseOpen((c) => (c?.file === f ? null : { file: f, busy: false }))} /> : null;
+              return g ? <UseButton file={f} group={g} busy={busyIn(occ, g)} compact={compact} open={useOpen?.file === f} onOpen={() => setUseOpen((c) => (c?.file === f ? null : { file: f, busy: false }))} /> : null;
             }}
             boardRing={(f) => (writersOn(occ, f).length ? "var(--line-strong)" : null)}
+            underLayer={<ForkLinks board={board} files={visibleBoards} zoom={view.zoom} />}
             worldLayer={
               <>
-              <ForkLinks board={board} files={visibleBoards} zoom={view.zoom} />
               <ShapesLayer
                 shapes={shapes}
                 ids={visibleShapes}
