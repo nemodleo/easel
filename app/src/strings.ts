@@ -170,7 +170,8 @@ export const strings = {
     width: "Width",
     height: "Height",
     radius: "Radius",
-    interactive: "Interactive (Play)",
+    interactive: "Show Play button",
+    interactiveTitle: "Marks the board as playable: a dot and a ▶ on its label. Any board plays without it (P or right-click)",
     frameless: "No frame",
     fill: "Stretch to window",
     launch: "Open as launch screen",
@@ -275,7 +276,7 @@ export const strings = {
     aria: "Design canvas",
     board: (title: string, selected: boolean, editing: boolean, playing: boolean) =>
       `Board ${title}${selected ? " (selected)" : ""}${editing ? " editing" : ""}${playing ? " playing" : ""}`,
-    interactive: "Interactive (Play)",
+    interactive: "Marked as playable",
     hint: "Click selects · Double-click edits text · Esc deselects",
     notLoaded: "Scroll closer to load",
     fileMissing: (file: string) => `File missing · ${file}`,

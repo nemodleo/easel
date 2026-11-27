@@ -292,7 +292,7 @@ export function BoardOptions(p: {
       </section>
       <section className="pp-group">
         <h3 className="pp-group-h">{O.options}</h3>
-        <Check on={!!b.is_interactive} label={O.interactive} onChange={(on) => p.onPatch({ is_interactive: on || undefined })} />
+        <Check on={!!b.is_interactive} label={O.interactive} title={O.interactiveTitle} onChange={(on) => p.onPatch({ is_interactive: on || undefined })} />
         <Check on={!!b.frameless} label={O.frameless} onChange={(on) => p.onPatch({ frameless: on || undefined })} />
         <Check on={b.expand === "fill"} label={O.fill} onChange={(on) => p.onPatch({ expand: on ? "fill" : undefined })} />
         <Check on={p.isLaunch} label={O.launch} onChange={p.onLaunch} />
@@ -328,9 +328,9 @@ export function BoardActions(p: { onFocus: () => void; onDuplicate: () => void; 
 }
 
 /** A checkbox in A: the native box stays for keys and screen readers, the drawn box (the one control with an edge) shows it */
-export function Check(p: { on: boolean; label: string; onChange: (on: boolean) => void }) {
+export function Check(p: { on: boolean; label: string; title?: string; onChange: (on: boolean) => void }) {
   return (
-    <label className="check">
+    <label className="check" title={p.title}>
       <input type="checkbox" checked={p.on} onChange={(e) => p.onChange(e.target.checked)} />
       <i className={p.on ? "on" : ""} aria-hidden="true">{p.on && <Icon name="check" size={12} />}</i>
       {p.label}

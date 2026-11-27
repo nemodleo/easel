@@ -174,6 +174,27 @@ export function unlinkOrigins(board, gone) {
   for (const b of Object.values(board.boards)) if (b.origin && gone.includes(b.origin.of)) delete b.origin;
 }
 
+/** Top-level board.json keys the app owns: a save takes them from the app (a missing optional one is removed) */
+const APP_KEYS = ["version", "title", "pages", "boards", "order", "notes", "launch", "shapes", "guides", "groupNames"];
+
+/**
+ * The board.json a save from the app writes. Keys the app owns come from the app; any other top-level key (a project's or an
+ * agent's own data) comes from the file on disk, so a save never drops it, and an app that loaded before it was added does not
+ * either. diskText is board.json as it is now (null when missing or not JSON)
+ */
+export function savedBoard(rest, diskText) {
+  let disk = {};
+  try {
+    const d = diskText == null ? null : JSON.parse(diskText);
+    if (d && typeof d === "object" && !Array.isArray(d)) disk = d;
+  } catch {}
+  const next = {};
+  for (const k of Object.keys(disk)) if (!APP_KEYS.includes(k)) next[k] = disk[k];
+  Object.assign(next, { version: 1, title: rest.title ?? "", pages: Array.isArray(rest.pages) ? rest.pages : [], boards: rest.boards, order: Array.isArray(rest.order) ? rest.order : Object.keys(rest.boards), notes: rest.notes ?? {} });
+  for (const k of ["launch", "shapes", "guides", "groupNames"]) if (rest[k] !== undefined) next[k] = rest[k];
+  return next;
+}
+
 export function boardRoutes() {
   return [
     [
@@ -183,9 +204,8 @@ export function boardRoutes() {
         const body = await readBody(req);
         if (!body || typeof body.boards !== "object") return sendJson(res, 400, { error: "boards is required" });
         const { clientId, label, ...rest } = body;
-        const next = { version: 1, title: rest.title ?? "", pages: Array.isArray(rest.pages) ? rest.pages : [], boards: rest.boards, order: Array.isArray(rest.order) ? rest.order : Object.keys(rest.boards), notes: rest.notes ?? {} };
-        for (const k of ["launch", "shapes", "guides"]) if (rest[k] !== undefined) next[k] = rest[k];
         const before = await read(ctx.store.boardPath);
+        const next = savedBoard(rest, before);
         await ctx.store.writeBoard(next);
         if (label) {
           ctx.history.push(label, [{ path: ctx.store.boardPath, before, after: formatBoard(next) }]);
