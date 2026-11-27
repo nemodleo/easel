@@ -20,7 +20,7 @@ import { Icon, type IconName } from "./icons";
 import { Inspector, type Comment } from "./Inspector";
 import { busyIn, choiceGroup, ForkLinks, listDot, OccTags, shortTitle, UseButton, UseConfirm, writersOn, type Occupancy } from "./occupancy";
 import { Layers } from "./Layers";
-import { BoardActions, BoardOptions, FocusView, LeftPanel, Minimap } from "./panels";
+import { BoardActions, BoardOptions, FocusView, LeftPanel, MinimapOf } from "./panels";
 import { Play } from "./Play";
 import { pKey } from "./playKey";
 import { Properties } from "./Properties";
@@ -2644,11 +2644,6 @@ function Dock(p: {
 /** The zoom row, following the view on its own */
 function ZoomRowOf({ store, ...p }: { store: ViewStore } & Omit<Parameters<typeof ZoomRow>[0], "zoom">) {
   return <ZoomRow {...p} zoom={useViewValue(store, (v) => v.zoom)} />;
-}
-
-/** The minimap, following the view on its own */
-function MinimapOf({ store, ...p }: { store: ViewStore } & Omit<Parameters<typeof Minimap>[0], "view">) {
-  return <Minimap {...p} view={useView(store)} />;
 }
 
 function ShapeDrawerOf({ store, ...p }: { store: ViewStore } & Omit<Parameters<typeof ShapeDrawer>[0], "view">) {
