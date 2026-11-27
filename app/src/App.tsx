@@ -29,7 +29,7 @@ import { ShareButton } from "./share";
 import { ContextMenu, Dialog, snapWidths, useCentred, useDialog, useToast, type MenuItem, type MenuState, Collapsible } from "./ui";
 import { elementsInside, elementUnder, kindLabel, useElementSelect } from "./useElementSelect";
 import type { Board, BoardItem, BoardResponse, LayoutGuide, Note, Shape, ShapeKind, Tool, View } from "./types";
-import { strings } from "./strings";
+import { lang, LANGUAGES, setLang, strings } from "./strings";
 
 const DRAFT_SAVE_DELAY = 400;
 const mod = navigator.platform.includes("Mac") ? "⌘" : "Ctrl+";
@@ -1313,6 +1313,8 @@ export function App() {
         ...(themeNames.length > 1
           ? themeNames.map((n) => ({ label: strings.toolbar.themeOption(n), icon: "layers" as IconName, check: tokens!.active === n, run: () => void saveTokens({ ...tokens!, active: n }, strings.history.changeTheme) }))
           : []),
+        // The UI language, named in itself; switching reloads, because labels are read once when the app loads
+        { label: strings.toolbar.language(LANGUAGES.find((l) => l.id === lang)!.name), icon: "globe", run: () => setLang(LANGUAGES[(LANGUAGES.findIndex((l) => l.id === lang) + 1) % LANGUAGES.length].id) },
         "sep",
         { label: strings.toolbar.snapshot, icon: "layers", run: () => void snapshotMenu(at, true) },
       ],

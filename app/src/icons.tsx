@@ -43,6 +43,7 @@ const P: Record<string, string> = {
   image: "M4 5h16v14H4zM4 15l4-4 4 4 3-3 5 5M15 9h.01",
   grid: "M4 4h16v16H4zM4 12h16M12 4v16",
   system: "M4 5h16v11H4zM9 20h6M12 16v4",
+  globe: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.5 3.8 5.5 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-5.5-3.8-9S9.5 5.5 12 3z",
   share: "M12 15V4M8 8l4-4 4 4M5 13v6h14v-6",
   folder: "M4 6h6l2 2h8v11H4z",
   file: "M6 3h8l4 4v14H6zM14 3v4h4",
