@@ -558,7 +558,7 @@ function BoardView(props: {
             <span className={`board-btns ${props.buttons ? "pinned" : ""}`}>
               {props.buttons}
               {b.is_interactive && (
-                <button className="icon-btn sm" aria-label="Play" title="Play" onPointerDown={stop} onClick={(e) => { e.stopPropagation(); props.onPlay(); }}>
+                <button className="icon-btn sm" aria-label={strings.viewer.play} title={strings.viewer.play} onPointerDown={stop} onClick={(e) => { e.stopPropagation(); props.onPlay(); }}>
                   <Icon name="play" size={14} />
                 </button>
               )}
