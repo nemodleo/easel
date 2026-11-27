@@ -46,7 +46,8 @@ export const api = {
 };
 
 export type ServerEvent =
-  | { type: "file-changed"; file: string; kind: "change" | "add" | "unlink" }
+  /** hash: the file's content hash when the watcher read it (none for a board redrawn because a screen it embeds changed) */
+  | { type: "file-changed"; file: string; kind: "change" | "add" | "unlink"; hash?: string; via?: string }
   | { type: "board-changed"; source: string | null }
   | { type: "selection-changed" }
   | { type: "comments-changed" }
