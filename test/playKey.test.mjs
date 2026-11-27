@@ -39,6 +39,7 @@ test("P is the pen with no board, several boards, or a name that is not a board"
 
 test("the checkbox label no longer reads as a switch for Play", () => {
   assert.equal(strings.boardOptions.interactive, "Show Play button");
-  assert.match(strings.boardOptions.interactiveTitle, /Any board plays without it/);
+  assert.match(strings.boardOptions.interactiveTitle, /always visible/);
+  assert.match(strings.boardOptions.interactiveTitle, /any board plays with P or right-click/);
   assert.doesNotMatch(strings.canvas.interactive, /Interactive \(Play\)/);
 });

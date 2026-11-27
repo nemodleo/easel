@@ -20,35 +20,44 @@ import { Icon, type IconName } from "./icons";
 import { Inspector, type Comment } from "./Inspector";
 import { busyIn, choiceGroup, ForkLinks, listDot, OccTags, shortTitle, UseButton, UseConfirm, writersOn, type Occupancy } from "./occupancy";
 import { Layers } from "./Layers";
-import { BoardActions, BoardOptions, FocusView, LeftPanel, Minimap } from "./panels";
+import { applyLive, createEcho, isPatched, shownHash, type EditResult } from "./livePatch";
+import { BoardActions, BoardOptions, FocusView, LeftPanel, MinimapOf } from "./panels";
 import { Play } from "./Play";
 import { pKey } from "./playKey";
+import { pngFailure, pngName, shortReason } from "./exportPng";
 import { Properties } from "./Properties";
 import { ShareButton } from "./share";
+import { useView, useViewStore, useViewValue, useViewWhen, type ViewStore } from "./viewStore";
 import { ContextMenu, Dialog, snapWidths, useCentred, useDialog, useToast, type MenuItem, type MenuState, Collapsible } from "./ui";
 import { elementsInside, elementUnder, kindLabel, useElementSelect } from "./useElementSelect";
 import type { Board, BoardItem, BoardResponse, LayoutGuide, Note, Shape, ShapeKind, Tool, View } from "./types";
-import { strings } from "./strings";
+import { lang, LANGUAGES, setLang, strings } from "./strings";
 
 const DRAFT_SAVE_DELAY = 400;
 const mod = navigator.platform.includes("Mac") ? "⌘" : "Ctrl+";
 
 type Saved = { view?: View; page?: string | null; left?: boolean; minimap?: boolean };
 const stateKey = (title: string) => `design-canvas:${title}`;
+/** This tab's own copy comes first: localStorage is shared by every tab, so a reload would otherwise land on the view another tab
+ * (another window size) saved last, often an empty area */
 function loadSaved(title: string): Saved {
   try {
-    return JSON.parse(localStorage.getItem(stateKey(title)) ?? "{}");
+    return JSON.parse(sessionStorage.getItem(stateKey(title)) ?? localStorage.getItem(stateKey(title)) ?? "{}");
   } catch {
     return {};
   }
 }
 
 type BoardError = { kind: string; message: string; line?: number };
+/** The New board menu (server/boards.mjs TEMPLATES), in groups split by a line: blank, screens from small to large, page-shaped */
 const TEMPLATES = [
-  { id: "blank", label: strings.templates.blank, size: "390×844", w: 390, h: 844 },
-  { id: "mobile", label: strings.templates.mobile, size: "390×844", w: 390, h: 844 },
-  { id: "desktop", label: strings.templates.desktop, size: "1440×900", w: 1440, h: 900 },
-  { id: "doc", label: strings.templates.doc, size: "800×1000", w: 800, h: 1000 },
+  { id: "blank", label: strings.templates.blank, size: "390×844", w: 390, h: 844, group: 0 },
+  { id: "watch", label: strings.templates.watch, size: "198×242", w: 198, h: 242, group: 1 },
+  { id: "mobile", label: strings.templates.mobile, size: "390×844", w: 390, h: 844, group: 1 },
+  { id: "tablet", label: strings.templates.tablet, size: "834×1194", w: 834, h: 1194, group: 1 },
+  { id: "desktop", label: strings.templates.desktop, size: "1440×900", w: 1440, h: 900, group: 1 },
+  { id: "doc", label: strings.templates.doc, size: "800×1000", w: 800, h: 1000, group: 2 },
+  { id: "email", label: strings.templates.email, size: "600×1200", w: 600, h: 1200, group: 2 },
 ] as const;
 
 const TOOLS: { id: Tool; icon: IconName; label: string; hint: string; key: string }[] = [
@@ -69,7 +78,9 @@ type Theme = "system" | "light" | "dark";
 export function App() {
   const [data, setData] = useState<BoardResponse | null>(null);
   const [board, setBoard] = useState<Board | null>(null);
-  const [view, setView] = useState<View>({ x: 0, y: 0, zoom: 0.1 });
+  // The view lives in a store: a pan or zoom step re-renders the canvas, the minimap and the zoom row, not the whole app
+  const viewStore = useViewStore({ x: 0, y: 0, zoom: 0.1 });
+  const setView = viewStore.set;
   const [page, setPage] = useState<string | null>(null);
   const [tool, setTool] = useState<Tool>("select");
   const [selected, setSelected] = useState<string[]>([]);
@@ -88,6 +99,9 @@ export function App() {
   const commentRef = useRef<HTMLTextAreaElement>(null);
   const [playFile, setPlayFile] = useState<string | null>(null);
   const [inlinePlay, setInlinePlay] = useState<string | null>(null);
+  /** Boards whose PNG is rendering: the ref stops a second click before the state lands, the state shows it on the board and menu */
+  const pngBusy = useRef(new Set<string>());
+  const [exportingPng, setExportingPng] = useState<string[]>([]);
   const [firstRunHint, setFirstRunHint] = useState(false);
   const [announce, setAnnounce] = useState("");
   const [focusFile, setFocusFile] = useState<string | null>(null);
@@ -108,7 +122,27 @@ export function App() {
   const [mapNarrow, setMapNarrow] = useState(false);
   const [menu, setMenu] = useState<MenuState>(null);
   const [hist, setHist] = useState({ canUndo: false, canRedo: false, undo: [] as string[], redo: [] as string[] });
+  /** reloadKeys: bumped to reload a board's iframe. versions: bumped whenever a board's file changed, reloaded or patched in place
+   *  (what is derived from its content: thumbnail, layers, lint, tweaks) */
   const [reloadKeys, setReloadKeys] = useState<Record<string, number>>({});
+  const [versions, setVersions] = useState<Record<string, number>>({});
+  const bump = (f: string) => (k: Record<string, number>) => ({ ...k, [f]: (k[f] ?? 0) + 1 });
+  /** The app's own edits shown in place, and the watcher's echoes they make (livePatch.ts) */
+  const echo = useRef(createEcho()).current;
+  /** A board's file is at hash (an echo; current: asked just now): keep the board when it already shows that, else reload it */
+  const boardChanged = useRef<(file: string, hash: string | undefined, current?: boolean) => void>(() => {});
+  boardChanged.current = (file, hash, current = false) => {
+    const frame = frames.current.get(file);
+    const d = echo.decide(file, hash, { shown: shownHash(frame, file), patched: isPatched(frame, file) }, current);
+    if (d === "queue" || d === "keep") return;
+    if (d === "check")
+      return void api
+        .get<{ hash: string }>(`/api/file-hash?f=${encodeURIComponent(file)}`)
+        .then((r) => boardChanged.current(file, r.hash, true))
+        .catch(() => boardChanged.current(file, undefined));
+    echo.reset(file);
+    setReloadKeys(bump(file));
+  };
   const [error, setError] = useState<string | null>(null);
   const [canvasSize, setCanvasSize] = useState<{ w: number; h: number } | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -171,6 +205,7 @@ export function App() {
   const restored = useRef(false);
   const frames = useRef(new Map<string, HTMLIFrameElement>());
   const [frameTick, setFrameTick] = useState(0);
+  const boardNodes = useNodeCache();
   const searchRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
   const ask = useDialog();
@@ -212,7 +247,7 @@ export function App() {
     try {
       const d = await api.board();
       setData(d);
-      setBoard(d.board);
+      setBoard((prev) => keepUnchanged(prev, d.board));
       setError(null);
     } catch (e) {
       setError(String((e as Error).message));
@@ -220,7 +255,8 @@ export function App() {
   }, []);
   const loadComments = useCallback(() => api.get<{ comments: Comment[] }>("/api/comments").then((r) => setComments(r.comments)).catch(() => {}), []);
   const loadHistory = useCallback(() => api.get<typeof hist>("/api/history").then(setHist).catch(() => {}), []);
-  const loadErrors = useCallback(() => api.get<{ errors: Record<string, BoardError[]> }>("/api/errors").then((r) => setErrors(r.errors)).catch(() => {}), []);
+  // Every board that loads reports its errors, so this runs once per new iframe: the same list keeps the same object (no render)
+  const loadErrors = useCallback(() => api.get<{ errors: Record<string, BoardError[]> }>("/api/errors").then((r) => setErrors((cur) => (JSON.stringify(cur) === JSON.stringify(r.errors) ? cur : r.errors))).catch(() => {}), []);
   /* ---------- Who changed what: board tags and the History menu ---------- */
   const act = useActivity(data?.dir ?? null);
   const [tagPop, setTagPop] = useState<{ file: string; key: string; conflict: string[] | null; busy: boolean } | null>(null);
@@ -325,16 +361,24 @@ export function App() {
   const doEdit = useCallback(
     async (payload: Record<string, unknown>, file: string | null = editFile) => {
       if (!file) return false;
+      // An echo of this write that arrives before the answer waits for it: the answer may let the board keep its patched DOM
+      echo.begin(file);
       try {
-        await api.post("/api/edit", { file, ...payload });
+        const r = await api.post<EditResult>("/api/edit", { file, ...payload });
+        if (r.base && r.hash && applyLive(frames.current.get(file), file, r)) {
+          echo.patched(file, r.base, r.hash);
+          setVersions(bump(file));
+        }
         return true;
       } catch (e) {
         editRef.current?.setError(String((e as Error).message));
         toast({ tone: "error", text: String((e as Error).message) });
         return false;
+      } finally {
+        for (const h of echo.end(file)) boardChanged.current(file, h);
       }
     },
-    [editFile, toast],
+    [editFile, toast, echo],
   );
   /** Double-click: edit a text-only element in place. Enter during IME composition is ignored. While typing the board takes the
    *  pointer (to place the caret); its links and buttons still do nothing, and a press outside the text ends the edit */
@@ -346,6 +390,7 @@ export function App() {
       }
       const before = el.innerText ?? "";
       setTyping(file);
+      const ownEditable = el.getAttribute("contenteditable");
       el.contentEditable = "true";
       el.focus();
       const doc = el.ownerDocument;
@@ -366,7 +411,9 @@ export function App() {
         el.removeEventListener("keydown", onKey);
         doc.removeEventListener("mousedown", guard, true);
         doc.removeEventListener("click", guard, true);
-        el.contentEditable = "false";
+        // Back to the attribute the file has: a board kept without a reload must match its source
+        if (ownEditable == null) el.removeAttribute("contenteditable");
+        else el.setAttribute("contenteditable", ownEditable);
         setTyping(null);
         // Focus left in the board would keep the app's shortcuts (Esc, ⌘Z) from the window
         if (document.activeElement === doc.defaultView?.frameElement) focusCanvas();
@@ -375,7 +422,7 @@ export function App() {
           if (cancelled) el.innerText = before;
           return;
         }
-        const { hash } = await api.get<{ hash: string }>(`/api/element?f=${encodeURIComponent(file)}&path=${encodeURIComponent(path)}`);
+        const hash = await hashOf(file, path);
         if (!(await doEdit({ op: "setText", path, hash, text }, file))) el.innerText = before; // Shift+Enter line breaks become <br> in the source
       };
       const onKey = (e: KeyboardEvent) => {
@@ -413,7 +460,13 @@ export function App() {
     },
     [doEdit],
   );
-  const hashOf = (file: string, path: string) => api.get<{ hash: string }>(`/api/element?f=${encodeURIComponent(file)}&path=${encodeURIComponent(path)}`).then((r) => r.hash);
+  /** An element's hash for the next edit. Also the safety net for a board patched in place: when the file is not the version the board
+   *  shows (nothing on the way to say so), the board reloads */
+  const hashOf = (file: string, path: string) =>
+    api.get<{ hash: string; fileHash?: string }>(`/api/element?f=${encodeURIComponent(file)}&path=${encodeURIComponent(path)}`).then((r) => {
+      if (r.fileHash && isPatched(frames.current.get(file), file)) boardChanged.current(file, r.fileHash, true);
+      return r.hash;
+    });
   /** Move element: compute the new path after moving and reselect it */
   const moveElement = async (path: string, plan: DropPlan) => {
     if (!editFile) return;
@@ -485,8 +538,12 @@ export function App() {
     () =>
       connectEvents((e: ServerEvent) => {
         if (e.type === "file-changed") {
-          setReloadKeys((k) => ({ ...k, [e.file]: (k[e.file] ?? 0) + 1 }));
-          if (e.kind !== "change") void load();
+          setVersions(bump(e.file));
+          if (e.kind !== "change") {
+            echo.reset(e.file);
+            setReloadKeys(bump(e.file));
+            void load();
+          } else boardChanged.current(e.file, e.hash);
         } else if (e.type === "board-changed" && e.source !== clientId) {
           void load();
           act.reload();
@@ -515,6 +572,10 @@ export function App() {
   const visibleBoards = useMemo(() => (board ? [...new Set(board.order)].filter((f) => board.boards[f] && onPage(board.boards[f])) : []), [board, onPage]);
   const visibleNotes = useMemo(() => (board ? Object.keys(board.notes).filter((id) => onPage(board.notes[id])) : []), [board, onPage]);
   const size = canvasSize ?? win;
+  /** Lint and a11y checks run again when boards cross the live threshold */
+  const liveZoom = useViewValue(viewStore, (v) => v.zoom >= 0.25);
+  /** The fork arrows, drawn under the boards; the canvas gives them its zoom */
+  const underLayer = useCallback((zoom: number) => (board ? <ForkLinks board={board} files={visibleBoards} zoom={zoom} /> : null), [board, visibleBoards]);
   /** Decision c: boards run under the cards, but Fit all and zoom-to-selection keep to the clear area between them and above the
    * context line (x 264 to 1140 at 1440 wide with both cards). The inspector's column counts even at rest: its header stands at the top */
   const clearArea = (): Rect => {
@@ -556,23 +617,40 @@ export function App() {
       } else setView(fitView(Object.values(board.boards), canvasSize, 60, clearArea()));
     } else setView(fitView(Object.values(board.boards), canvasSize, 60, clearArea()));
   }, [board, canvasSize]);
-  // Remember view state
+  // Remember view state (300ms after the view or the panels last changed)
   useEffect(() => {
-    if (!board || !restored.current) return;
-    const t = window.setTimeout(() => {
-      try {
-        localStorage.setItem(stateKey(board.title), JSON.stringify({ view, page: currentPage, left: narrow ? undefined : leftOpen, minimap: minimapOpen } satisfies Saved));
-      } catch {
-        /* Failing to save does not affect behavior */
-      }
-    }, 300);
-    return () => window.clearTimeout(t);
-  }, [view, currentPage, leftOpen, minimapOpen, board?.title]);
+    if (!board) return;
+    let t = 0;
+    const save = () => {
+      window.clearTimeout(t);
+      // Not before the saved view has been restored (the first view is a placeholder)
+      if (!restored.current) return;
+      t = window.setTimeout(() => {
+        try {
+          const saved = JSON.stringify({ view: viewStore.get(), page: currentPage, left: narrow ? undefined : leftOpen, minimap: minimapOpen } satisfies Saved);
+          localStorage.setItem(stateKey(board.title), saved);
+          sessionStorage.setItem(stateKey(board.title), saved);
+        } catch {
+          /* Failing to save does not affect behavior */
+        }
+      }, 300);
+    };
+    save();
+    const off = viewStore.subscribe(save);
+    return () => {
+      off();
+      window.clearTimeout(t);
+    };
+  }, [currentPage, leftOpen, minimapOpen, board?.title]);
 
   // Report canvas state to the server (mode, page, visibleArtboards, selectedArtboards, dirty for MCP get_selection)
   useEffect(() => {
     if (!board) return;
-    const t = window.setTimeout(() => {
+    let t = 0;
+    const report = () => {
+     window.clearTimeout(t);
+     t = window.setTimeout(() => {
+      const view = viewStore.get();
       const vx = -view.x / view.zoom;
       const vy = -view.y / view.zoom;
       const vw = size.w / view.zoom;
@@ -591,9 +669,15 @@ export function App() {
           dirty: savingRef.current > 0 || !!draftTimer.current,
         })
         .catch(() => {});
-    }, 300);
-    return () => window.clearTimeout(t);
-  }, [view, currentPage, selected, editFile, focusFile, playFile, visibleBoards, size.w, size.h]);
+     }, 300);
+    };
+    report();
+    const off = viewStore.subscribe(report);
+    return () => {
+      off();
+      window.clearTimeout(t);
+    };
+  }, [currentPage, selected, editFile, focusFile, playFile, visibleBoards, size.w, size.h]);
 
   useEffect(() => {
     if (!locate || !board || !locate.every((f) => board.boards[f])) return;
@@ -619,7 +703,7 @@ export function App() {
       const cy = a.y + a.h / 2;
       return { zoom: z, x: Math.round(cx - ((cx - v.x) / v.zoom) * z), y: Math.round(cy - ((cy - v.y) / v.zoom) * z) };
     });
-  const zoomTo = (z: number) => zoomBy(z / view.zoom);
+  const zoomTo = (z: number) => zoomBy(z / viewStore.get().zoom);
 
   /* ---------- Board actions ---------- */
   useEffect(() => {
@@ -730,12 +814,22 @@ export function App() {
   /** New board from a template at the centre of the clear area */
   const createFromTemplate = (t: (typeof TEMPLATES)[number]) => {
     const a = clearArea();
+    const view = viewStore.get();
     const cx = (a.x + a.w / 2 - view.x) / view.zoom;
     const cy = (a.y + a.h / 2 - view.y) / view.zoom;
     void createBoard({ x: Math.round(cx - t.w / 2), y: Math.round(cy - t.h / 2), w: t.w, h: t.h }, t.id).then(() => setView(fitView([{ x: cx - t.w / 2, y: cy - t.h / 2, w: t.w, h: t.h }], size, 80, clearArea())));
   };
   const templateMenu = (at: { clientX: number; clientY: number }) =>
-    setMenu({ x: at.clientX, y: at.clientY, up: true, title: strings.menu.newBoard, items: TEMPLATES.map((t) => ({ label: `${t.label} · ${t.size}`, icon: t.id === "doc" ? ("page" as IconName) : ("board" as IconName), shortcut: t.id === "blank" ? strings.menu.drawWithB : undefined, run: () => createFromTemplate(t) })) });
+    setMenu({
+      x: at.clientX,
+      y: at.clientY,
+      up: true,
+      title: strings.menu.newBoard,
+      items: TEMPLATES.flatMap((t, i): MenuItem[] => [
+        ...(i && TEMPLATES[i - 1].group !== t.group ? ["sep" as const] : []),
+        { label: `${t.label} · ${t.size}`, icon: t.group === 2 ? "page" : "board", shortcut: t.id === "blank" ? strings.menu.drawWithB : undefined, run: () => createFromTemplate(t) },
+      ]),
+    });
   /** Open chat (with an optional draft and attachments) */
   const openChat = (draft?: string, files?: string[]) => {
     setRightTab("chat");
@@ -845,6 +939,7 @@ export function App() {
       const k = Math.min(1, 600 / Math.max(img.naturalWidth, img.naturalHeight));
       const w = Math.round(img.naturalWidth * k) || 300;
       const h = Math.round(img.naturalHeight * k) || 200;
+      const view = viewStore.get();
       const c = at ?? { x: (size.w / 2 - view.x) / view.zoom - w / 2, y: (size.h / 2 - view.y) / view.zoom - h / 2 };
       addShape({ kind: "image", x: Math.round(c.x), y: Math.round(c.y), w, h, src: a.ref }, strings.history.addImage);
     };
@@ -959,6 +1054,34 @@ export function App() {
     });
   };
 
+  /** Export PNG: the server renders the board (2×, full page) and the browser downloads it. Nothing is written to board.json */
+  const exportPng = async (file: string) => {
+    if (pngBusy.current.has(file)) return;
+    pngBusy.current.add(file);
+    setExportingPng([...pngBusy.current]);
+    const name = pngName(file);
+    toast({ text: strings.toast.pngExporting(name) });
+    try {
+      const png = await api.blob("/api/screenshot", { file, inline: true });
+      const href = URL.createObjectURL(png);
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = name;
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(href), 10000);
+      toast({ tone: "ok", text: strings.toast.pngExported(name) });
+    } catch (e) {
+      const err = e as Error & { status?: number };
+      if (pngFailure(err.status, err.message) === "browser") toast({ tone: "error", text: strings.toast.pngNeedsBrowser, code: "npx playwright install chromium", ms: 10000 });
+      else toast({ tone: "error", text: strings.toast.pngFailed(shortReason(err.message)) });
+    } finally {
+      pngBusy.current.delete(file);
+      setExportingPng([...pngBusy.current]);
+    }
+  };
+
   /* ---------- Context menus ---------- */
   const boardMenuItems = (file: string): MenuItem[] => {
     const files = selected.includes(file) ? selected : [file];
@@ -977,6 +1100,7 @@ export function App() {
       { label: strings.menu.rename, icon: "title", shortcut: "F2", disabled: many, run: () => void renameBoard(file) },
       { label: strings.menu.renameFile, icon: "link", disabled: many, run: () => void renameFile(file) },
       { label: strings.menu.duplicate, icon: "copy", shortcut: `${mod}D`, disabled: many, run: () => void duplicateBoard(file) },
+      { label: exportingPng.includes(file) ? strings.menu.exportingPng : strings.menu.exportPng, icon: "image", disabled: many || exportingPng.includes(file) || !!data?.missing.includes(file), run: () => void exportPng(file) },
       "sep",
       { label: strings.menu.front, icon: "front", shortcut: `${mod}]`, run: () => reorder(files, "front") },
       { label: strings.menu.back, icon: "back", shortcut: `${mod}[`, run: () => reorder(files, "back") },
@@ -1024,7 +1148,7 @@ export function App() {
   // Right-click on an element inside the board being edited
   elementMenuRef.current = (path, at) => {
     if (!editFile) return;
-    const getHash = () => api.get<{ hash: string }>(`/api/element?f=${encodeURIComponent(editFile)}&path=${encodeURIComponent(path)}`).then((r) => r.hash);
+    const getHash = () => hashOf(editFile, path);
     const el = frames.current.get(editFile)?.contentDocument ? elementAt(frames.current.get(editFile)!.contentDocument!, path) : null;
     const up = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : null;
     setMenu({
@@ -1064,7 +1188,11 @@ export function App() {
     // If focus stays inside the iframe, shortcuts never reach the app
     (document.activeElement as HTMLElement | null)?.blur?.();
     focusCanvas();
-    if (f) setReloadKeys((k) => ({ ...k, [f]: (k[f] ?? 0) + 1 }));
+    if (f) {
+      echo.reset(f);
+      setReloadKeys(bump(f));
+      setVersions(bump(f));
+    }
   };
   // During Play in place, also catch Esc pressed inside the iframe (even after navigating)
   useEffect(() => {
@@ -1089,6 +1217,14 @@ export function App() {
   stopInlineRef.current = stopInline;
   /** ⌘\: hide or show both panels together */
   const [rightOpen, setRightOpen] = useState(() => !window.matchMedia("(max-width: 1000px)").matches);
+  /** Boards in view, for the chat's "visible boards" chip: followed only while the chat is open */
+  const visibleCount = useViewValue(viewStore, (v) => {
+    if (!board || !rightOpen || rightTab !== "chat") return 0;
+    const vx = -v.x / v.zoom, vy = -v.y / v.zoom, vw = size.w / v.zoom, vh = size.h / v.zoom;
+    return visibleBoards.filter((f) => { const b = board.boards[f]; return b.x < vx + vw && b.x + b.w > vx && b.y < vy + vh && b.y + b.h > vy; }).length;
+  });
+  /** The phone sheet sits under the selection, so it follows the view while it is open */
+  const sheetView = useViewWhen(viewStore, phone && rightOpen);
   const settledRef = useRef(false);
   useEffect(() => {
     const t = setTimeout(() => (settledRef.current = true), 1500);
@@ -1198,11 +1334,11 @@ export function App() {
   }, [inlinePlay]);
   const lintTarget = editFile ?? (selected.length === 1 ? selected[0] : null);
   /** The board's own CSS variables: choosing a token writes the variable the board already has for it */
-  const vars = useMemo(() => boardVars(editFile ? frames.current.get(editFile)?.contentDocument : null), [editFile, frameTick, reloadKeys[editFile ?? ""], edit.state.selection?.hash]);
+  const vars = useMemo(() => boardVars(editFile ? frames.current.get(editFile)?.contentDocument : null), [editFile, frameTick, versions[editFile ?? ""], edit.state.selection?.hash]);
   useEffect(() => {
     if (!lintTarget) return setLint(null);
     api.get<{ files: Record<string, LintItem[]> }>(`/api/lint?f=${encodeURIComponent(lintTarget)}`).then((r) => setLint(r.files[lintTarget] ?? [])).catch(() => setLint(null));
-  }, [lintTarget, reloadKeys[lintTarget ?? ""], tokensVersion]);
+  }, [lintTarget, versions[lintTarget ?? ""], tokensVersion]);
   useEffect(() => {
     if (!lintTarget) return setA11y(null);
     const run = () => {
@@ -1211,7 +1347,7 @@ export function App() {
     };
     const t = window.setTimeout(run, 600);
     return () => window.clearTimeout(t);
-  }, [lintTarget, frameTick, reloadKeys[lintTarget ?? ""], tokens?.minTarget, view.zoom >= 0.25]);
+  }, [lintTarget, frameTick, versions[lintTarget ?? ""], tokens?.minTarget, liveZoom]);
   /** Menus that open from the dock rise 8px above it, from the button's left edge */
   const fromDock = (e: { currentTarget: Element }) => {
     const r = e.currentTarget.getBoundingClientRect();
@@ -1251,7 +1387,7 @@ export function App() {
       right: true,
       className: "view oc-menu",
       title: strings.toolbar.viewMenu,
-      head: narrow ? <ZoomRow zoom={view.zoom} onZoom={zoomBy} onZoom100={() => zoomTo(1)} onFit={fitAll} menu /> : undefined,
+      head: narrow ? <ZoomRowOf store={viewStore} onZoom={zoomBy} onZoom100={() => zoomTo(1)} onFit={fitAll} menu /> : undefined,
       items: [
         ...(narrow
           ? [
@@ -1267,6 +1403,8 @@ export function App() {
         ...(themeNames.length > 1
           ? themeNames.map((n) => ({ label: strings.toolbar.themeOption(n), icon: "layers" as IconName, check: tokens!.active === n, run: () => void saveTokens({ ...tokens!, active: n }, strings.history.changeTheme) }))
           : []),
+        // The UI language, named in itself; switching reloads, because labels are read once when the app loads
+        { label: strings.toolbar.language(LANGUAGES.find((l) => l.id === lang)!.name), icon: "globe", run: () => setLang(LANGUAGES[(LANGUAGES.findIndex((l) => l.id === lang) + 1) % LANGUAGES.length].id) },
         "sep",
         { label: strings.toolbar.snapshot, icon: "layers", run: () => void snapshotMenu(at, true) },
       ],
@@ -1416,6 +1554,9 @@ export function App() {
     if (!tagOf(file, key)) return;
     setTagPop((cur) => (cur?.file === file && cur.key === key ? null : { file, key, conflict: null, busy: false }));
   };
+  const openTagRef = useRef(openTag);
+  openTagRef.current = openTag;
+  const openTagStable = useCallback((file: string, key: string) => openTagRef.current(file, key), []);
   // A tag whose popover was opened counts as seen once the popover closes (while open it stays fresh and keeps its outline)
   const openedTag = useRef<{ id: string; steps: string[] } | null>(null);
   useEffect(() => {
@@ -1610,7 +1751,7 @@ export function App() {
   }, []);
 
   /* ---------- Overlays on boards: hover and selection outlines, comment pins ---------- */
-  const renderOverlay = (f: string) => {
+  const renderOverlay = (f: string, zoom: number) => {
     const pins = comments.filter((c) => c.file === f && !c.resolved);
     const doc = frames.current.get(f)?.contentDocument;
     const editing = editFile === f;
@@ -1619,12 +1760,14 @@ export function App() {
     const changed = inlinePlay === f ? undefined : act.tagsOf(f).find((t) => t.paths.length && act.stateOf(t) === "fresh");
     const hov = hover?.file === f && inlinePlay !== f && !(editing && edit.state.paths.includes(hover.path)) ? hover : null;
     const mq = elMarquee?.file === f ? elMarquee.rect : null;
-    if (!editing && !pins.length && !lg.length && !changed && !hov && !mq) return null;
+    const png = exportingPng.includes(f);
+    if (!editing && !pins.length && !lg.length && !changed && !hov && !mq && !png) return null;
     // Outlines stay the same width on screen whatever the zoom
-    const px = 1 / Math.max(view.zoom, 0.05);
+    const px = 1 / Math.max(zoom, 0.05);
     return (
       <div className="overlay">
-        {changed && <ChangeOutline frame={frames.current.get(f) ?? null} paths={changed.paths} zoom={view.zoom} />}
+        {png && <div className="export-badge" role="status" style={{ transform: `scale(${1 / Math.max(zoom, 0.25)})` }}>{strings.canvas.exportingPng}</div>}
+        {changed && <ChangeOutline frame={frames.current.get(f) ?? null} paths={changed.paths} zoom={zoom} />}
         {lg.length > 0 && board && <GuidesOverlay guides={lg} w={board.boards[f].w} h={board.boards[f].h} />}
         {hov && <Box r={hov.rect} cls="hover" px={px} />}
         {editing && edit.state.rects.map((r, i) => <Box key={i} r={r} cls="sel" px={px} />)}
@@ -1634,7 +1777,7 @@ export function App() {
             doc={doc}
             path={edit.state.paths[0]}
             rect={edit.state.rects[0]}
-            zoom={view.zoom}
+            zoom={zoom}
             onMove={(plan) => void moveElement(edit.state.paths[0], plan)}
             onPosition={async (left, top) => {
               const path = edit.state.paths[0];
@@ -1656,7 +1799,7 @@ export function App() {
               key={c.id}
               className="pin"
               title={c.text}
-              style={r ? { left: r.x + r.w - 12, top: r.y - 12, transform: `scale(${1 / Math.max(view.zoom, 0.25)})` } : { right: 8, top: 8 + i * 30, transform: `scale(${1 / Math.max(view.zoom, 0.25)})` }}
+              style={r ? { left: r.x + r.w - 12, top: r.y - 12, transform: `scale(${1 / Math.max(zoom, 0.25)})` } : { right: 8, top: 8 + i * 30, transform: `scale(${1 / Math.max(zoom, 0.25)})` }}
             >
               {i + 1}
             </div>
@@ -1684,10 +1827,6 @@ export function App() {
 
   const one = selected.length === 1 ? selected[0] : null;
   const erroredFiles = [...new Set([...data.missing, ...Object.keys(errors)])];
-  const visibleCount = (() => {
-    const vx = -view.x / view.zoom, vy = -view.y / view.zoom, vw = size.w / view.zoom, vh = size.h / view.zoom;
-    return visibleBoards.filter((f) => { const b = board.boards[f]; return b.x < vx + vw && b.x + b.w > vx && b.y < vy + vh && b.y + b.h > vy; }).length;
-  })();
   const leftTabs = (
     <div className="oc-tabs" role="tablist" aria-label={strings.tabs.left} ref={leftTabsRef}>
       <button role="tab" aria-selected={leftTab === "boards"} className={leftTab === "boards" ? "on" : ""} onClick={() => setLeftTab("boards")}>
@@ -1754,6 +1893,7 @@ export function App() {
     if (!sheet) return 0;
     const b = editFile ? board.boards[editFile] : one ? board.boards[one] : null;
     const r = editFile ? edit.state.rects[0] : null;
+    const view = sheetView ?? viewStore.get();
     const bottom = b ? view.y + (b.y + (r ? r.y + r.h : b.h)) * view.zoom + 4 : 0;
     // The chat needs its head, a few lines of thread and the composer: it keeps 480px when the window allows
     return Math.round(clamp(bottom + 8, inset + 48 + inset, win.h - (rightTab === "chat" ? 480 : 280)));
@@ -1861,6 +2001,7 @@ export function App() {
             if (!files.length) return;
             e.preventDefault();
             const r = e.currentTarget.getBoundingClientRect();
+            const view = viewStore.get();
             const at = { x: (e.clientX - r.left - view.x) / view.zoom, y: (e.clientY - r.top - view.y) / view.zoom };
             void importFiles(files, at);
           }}
@@ -1868,8 +2009,7 @@ export function App() {
           <Canvas
             board={board}
             files={data.files}
-            view={view}
-            setView={setView}
+            view={viewStore}
             tool={tool}
             setTool={setTool}
             visibleBoards={visibleBoards}
@@ -1878,6 +2018,7 @@ export function App() {
             selectedNotes={selectedNotes}
             editFile={editFile}
             reloadKeys={reloadKeys}
+            versions={versions}
             onSelect={select}
             onSelectNote={(id, add) => {
               if (!id) return setSelectedNotes([]);
@@ -1964,21 +2105,27 @@ export function App() {
             onSize={setCanvasSize}
             renderBoardOverlay={renderOverlay}
             renderBoardTags={(f) => {
-              const lead = occ[f]?.length ? <OccTags list={occ[f]} /> : null;
-              return act.tagsOf(f).length || lead ? <BoardTags file={f} act={act} me={me} onOpen={openTag} lead={lead} /> : null;
+              const tags = act.tagsOf(f);
+              if (!tags.length && !occ[f]?.length) return null;
+              // The same tags as last time give the same element, so the board does not render again
+              const sig = JSON.stringify([occ[f], me, tags.map((t) => [t.key, t.by, t.person, t.outside, t.count, t.newBoard, strings.activity.ago(act.now - t.at), act.stateOf(t)])]);
+              return boardNodes(`tags:${f}`, sig, () => <BoardTags file={f} act={act} me={me} onOpen={openTagStable} lead={occ[f]?.length ? <OccTags list={occ[f]} /> : null} />);
             }}
             renderBoardButtons={(f, compact) => {
               const g = choiceGroup(board, f);
-              return g ? <UseButton file={f} group={g} busy={busyIn(occ, g)} compact={compact} open={useOpen?.file === f} onOpen={() => setUseOpen((c) => (c?.file === f ? null : { file: f, busy: false }))} /> : null;
+              if (!g) return null;
+              const busy = busyIn(occ, g);
+              const open = useOpen?.file === f;
+              return boardNodes(`use:${f}`, JSON.stringify([g, busy, compact, open]), () => <UseButton file={f} group={g} busy={busy} compact={compact} open={open} onOpen={() => setUseOpen((c) => (c?.file === f ? null : { file: f, busy: false }))} />);
             }}
             boardRing={(f) => (writersOn(occ, f).length ? "var(--line-strong)" : null)}
-            underLayer={<ForkLinks board={board} files={visibleBoards} zoom={view.zoom} />}
-            worldLayer={
+            underLayer={underLayer}
+            worldLayer={(zoom) => (
               <>
               <ShapesLayer
                 shapes={shapes}
                 ids={visibleShapes}
-                zoom={view.zoom}
+                zoom={zoom}
                 selected={selectedShapes}
                 interactive={tool === "select"}
                 onSelect={(id, add) => {
@@ -2015,16 +2162,18 @@ export function App() {
                 }
               />
               </>
-            }
+            )}
             iframeRef={(f, el) => {
-              // The ref callback is called again with null → el on every render. Update only for a genuinely new iframe
+              // The ref callback is called again with null → el on every render. Update only for a genuinely new iframe, and render the
+              // app only for a board whose page it reads (edited, played, checked, tweaked, comment pins, change outlines): not for each one a pan loads
               if (el && frames.current.get(f) !== el) {
                 frames.current.set(f, el);
-                setFrameTick((t) => t + 1);
+                const readsPage = f === editFile || f === inlinePlay || f === lintTarget || f === one || comments.some((c) => c.file === f && !c.resolved) || act.tagsOf(f).some((t) => t.paths.length);
+                if (readsPage) setFrameTick((t) => t + 1);
               }
             }}
           />
-          {SHAPE_TOOLS.includes(tool) && <ShapeDrawer tool={tool as ShapeKind} view={view} onDone={(sh) => addShape(sh)} />}
+          {SHAPE_TOOLS.includes(tool) && <ShapeDrawerOf store={viewStore} tool={tool as ShapeKind} onDone={(sh) => addShape(sh)} />}
           {visibleBoards.length === 0 && visibleNotes.length === 0 && visibleShapes.length === 0 && (
             <div className="canvas-empty">
               <Icon name="board" size={32} />
@@ -2062,13 +2211,13 @@ export function App() {
           ))}
         {!narrow && (
           <nav className={`oc-card oc-nav ${minimapOpen && rects.length ? "" : "is-collapsed"}`} aria-label={strings.app.navigation}>
-            {minimapOpen && rects.length > 0 && <Minimap className="oc-map" w={240} h={112} inset={8} rects={rects} selected={selected} view={view} size={size} onJump={centreOn} />}
-            <ZoomRow zoom={view.zoom} onZoom={zoomBy} onZoom100={() => zoomTo(1)} onFit={fitAll} />
+            {minimapOpen && rects.length > 0 && <MinimapOf store={viewStore} className="oc-map" w={240} h={112} inset={8} rects={rects} selected={selected} size={size} onJump={centreOn} />}
+            <ZoomRowOf store={viewStore} onZoom={zoomBy} onZoom100={() => zoomTo(1)} onFit={fitAll} />
           </nav>
         )}
         {narrow && mapNarrow && rects.length > 0 && !sheet && (
           <nav className="oc-card oc-nav oc-nav-n" aria-label={strings.app.navigation}>
-            <Minimap className="oc-map" w={240} h={112} inset={8} rects={rects} selected={selected} view={view} size={size} onJump={centreOn} />
+            <MinimapOf store={viewStore} className="oc-map" w={240} h={112} inset={8} rects={rects} selected={selected} size={size} onJump={centreOn} />
           </nav>
         )}
         <aside
@@ -2234,7 +2383,7 @@ export function App() {
           {!editFile && one && board.boards[one] && readTweaks(frames.current.get(one)?.contentDocument) && (
             <Collapsible id="tweaks" title={strings.sections.tweaks}>
               <TweaksPanel
-              key={`${one}-${reloadKeys[one] ?? 0}-${frameTick}`}
+              key={`${one}-${versions[one] ?? 0}-${frameTick}`}
               doc={readTweaks(frames.current.get(one)?.contentDocument) ? frames.current.get(one)!.contentDocument : null}
               onSave={async (values) => {
                 try {
@@ -2308,7 +2457,7 @@ export function App() {
                 onAttr={(name, value) => void doEdit({ op: "setAttr", path: sel.path, hash: sel.hash, name, value })}
                 onWrap={async (display) => {
                   const ordered = [...paths].sort((a, b) => Number(a.split("/").pop()) - Number(b.split("/").pop()));
-                  const hashes = await Promise.all(ordered.map((p) => api.get<{ hash: string }>(`/api/element?f=${encodeURIComponent(editFile)}&path=${encodeURIComponent(p)}`).then((r) => r.hash)));
+                  const hashes = await Promise.all(ordered.map((p) => hashOf(editFile, p)));
                   if (await doEdit({ op: "wrap", paths: ordered, hashes, display })) void edit.select([ordered[0]]);
                 }}
               >
@@ -2322,14 +2471,14 @@ export function App() {
             return (
               <Layers
                 file={lf}
-                version={reloadKeys[lf] ?? 0}
+                version={versions[lf] ?? 0}
                 selected={editFile ? edit.state.paths : []}
                 onSelect={(p, add) => {
                   const cur = editFile ? edit.state.paths : [];
                   pickElement(lf, add ? (cur.includes(p) ? cur.filter((x) => x !== p) : [...cur, p]) : [p]);
                 }}
                 onMove={async (path, toParentPath, index) => {
-                  const { hash } = await api.get<{ hash: string }>(`/api/element?f=${encodeURIComponent(lf)}&path=${encodeURIComponent(path)}`);
+                  const hash = await hashOf(lf, path);
                   if (await doEdit({ op: "move", path, hash, toParentPath, index }, lf)) pickElement(lf, [toParentPath ? `${toParentPath}/${index}` : String(index)]);
                 }}
               />
@@ -2383,7 +2532,7 @@ export function App() {
       <div className="sr-only" role="status" aria-live="polite">
         {announce}
       </div>
-      <ContextMenu menu={menu} onClose={() => setMenu(null)} head={menu?.className?.startsWith("view") && narrow ? <ZoomRow zoom={view.zoom} onZoom={zoomBy} onZoom100={() => zoomTo(1)} onFit={fitAll} menu /> : undefined} />
+      <ContextMenu menu={menu} onClose={() => setMenu(null)} head={menu?.className?.startsWith("view") && narrow ? <ZoomRowOf store={viewStore} onZoom={zoomBy} onZoom100={() => zoomTo(1)} onFit={fitAll} menu /> : undefined} />
       {tagPop && !playFile && (() => {
         const t = tagOf(tagPop.file, tagPop.key);
         return t ? (
@@ -2587,4 +2736,39 @@ function Dock(p: {
       </div>
     </div>
   );
+}
+
+/** The zoom row, following the view on its own */
+function ZoomRowOf({ store, ...p }: { store: ViewStore } & Omit<Parameters<typeof ZoomRow>[0], "zoom">) {
+  return <ZoomRow {...p} zoom={useViewValue(store, (v) => v.zoom)} />;
+}
+
+function ShapeDrawerOf({ store, ...p }: { store: ViewStore } & Omit<Parameters<typeof ShapeDrawer>[0], "view">) {
+  return <ShapeDrawer {...p} view={useView(store)} />;
+}
+
+/** Elements drawn on boards (tags, Use buttons), kept while their signature is the same: a memoised board then skips rendering */
+function useNodeCache() {
+  const cache = useRef(new Map<string, { sig: string; node: React.ReactNode }>());
+  return useCallback((key: string, sig: string, make: () => React.ReactNode) => {
+    const hit = cache.current.get(key);
+    if (hit && hit.sig === sig) return hit.node;
+    const node = make();
+    cache.current.set(key, { sig, node });
+    return node;
+  }, []);
+}
+
+/** A board read again from the server keeps the objects of the boards, notes and shapes that did not change (all of it when nothing
+ * did), so memoised boards skip rendering after a save or another client's edit */
+export function keepUnchanged(prev: Board | null, next: Board): Board {
+  if (!prev) return next;
+  if (JSON.stringify(prev) === JSON.stringify(next)) return prev;
+  const same = <T,>(a: Record<string, T> | undefined, b: Record<string, T> | undefined) => {
+    if (!a || !b) return b;
+    const out: Record<string, T> = {};
+    for (const [k, v] of Object.entries(b)) out[k] = a[k] !== undefined && JSON.stringify(a[k]) === JSON.stringify(v) ? a[k] : v;
+    return out;
+  };
+  return { ...next, boards: same(prev.boards, next.boards)!, notes: same(prev.notes, next.notes)!, shapes: same(prev.shapes, next.shapes) };
 }

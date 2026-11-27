@@ -1,6 +1,6 @@
 // AI-generated with Claude Code, 2026-10-09, reviewed by Hyun Park
 // Infinite canvas: tools (select, hand, board, title, note), pan and zoom, multi-select, group move, snap guides, boards (iframes) with labels and sizes, notes. PLAN.md section 5.
-import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent as RMouseEvent, type PointerEvent as RPointerEvent, type ReactNode } from "react";
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent as RMouseEvent, type PointerEvent as RPointerEvent, type ReactNode } from "react";
 
 import { isDrag } from "./directSelect";
 import { stickyBg } from "./drawing";
@@ -8,6 +8,7 @@ import { Icon } from "./icons";
 import type { Board, BoardItem, Note, ScreenSource, Tool, View } from "./types";
 import { scrollInside } from "./useElementSelect";
 import { strings } from "./strings";
+import { useView, type ViewStore } from "./viewStore";
 
 // PLAN said 10%, but allow down to 4% to fit all 98 boards (about 17,700 tall) on one screen
 export const MIN_ZOOM = 0.04;
@@ -19,6 +20,10 @@ export const LIVE_MIN_SCREEN_PX = 640;
 /** Below this zoom the labels of forks and their originals are one 24px row (compact): rows of forks placed 120px apart leave it room
  * from 23% up, a full label (title and a tag row, 56px) only from 47%. Other boards keep their tags */
 export const COMPACT_LABEL_ZOOM = 0.5;
+/** A board that becomes live waits until the view has been still this long (ms), so a pan or zoom never loads pages mid-gesture */
+export const LIVE_SETTLE_MS = 150;
+/** ...then boards go live one at a time, nearest the centre first, this far apart (ms), instead of all pages loading in one task */
+export const LIVE_STAGGER_MS = 40;
 /** Thumbnail resolutions the server renders (long side, device px). A board asks for the smallest one that covers it on screen */
 export const THUMB_SIZES = [600, 1200, 2400];
 export const thumbSize = (screenPx: number) => THUMB_SIZES.find((s) => s >= screenPx) ?? THUMB_SIZES[THUMB_SIZES.length - 1];
@@ -34,8 +39,8 @@ type Gesture = null | { kind: "pan"; sx: number; sy: number; vx: number; vy: num
 type Props = {
   board: Board;
   files: string[];
-  view: View;
-  setView: (v: View | ((v: View) => View)) => void;
+  /** The view (pan and zoom): only the canvas follows it, the rest of the app does not re-render on a wheel step */
+  view: ViewStore;
   tool: Tool;
   setTool: (t: Tool) => void;
   visibleBoards: string[];
@@ -49,6 +54,8 @@ type Props = {
   /** Board playing in place (the iframe is interactive) */
   playing?: string | null;
   reloadKeys: Record<string, number>;
+  /** Bumped on every change of a board's content, also one shown in place without a reload (thumbnails follow it) */
+  versions?: Record<string, number>;
   onSelect: (files: string[], mode: "replace" | "toggle" | "add") => void;
   onSelectNote: (id: string | null, add?: boolean) => void;
   /** Marquee result: boards and notes inside the rectangle (additive with Shift) */
@@ -69,17 +76,17 @@ type Props = {
   onCreateBoard: (r: Rect) => void;
   onCreateNote: (kind: Note["kind"], at: { x: number; y: number }) => void;
   onContext: (t: ContextTarget, e: { clientX: number; clientY: number }) => void;
-  renderBoardOverlay?: (f: string) => ReactNode;
+  renderBoardOverlay?: (f: string, zoom: number) => ReactNode;
   /** Tags stacked above a board's title (who changed it); not drawn while the label is too small to show the title, or compact */
   renderBoardTags?: (f: string) => ReactNode;
   /** Buttons that stay visible in a board's label row (Use this), before Play; compact: the label is one row (zoomed out) */
   renderBoardButtons?: (f: string, compact: boolean) => ReactNode;
   /** Colour of the ring around a board an agent is writing right now */
   boardRing?: (f: string) => string | null;
-  /** Things drawn over boards (shapes) — world coordinates */
-  worldLayer?: ReactNode;
+  /** Things drawn over boards (shapes) — world coordinates; drawn again when the zoom or the function changes */
+  worldLayer?: (zoom: number) => ReactNode;
   /** Things drawn under notes and boards (the fork arrows) — world coordinates */
-  underLayer?: ReactNode;
+  underLayer?: (zoom: number) => ReactNode;
   iframeRef?: (f: string, el: HTMLIFrameElement | null) => void;
   onSize?: (s: { w: number; h: number }) => void;
   /** View-only (exported viewer): dragging pans, a press selects, nothing moves, resizes or edits */
@@ -88,6 +95,8 @@ type Props = {
 };
 
 export function Canvas(p: Props) {
+  const view = useView(p.view);
+  const setView = p.view.set;
   const rootRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 1200, h: 800 });
@@ -99,13 +108,21 @@ export function Canvas(p: Props) {
 
   useLayoutEffect(() => {
     const el = rootRef.current!;
-    const ro = new ResizeObserver(() => {
+    const measure = () => {
       const s = { w: el.clientWidth, h: el.clientHeight };
-      setSize(s);
+      // A hidden container (a collapsed pane, display: none) measures 0: keep the last real size. Taken as the view, 0 × 0 marks
+      // every board out of view and unloads them all, and a hidden page gets no new ResizeObserver callback until it renders again
+      if (!s.w || !s.h) return;
+      setSize((o) => (o.w === s.w && o.h === s.h ? o : s));
       p.onSize?.(s);
-    });
+    };
+    const ro = new ResizeObserver(measure);
     ro.observe(el);
-    return () => ro.disconnect();
+    document.addEventListener("visibilitychange", measure);
+    return () => {
+      ro.disconnect();
+      document.removeEventListener("visibilitychange", measure);
+    };
   }, []);
 
   // will-change only while the view moves: kept on, Chromium holds the old raster scale and boards stay blurry after a zoom
@@ -120,7 +137,7 @@ export function Canvas(p: Props) {
     el.style.willChange = "transform";
     const t = setTimeout(() => (el.style.willChange = ""), 200);
     return () => clearTimeout(t);
-  }, [p.view.x, p.view.y, p.view.zoom]);
+  }, [view.x, view.y, view.zoom]);
 
   // Wheel: with ⌘/Ctrl (including trackpad pinch) zoom around the cursor, otherwise pan
   useEffect(() => {
@@ -131,7 +148,7 @@ export function Canvas(p: Props) {
       const mx = e.clientX - r.left;
       const my = e.clientY - r.top;
       if (e.ctrlKey || e.metaKey) {
-        p.setView((v) => {
+        setView((v) => {
           const z = clamp(v.zoom * Math.exp(-e.deltaY * 0.01), MIN_ZOOM, MAX_ZOOM);
           const wx = (mx - v.x) / v.zoom;
           const wy = (my - v.y) / v.zoom;
@@ -141,12 +158,12 @@ export function Canvas(p: Props) {
         // Over the board that has an element selected, the wheel scrolls the board's own content first (what Edit mode used to allow)
         const frame = (e.target as Element | null)?.closest?.(".board-frame[data-inside]")?.querySelector("iframe") ?? null;
         if (scrollInside(frame, e.clientX, e.clientY, e.deltaX, e.deltaY)) return;
-        p.setView((v) => ({ ...v, x: v.x - e.deltaX, y: v.y - e.deltaY }));
+        setView((v) => ({ ...v, x: v.x - e.deltaX, y: v.y - e.deltaY }));
       }
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, [p.setView]);
+  }, [setView]);
 
   // Holding Space switches to the hand tool
   useEffect(() => {
@@ -165,7 +182,6 @@ export function Canvas(p: Props) {
     };
   }, []);
 
-  const { view } = p;
   const toWorld = (cx: number, cy: number) => {
     const r = rootRef.current!.getBoundingClientRect();
     return { x: (cx - r.left - view.x) / view.zoom, y: (cy - r.top - view.y) / view.zoom };
@@ -197,7 +213,7 @@ export function Canvas(p: Props) {
     const g = gesture.current;
     if (!g) return;
     if (g.kind === "pan") {
-      p.setView((v) => ({ ...v, x: g.vx + e.clientX - g.sx, y: g.vy + e.clientY - g.sy }));
+      setView((v) => ({ ...v, x: g.vx + e.clientX - g.sx, y: g.vy + e.clientY - g.sy }));
       return;
     }
     const w = toWorld(e.clientX, e.clientY);
@@ -372,6 +388,87 @@ export function Canvas(p: Props) {
     forkScene.add(f);
     if (shownBoards.has(o.of)) forkScene.add(o.of);
   }
+  /* ---------- Live frames: mounted after the view settles, one at a time, nearest the centre first ---------- */
+  // Which boards should be live is decided below on every render; `mounted` is which of them already have their page. A board that
+  // should be live and is not yet shows its thumbnail meanwhile. The board being played, edited or typed in is live at once
+  const mounted = useRef(new Set<string>());
+  const wanted = useRef<string[]>([]);
+  const settled = useRef(false);
+  const pumping = useRef(0);
+  const [, setMountTick] = useState(0);
+  const pump = () => {
+    if (pumping.current || !settled.current) return;
+    const next = wanted.current.find((f) => !mounted.current.has(f));
+    if (!next) return;
+    mounted.current.add(next);
+    setMountTick((t) => t + 1);
+    pumping.current = window.setTimeout(() => {
+      pumping.current = 0;
+      pump();
+    }, LIVE_STAGGER_MS);
+  };
+  const lastMove = useRef(0);
+  useEffect(() => {
+    settled.current = false;
+    // On a slow machine the steps of one gesture come further apart than 150 ms: wait three steps' time then (a step under 400 ms
+    // apart counts as the same gesture), so pages do not start loading between two steps of the same pan or zoom
+    const now = performance.now();
+    const step = now - lastMove.current;
+    lastMove.current = now;
+    const t = window.setTimeout(() => {
+      settled.current = true;
+      pump();
+    }, step < 400 ? Math.max(LIVE_SETTLE_MS, step * 3) : LIVE_SETTLE_MS);
+    return () => window.clearTimeout(t);
+  }, [view.x, view.y, view.zoom]);
+  useEffect(() => () => window.clearTimeout(pumping.current), []);
+  // Boards that should be live (filled in while rendering the boards below), nearest the view's centre first
+  const wantLive: { f: string; d: number }[] = [];
+  const cx = vx + vw / 2;
+  const cy = vy + vh / 2;
+  useEffect(() => {
+    const want = new Set(wantLive.map((w) => w.f));
+    // A board that left the view gets its thumbnail back and waits its turn again when it returns
+    for (const f of mounted.current) if (!want.has(f)) mounted.current.delete(f);
+    wanted.current = wantLive.sort((a, b) => a.d - b.d).map((w) => w.f);
+    pump();
+  });
+
+  // Boards and notes get one stable set of handlers that call this render's functions, so a board whose own props did not change
+  // is not rendered again when the view moves or another board is dragged
+  const latest = useRef({ p, pressBoard, moveBoardPress, releaseBoard, picking });
+  latest.current = { p, pressBoard, moveBoardPress, releaseBoard, picking };
+  const h = useMemo<ItemHandlers>(() => {
+    const l = () => latest.current;
+    return {
+      press: (e, f, from, live) => l().pressBoard(e, f, from, live),
+      pressMove: (e, f, live) => l().moveBoardPress(e, f, live),
+      release: (e, f) => l().releaseBoard(e, f),
+      leave: () => !press.current && l().p.onHoverElement?.(null),
+      doubleClickFrame: (e, f) => l().p.onPickElement?.(f, e, { add: false, double: true }),
+      contextFrame: (e, f, live) => l().picking && live && !!l().p.onElementContext?.(f, e),
+      resize: (f, patch, done) => l().p.onMoveBoards({ [f]: patch }, done),
+      play: (f) => l().p.onPlay(f),
+      rename: (f) => l().p.onRename(f),
+      context: (f, e) => l().p.onContext({ type: "board", file: f }, e),
+      iframeRef: (f, el) => l().p.iframeRef?.(f, el),
+      selectNote: (id, add) => l().p.onSelectNote(id, add),
+      moveNote: (id, patch, done) => l().p.onMoveNote(id, patch, done),
+      deleteNote: (id) => l().p.onDeleteNote(id),
+      contextNote: (id, e) => l().p.onContext({ type: "note", id }, e),
+    };
+  }, []);
+  const fileSet = useMemo(() => new Set(p.files), [p.files]);
+  // A board's overlay is drawn again only when the app rendered (a new function) or the zoom changed, not on every pan step
+  const overlays = useRef<{ fn?: Props["renderBoardOverlay"]; zoom: number; of: Map<string, ReactNode> }>({ zoom: 0, of: new Map() });
+  if (overlays.current.fn !== p.renderBoardOverlay || overlays.current.zoom !== view.zoom) overlays.current = { fn: p.renderBoardOverlay, zoom: view.zoom, of: new Map() };
+  const overlayOf = (f: string) => {
+    const o = overlays.current.of;
+    if (!o.has(f)) o.set(f, p.renderBoardOverlay?.(f, view.zoom));
+    return o.get(f);
+  };
+  const underLayer = useMemo(() => p.underLayer?.(view.zoom), [p.underLayer, view.zoom]);
+  const worldLayer = useMemo(() => p.worldLayer?.(view.zoom), [p.worldLayer, view.zoom]);
   return (
     <div
       ref={rootRef}
@@ -390,7 +487,7 @@ export function Canvas(p: Props) {
       aria-label={strings.canvas.aria}
     >
       <div ref={worldRef} className="world" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }}>
-        {p.underLayer}
+        {underLayer}
         {p.visibleNotes.map((id) => (
           <NoteView
             key={id}
@@ -399,22 +496,27 @@ export function Canvas(p: Props) {
             id={id}
             selected={p.selectedNotes.includes(id)}
             readOnly={p.readOnly}
-            onSelect={(add) => p.onSelectNote(id, add)}
-            onMove={(patch, done) => p.onMoveNote(id, patch, done)}
-            onDelete={() => p.onDeleteNote(id)}
-            onContext={(e) => p.onContext({ type: "note", id }, e)}
+            h={h}
           />
         ))}
         {p.visibleBoards.map((f) => {
           const b = p.board.boards[f];
-          const live = inView(b) && (!screens.thumbs || view.zoom >= IFRAME_MIN_ZOOM || Math.max(b.w, b.h) * view.zoom >= LIVE_MIN_SCREEN_PX || p.editFile === f);
+          // The board being played, edited or typed in is always live, whatever the zoom or the measured view says: Play on a thumbnail
+          // (a tall board fitted below 25%) or on a placeholder (a view measured while the pane was hidden) shows an empty board
+          const pinned = p.playing === f || p.editFile === f || p.typing === f;
+          const near = pinned || inView(b);
+          const shouldLive = pinned || (near && (!screens.thumbs || view.zoom >= IFRAME_MIN_ZOOM || Math.max(b.w, b.h) * view.zoom >= LIVE_MIN_SCREEN_PX));
+          if (shouldLive) wantLive.push({ f, d: pinned ? -1 : Math.hypot(b.x + b.w / 2 - cx, b.y + b.h / 2 - cy) });
+          if (pinned) mounted.current.add(f);
+          const live = pinned || (shouldLive && mounted.current.has(f));
+          const waiting = shouldLive && !live;
           const selected = p.selected.includes(f);
           return (
             <BoardView
               key={f}
               file={f}
               item={b}
-              exists={p.files.includes(f)}
+              exists={fileSet.has(f)}
               zoom={view.zoom}
               live={live}
               selected={selected}
@@ -424,29 +526,22 @@ export function Canvas(p: Props) {
               editing={p.editFile === f}
               typing={p.typing === f}
               playing={p.playing === f}
-              near={inView(b)}
+              near={near}
+              waiting={waiting}
               reloadKey={p.reloadKeys[f] ?? 0}
-              onPress={(e, from) => pressBoard(e, f, from, live)}
-              onPressMove={(e) => moveBoardPress(e, f, live)}
-              onRelease={(e) => releaseBoard(e, f)}
-              onLeave={() => !press.current && p.onHoverElement?.(null)}
-              onDoubleClickFrame={picking && live ? (e) => p.onPickElement?.(f, e, { add: false, double: true }) : undefined}
-              onContextFrame={(e) => picking && live && !!p.onElementContext?.(f, e)}
-              onResize={(patch, done) => p.onMoveBoards({ [f]: patch }, done)}
-              onPlay={() => p.onPlay(f)}
-              onRename={() => p.onRename(f)}
-              onContext={(e) => p.onContext({ type: "board", file: f }, e)}
-              overlay={p.renderBoardOverlay?.(f)}
+              version={p.versions?.[f] ?? p.reloadKeys[f] ?? 0}
+              pickable={picking && live}
+              h={h}
+              overlay={overlayOf(f)}
               compact={b.w * view.zoom >= 48 && view.zoom < COMPACT_LABEL_ZOOM && forkScene.has(f)}
               forkScene={forkScene.has(f)}
               tags={b.w * view.zoom >= 48 && !(view.zoom < COMPACT_LABEL_ZOOM && forkScene.has(f)) && p.playing !== f ? p.renderBoardTags?.(f) : null}
               buttons={p.readOnly ? null : p.renderBoardButtons?.(f, view.zoom < COMPACT_LABEL_ZOOM && forkScene.has(f))}
               ring={p.boardRing?.(f) ?? null}
-              iframeRef={(el) => p.iframeRef?.(f, el)}
             />
           );
         })}
-        {p.worldLayer}
+        {worldLayer}
         {guides.map((g, i) =>
           g.axis === "x" ? (
             <div key={i} className="guide" style={{ left: g.at, top: g.from, width: 1 / view.zoom, height: g.to - g.from }} />
@@ -465,7 +560,28 @@ export function Canvas(p: Props) {
   );
 }
 
-function BoardView(props: {
+/** What boards and notes call back with; one object for the canvas's lifetime */
+type ItemHandlers = {
+  press: (e: RPointerEvent, f: string, from: "frame" | "label", live: boolean) => void;
+  pressMove: (e: RPointerEvent, f: string, live: boolean) => void;
+  release: (e: RPointerEvent, f: string) => void;
+  leave: () => void;
+  doubleClickFrame: (e: RMouseEvent, f: string) => void;
+  /** True when the right-click opened an element's menu */
+  contextFrame: (e: RMouseEvent, f: string, live: boolean) => boolean;
+  resize: (f: string, patch: Partial<BoardItem>, done: boolean) => void;
+  play: (f: string) => void;
+  rename: (f: string) => void;
+  context: (f: string, e: RMouseEvent) => void;
+  iframeRef: (f: string, el: HTMLIFrameElement | null) => void;
+  selectNote: (id: string, add: boolean) => void;
+  moveNote: (id: string, patch: Partial<Note>, done: boolean) => void;
+  deleteNote: (id: string) => void;
+  contextNote: (id: string, e: RMouseEvent) => void;
+};
+
+/** Rendered again only when one of its own props changes (memo): the canvas renders on every pan and zoom step */
+const BoardView = memo(function BoardView(props: {
   file: string;
   item: BoardItem;
   exists: boolean;
@@ -477,33 +593,33 @@ function BoardView(props: {
   typing?: boolean;
   playing?: boolean;
   near?: boolean;
+  /** Should be live and waits its turn (the view is moving, or boards before it are loading): its thumbnail shows meanwhile */
+  waiting?: boolean;
   /** Zoomed out in the fork scene: the label is one row */
   compact?: boolean;
   /** A fork or the original of one: its tags stay in one row */
   forkScene?: boolean;
   reloadKey: number;
-  onPress: (e: RPointerEvent, from: "frame" | "label") => void;
-  onPressMove: (e: RPointerEvent) => void;
-  onRelease: (e: RPointerEvent) => void;
-  onLeave: () => void;
-  onDoubleClickFrame?: (e: RMouseEvent) => void;
-  /** True when the right-click opened an element's menu */
-  onContextFrame: (e: RMouseEvent) => boolean;
-  onResize: (patch: Partial<BoardItem>, done: boolean) => void;
-  onPlay: () => void;
-  onRename: () => void;
-  onContext: (e: RMouseEvent) => void;
+  /** The board's content version (its thumbnail URL changes with it) */
+  version: number;
+  /** A click on the frame picks the element under the pointer (select tool, live board) */
+  pickable: boolean;
+  h: ItemHandlers;
   overlay?: ReactNode;
   tags?: ReactNode;
   buttons?: ReactNode;
   ring?: string | null;
-  iframeRef: (el: HTMLIFrameElement | null) => void;
   readOnly?: boolean;
   screens: ScreenSource;
 }) {
-  const { item: b, zoom } = props;
+  const { item: b, zoom, file, h, live } = props;
   const resize = useDrag(zoom);
   const title = b.title ?? props.file;
+  // Until a board's page has loaded, its thumbnail stays over the frame (a thumbnail does not give way to a blank page)
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (!props.live) setReady(false);
+  }, [props.live]);
   const tiny = b.w * zoom < 48;
   const compact = !tiny && !!props.compact;
   // A fork's label: zoomed out it shows its agent (a spinner while an agent writes it); its whole story is the label's tooltip
@@ -512,9 +628,25 @@ function BoardView(props: {
   const ctx = (e: RMouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    props.onContext(e);
+    h.context(file, e);
   };
   const stop = (e: RPointerEvent) => e.stopPropagation();
+  // ▶ on every board: always shown with Show Play button (is_interactive), otherwise while the board is selected or hovered (CSS).
+  // While the board plays it stops it. Playing is viewing: nothing is written to board.json
+  const playBtn = b.w * zoom >= 110 && (
+    <button
+      className={`icon-btn sm board-play ${b.is_interactive ? "always" : ""} ${props.playing ? "pressed" : ""}`}
+      aria-label={props.playing ? strings.canvas.stopPlay : strings.canvas.play}
+      title={props.playing ? strings.canvas.stopPlayTitle : strings.canvas.playTitle}
+      onPointerDown={stop}
+      onClick={(e) => {
+        e.stopPropagation();
+        h.play(file);
+      }}
+    >
+      <Icon name={props.playing ? "stop" : "play"} size={14} />
+    </button>
+  );
   return (
     <div
       className={`board ${props.selected ? "selected" : ""} ${props.editing ? "editing" : ""} ${props.playing ? "playing" : ""} ${b.frameless ? "frameless" : ""} ${b.is_interactive ? "interactive" : ""} ${props.ring ? "held" : ""}`}
@@ -527,9 +659,9 @@ function BoardView(props: {
       <div
         className={`board-label ${tiny ? "tiny" : ""} ${compact ? "compact" : ""} ${props.tags ? "tagged" : ""} ${props.forkScene ? "fork-scene" : ""}`}
         style={{ transform: `scale(${1 / zoom})`, width: b.w * zoom }}
-        onPointerDown={(e) => props.onPress(e, "label")}
-        onPointerMove={props.onPressMove}
-        onPointerUp={props.onRelease}
+        onPointerDown={(e) => h.press(e, file, "label", live)}
+        onPointerMove={(e) => h.pressMove(e, file, live)}
+        onPointerUp={(e) => h.release(e, file)}
         onContextMenu={ctx}
         title={`${title} · ${props.file}${story ? `\n${story}` : ""}`}
       >
@@ -546,22 +678,23 @@ function BoardView(props: {
               className="board-title"
               onDoubleClick={(e) => {
                 e.stopPropagation();
-                if (!props.readOnly) props.onRename();
+                if (!props.readOnly) h.rename(file);
               }}
             >
               {title}
             </span>
           )}
           {b.w * zoom >= 160 && title !== props.file && !(compact && fork) && <span className="board-file">{props.file}</span>}
-          {compact && props.selected && props.buttons && <span className="board-btns pinned">{props.buttons}</span>}
+          {compact && props.selected && (props.buttons || playBtn) && (
+            <span className="board-btns pinned">
+              {props.buttons}
+              {playBtn}
+            </span>
+          )}
           {!compact && b.w * zoom >= 110 && (
             <span className={`board-btns ${props.buttons ? "pinned" : ""}`}>
               {props.buttons}
-              {b.is_interactive && (
-                <button className="icon-btn sm" aria-label="Play" title="Play" onPointerDown={stop} onClick={(e) => { e.stopPropagation(); props.onPlay(); }}>
-                  <Icon name="play" size={14} />
-                </button>
-              )}
+              {playBtn}
             </span>
           )}
         </span>
@@ -571,18 +704,18 @@ function BoardView(props: {
         data-inside={props.editing && !props.readOnly ? "" : undefined}
         style={{ borderRadius: b.radius ?? 0 }}
         onDoubleClick={(e) => {
-          if (props.playing || props.typing || !props.onDoubleClickFrame) return;
+          if (props.playing || props.typing || !props.pickable) return;
           e.stopPropagation();
-          props.onDoubleClickFrame(e);
+          h.doubleClickFrame(e, file);
         }}
         // A press on the frame selects the board; dragging moves it, a click selects the element under the pointer (the iframe never takes the pointer)
-        onPointerDown={(e) => !props.playing && !props.typing && props.onPress(e, "frame")}
-        onPointerMove={(e) => !props.playing && !props.typing && props.onPressMove(e)}
-        onPointerUp={(e) => !props.playing && !props.typing && props.onRelease(e)}
-        onPointerLeave={props.onLeave}
+        onPointerDown={(e) => !props.playing && !props.typing && h.press(e, file, "frame", live)}
+        onPointerMove={(e) => !props.playing && !props.typing && h.pressMove(e, file, live)}
+        onPointerUp={(e) => !props.playing && !props.typing && h.release(e, file)}
+        onPointerLeave={h.leave}
         onContextMenu={(e) => {
           if (props.playing || props.typing) return;
-          if (props.onContextFrame(e)) {
+          if (h.contextFrame(e, file, live)) {
             e.preventDefault();
             e.stopPropagation();
           } else ctx(e);
@@ -591,10 +724,17 @@ function BoardView(props: {
         {!props.exists ? (
           <div className="board-missing">{strings.canvas.fileMissing(props.file)}</div>
         ) : props.live ? (
-          <LiveFrame reloadKey={props.reloadKey} iframeRef={props.iframeRef} src={props.screens.url(props.file)} html={props.screens.html?.(props.file)} title={title} interactive={!!props.playing || !!props.typing} />
+          <>
+            <LiveFrame reloadKey={props.reloadKey} iframeRef={(el) => h.iframeRef(file, el)} src={props.screens.url(props.file)} html={props.screens.html?.(props.file)} title={title} interactive={!!props.playing || !!props.typing} onLoad={() => setReady(true)} />
+            {!ready && props.screens.thumbs && (
+              <div className="board-placeholder loading board-cover" style={{ position: "absolute", inset: 0, pointerEvents: "none", fontSize: Math.min(64, 14 / zoom) }} aria-hidden="true">
+                <Thumb file={props.file} v={props.version} px={THUMB_SIZES[0]} />
+              </div>
+            )}
+          </>
         ) : (
           <div className={`board-placeholder ${props.near ? "loading" : "far"}`} style={{ fontSize: Math.min(64, 14 / zoom) }}>
-            {props.near && props.screens.thumbs && <Thumb file={props.file} v={props.reloadKey} px={thumbSize(Math.max(b.w, b.h) * zoom * (window.devicePixelRatio || 1))} />}
+            {props.near && props.screens.thumbs && <Thumb file={props.file} v={props.version} px={props.waiting ? THUMB_SIZES[0] : thumbSize(Math.max(b.w, b.h) * zoom * (window.devicePixelRatio || 1))} />}
             <span className="ph-title" data-hint={props.near ? "" : strings.canvas.notLoaded}>{title}</span>
             {props.near && <span className="ph-bar" style={{ height: 3 / Math.max(zoom, 0.05) }} aria-hidden="true" />}
           </div>
@@ -612,7 +752,7 @@ function BoardView(props: {
           onPointerDown={(e) => {
             if (e.button !== 0) return;
             e.stopPropagation();
-            resize.start(e, { x: b.w, y: b.h }, (d, done) => props.onResize({ w: clamp(Math.round(d.x), 40, 8000), h: clamp(Math.round(d.y), 40, 8000) }, done));
+            resize.start(e, { x: b.w, y: b.h }, (d, done) => h.resize(file, { w: clamp(Math.round(d.x), 40, 8000), h: clamp(Math.round(d.y), 40, 8000) }, done));
           }}
           onPointerMove={resize.move}
           onPointerUp={resize.end}
@@ -620,7 +760,7 @@ function BoardView(props: {
       )}
     </div>
   );
-}
+});
 
 /** When the file changes, reload the same iframe and restore the scroll position (PLAN.md section 5, live updates) */
 /** Zoomed-out preview: a thumbnail made by the server (may take a few seconds at first). A sharper one replaces it only once loaded */
@@ -660,7 +800,7 @@ function Thumb({ file, v, px }: { file: string; v: number; px: number }) {
 }
 
 /** Inline HTML (single-file export) goes in srcdoc: the same origin as the viewer, as /screens/ is for the editor, so pins can find elements */
-function LiveFrame(props: { src: string; html?: string; title: string; reloadKey: number; interactive: boolean; iframeRef: (el: HTMLIFrameElement | null) => void }) {
+function LiveFrame(props: { src: string; html?: string; title: string; reloadKey: number; interactive: boolean; iframeRef: (el: HTMLIFrameElement | null) => void; onLoad?: () => void }) {
   const ref = useRef<HTMLIFrameElement | null>(null);
   const first = useRef(true);
   useEffect(() => {
@@ -704,13 +844,15 @@ function LiveFrame(props: { src: string; html?: string; title: string; reloadKey
       src={props.html == null ? props.src : undefined}
       srcDoc={props.html ?? undefined}
       title={props.title}
+      onLoad={props.onLoad}
       style={{ pointerEvents: props.interactive ? "auto" : "none" }}
     />
   );
 }
 
-function NoteView(props: { id: string; note: Note; zoom: number; selected: boolean; readOnly?: boolean; onSelect: (add: boolean) => void; onMove: (patch: Partial<Note>, done: boolean) => void; onDelete: () => void; onContext: (e: RMouseEvent) => void }) {
-  const { note: n } = props;
+const NoteView = memo(function NoteView(props: { id: string; note: Note; zoom: number; selected: boolean; readOnly?: boolean; h: ItemHandlers }) {
+  const { note: n, h, id } = props;
+  const onMove = (patch: Partial<Note>, done: boolean) => h.moveNote(id, patch, done);
   const drag = useDrag(props.zoom);
   const [editing, setEditing] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -729,7 +871,7 @@ function NoteView(props: { id: string; note: Note; zoom: number; selected: boole
   const commitText = (el: HTMLDivElement) => {
     setEditing(false);
     const text = el.innerText;
-    if (text !== n.text) props.onMove({ text }, true);
+    if (text !== n.text) onMove({ text }, true);
   };
   // Title: shrink text past maxW/maxH (minimum 12px)
   const base = n.size ?? (n.kind === "title" ? 72 : 22);
@@ -763,9 +905,9 @@ function NoteView(props: { id: string; note: Note; zoom: number; selected: boole
       onPointerDown={(e) => {
         if (editing || e.button !== 0 || props.readOnly) return;
         e.stopPropagation();
-        if (e.shiftKey) props.onSelect(true);
-        else if (!props.selected) props.onSelect(false);
-        drag.start(e, { x: n.x, y: n.y }, (d, done) => props.onMove({ x: Math.round(d.x), y: Math.round(d.y) }, done));
+        if (e.shiftKey) h.selectNote(id, true);
+        else if (!props.selected) h.selectNote(id, false);
+        drag.start(e, { x: n.x, y: n.y }, (d, done) => onMove({ x: Math.round(d.x), y: Math.round(d.y) }, done));
       }}
       onPointerMove={drag.move}
       onPointerUp={drag.end}
@@ -777,8 +919,8 @@ function NoteView(props: { id: string; note: Note; zoom: number; selected: boole
         e.preventDefault();
         e.stopPropagation();
         if (props.readOnly) return;
-        props.onSelect(false);
-        props.onContext(e);
+        h.selectNote(id, false);
+        h.contextNote(id, e);
       }}
     >
       <div
@@ -820,7 +962,7 @@ function NoteView(props: { id: string; note: Note; zoom: number; selected: boole
             const w0 = el.width / props.zoom;
             const h0 = el.height / props.zoom;
             resize.start(e, { x: w0, y: h0 }, (d, done) =>
-              props.onMove(n.kind === "title" ? { maxW: Math.max(80, Math.round(d.x)) } : { w: Math.max(80, Math.round(d.x)), h: Math.max(60, Math.round(d.y)) }, done),
+              onMove(n.kind === "title" ? { maxW: Math.max(80, Math.round(d.x)) } : { w: Math.max(80, Math.round(d.x)), h: Math.max(60, Math.round(d.y)) }, done),
             );
           }}
           onPointerMove={resize.move}
@@ -828,13 +970,13 @@ function NoteView(props: { id: string; note: Note; zoom: number; selected: boole
         />
       )}
       {props.selected && !editing && props.zoom >= 0.2 && (
-        <button className="note-del icon-btn" aria-label={strings.canvas.deleteNote} style={{ transform: `scale(${1 / props.zoom})` }} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); props.onDelete(); }}>
+        <button className="note-del icon-btn" aria-label={strings.canvas.deleteNote} style={{ transform: `scale(${1 / props.zoom})` }} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); h.deleteNote(id); }}>
           <Icon name="close" size={14} />
         </button>
       )}
     </div>
   );
-}
+});
 
 /** Pointer drag: start value + (delta / zoom) */
 function useDrag(zoom: number) {

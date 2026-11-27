@@ -231,7 +231,9 @@ export function ChangeOutline({ frame, paths, zoom }: { frame: HTMLIFrameElement
     const t = window.setTimeout(measure, 300); // after the frame's own layout settles (fonts, images)
     frame.addEventListener("load", measure);
     frame.addEventListener("dc-reloaded", measure);
+    frame.addEventListener("dc-patched", measure);
     return () => {
+      frame.removeEventListener("dc-patched", measure);
       window.clearTimeout(t);
       frame.removeEventListener("load", measure);
       frame.removeEventListener("dc-reloaded", measure);
