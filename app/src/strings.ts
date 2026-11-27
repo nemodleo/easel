@@ -564,7 +564,7 @@ const en = {
     blockFlow: "Vertical alignment doesn't apply in block flow. Try changing the parent to flex",
     pngExporting: (name: string) => `Rendering ${name}…`,
     pngExported: (name: string) => `Downloaded ${name}`,
-    pngNeedsBrowser: "Export PNG needs a headless browser. Run this in the project, then try again:",
+    pngNeedsBrowser: "PNG export needs a headless browser:",
     pngFailed: (reason: string) => `Couldn't render the PNG: ${reason}`,
   },
 
@@ -1631,7 +1631,7 @@ const ko: Strings = {
     blockFlow: "블록 흐름에서는 세로 정렬이 적용되지 않아요. 부모를 flex로 바꿔 보세요",
     pngExporting: (name: string) => `${name} 만드는 중…`,
     pngExported: (name: string) => `${j(name, "을/를")} 내려받았어요`,
-    pngNeedsBrowser: "PNG로 내보내려면 헤드리스 브라우저가 필요해요. 프로젝트에서 이 명령을 실행한 뒤 다시 시도해요:",
+    pngNeedsBrowser: "PNG로 내보내려면 헤드리스 브라우저가 필요해요:",
     pngFailed: (reason: string) => `PNG를 만들지 못했어요: ${reason}`,
   },
 

@@ -64,7 +64,7 @@ test("no headless browser: the toast says so and shows the install command; a re
   const label = page.locator(`.board[data-file="${F}"] .board-label`);
   await label.click({ button: "right" });
   await menuItem(page, "Export PNG").click();
-  const toast = page.locator(".toast.error", { hasText: "Export PNG needs a headless browser" });
+  const toast = page.locator(".toast.error", { hasText: "PNG export needs a headless browser" });
   await toast.waitFor();
   assert.equal(await toast.locator(".toast-code").textContent(), "npx playwright install chromium");
   await page.unroute("**/api/screenshot");
