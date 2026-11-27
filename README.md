@@ -12,7 +12,7 @@ No export, no hand-off, no design file: screens are HTML files in your repo, and
 [![MCP](https://img.shields.io/badge/MCP-22%20tools-3E7BFA.svg)](#connect-your-ai-agent)
 [![Works with](https://img.shields.io/badge/works%20with-Claude%20Code%20·%20Codex%20·%20Cursor%20·%20Gemini-3E7BFA.svg)](#connect-your-ai-agent)
 
-<img src="docs/screenshots/demo.gif" alt="Demo: the Intercut No.14 film festival identity on one canvas, then a zoom to its phone app; retyping the spliced title on My cut in place and taking it back, changing the ticket bar's fill to a token, asking Claude Code in the AI tab to turn the home screen into the ticket while the board redraws red with the QR code and the chat lists its tool calls, check_tokens among them; undoing and redoing that whole run, then exporting a view-only copy from Share" width="100%">
+<img src="docs/screenshots/demo.webp" alt="Demo: the Intercut No.14 film festival identity on one canvas, then a zoom to its phone app; retyping the spliced title on My cut in place and taking it back, changing the ticket bar's fill to a token, asking Claude Code in the AI tab to turn the home screen into the ticket while the board redraws red with the QR code and the chat lists its tool calls, check_tokens among them; undoing and redoing that whole run, then exporting a view-only copy from Share" width="100%">
 
 <sub>A real Claude Code run on the bundled demo. The agent's working time is sped up 16× (about 93 seconds shown in 6); everything else plays at real speed.</sub>
 
