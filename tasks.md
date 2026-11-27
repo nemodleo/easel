@@ -54,11 +54,11 @@
 
 ### Follow-up: canvas lag on large projects (open, handed off 11/27)
 Measured in #24 on a 105-board project (boards up to 24,600px tall) at 1440×900 and 630×830; the table and method are in the #24 description. The server is not the bottleneck (board HTML 0–3 ms, thumbnails 1–5 ms warm), so a server rewrite would not help. #24 fixed the per-frame chrome measuring (`snapWidths`), which cut pan and zoom main-thread time by 43–48% at 1440 but gave no measurable gain at 630. What is left:
-- [ ] Cap and stagger live frames: mount new live iframes about 150 ms after the view settles, nearest the centre first, with a cap of around 12. Today 12 (630 wide) to 24 (1440 wide) full pages are live at once, memory reaches 1.6–1.9 GB, and crossing the 25% zoom threshold mounts a batch in one task. The board being played, edited or typed in must stay exempt (rule added in #24).
-- [ ] Stop re-rendering the whole app on every pan or wheel step: the view state lives at the top of `App.tsx`, so all boards, overlays and side panels re-render per frame. Let only the canvas and minimap follow the view; memoize board components with stable callbacks. About 1–2 days.
+- [x] (Done in #30: live frames mount one at a time, 40 ms apart, after the view settles; no cap on their number) Cap and stagger live frames: mount new live iframes about 150 ms after the view settles, nearest the centre first, with a cap of around 12. Today 12 (630 wide) to 24 (1440 wide) full pages are live at once, memory reaches 1.6–1.9 GB, and crossing the 25% zoom threshold mounts a batch in one task. The board being played, edited or typed in must stay exempt (rule added in #24).
+- [x] (Done in #30: a pan renders the canvas but no board) Stop re-rendering the whole app on every pan or wheel step: the view state lives at the top of `App.tsx`, so all boards, overlays and side panels re-render per frame. Let only the canvas and minimap follow the view; memoize board components with stable callbacks. About 1–2 days.
 - [ ] Thumbnail queue: one shared browser context (each render re-downloads the page's fonts today), newest request first, drop jobs nobody waits for. A first thumbnail costs 0.5–3.2 s.
 - [ ] Tall boards (10k–25k px) are laid out and scaled in full even when a strip is on screen; check after the cap above whether this still matters.
-- [ ] Measure on a real display. The #24 numbers are main-thread time from headless Chromium, not frame rate.
+- [x] (Done in #30: headed Chromium on this Mac's display, numbers in the #30 description) Measure on a real display. The #24 numbers are main-thread time from headless Chromium, not frame rate.
 
 Not verified in #24, worth a manual check:
 - [ ] Hide the window pane, show it again, and confirm boards load (the zero-size step and its fix were tested; the real pane-hide behaviour was not).
