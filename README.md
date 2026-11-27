@@ -252,7 +252,10 @@ npm run test:e2e     # Playwright end-to-end tests against test/fixtures/design
 npm run typecheck
 npm run demo         # run the repo's demo from source
 npm run design:css   # rebuild docs/design/assets/easel.css after changing app/src/style.css, so the boards in docs/design keep matching the app
+npm run verify:agents  # before a release: install Easel into each agent CLI on PATH, in throwaway config homes
 ```
+
+`npm run verify:agents` (`tools/verify-agents.mjs`) checks the agent plugin for real. For each of `claude`, `codex`, `cursor-agent` and `gemini` found on PATH, it installs Easel into a config home under a temp folder (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, or `HOME` for Cursor and Gemini; never your own `~/.claude`, `~/.codex`, `~/.cursor` or `~/.gemini`). It checks that the plugin, the skill and the MCP server are listed, prints pass, skip or fail per check, and removes the temp folder. By default it installs from this checkout; `-- --source github` (or `github@<ref>`) installs from GitHub the way the README does. `-- --live` also asks each agent to call `list_boards` on a scratch canvas, but only for an agent that is logged in inside its temp home, which means its own API key variable is already set in your environment. The script reads and stores no keys. It is not part of `npm test`.
 
 - `test/fixtures/design/` intentionally keeps Korean screen content and board titles: it mimics real user content and is needed to test Korean text input (IME) and rendering. Set `DESIGN_CANVAS_E2E_DIR=<folder>` to run the e2e tests against another design folder.
 - `examples/demo/` is Intercut No.14, the project `--demo` copies and the one in the demo video and the screenshots above. Its two fonts are bundled under the SIL Open Font License (see [License](#license)).
@@ -263,7 +266,8 @@ npm run design:css   # rebuild docs/design/assets/easel.css after changing app/s
 | `server/` | API and routes, board.json, file watching, element paths and hashes, source patching, history, chat runner, tokens |
 | `app/` | Canvas UI (Vite + React + TypeScript); all UI text lives in `app/src/strings.ts` |
 | `test/` | `node --test` unit tests and Playwright e2e tests |
-| `tools/` | Repo maintenance scripts, not shipped: `mkcss.mjs` builds the design boards' stylesheet from the app's |
+| `tools/` | Repo maintenance scripts, not shipped: `mkcss.mjs` builds the design boards' stylesheet from the app's, `plugin-sync.mjs` keeps the plugin manifests at the package version, `verify-agents.mjs` checks real agent installs |
+| `plugin/` | The agent plugin: MCP server entry, the `easel` skill, `/easel:open` and `/easel:variants` |
 
 Background reading: the original plan is in [PLAN.md](PLAN.md) and the work log is in [tasks.md](tasks.md).
 
