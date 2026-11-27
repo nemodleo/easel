@@ -284,6 +284,7 @@ export const strings = {
     notLoaded: "Scroll closer to load",
     fileMissing: (file: string) => `File missing · ${file}`,
     playing: "▶ Playing · Esc",
+    exportingPng: "Exporting PNG…",
     boardSize: "Board size",
     titleMaxWidth: "Max width",
     stickySize: "Sticky note size",
@@ -558,6 +559,10 @@ export const strings = {
     uploaded: (names: string) => `Uploaded ${names}`,
     tweaksSaved: "Saved tweaks to source",
     blockFlow: "Vertical alignment doesn't apply in block flow. Try changing the parent to flex",
+    pngExporting: (name: string) => `Rendering ${name}…`,
+    pngExported: (name: string) => `Downloaded ${name}`,
+    pngNeedsBrowser: "Export PNG needs a headless browser. Run this in the project, then try again:",
+    pngFailed: (reason: string) => `Couldn't render the PNG: ${reason}`,
   },
 
   /** Undo/redo history labels (shown in Undo/Redo tooltips and toasts) */
@@ -625,6 +630,8 @@ export const strings = {
     askAI: "Ask AI",
     askFixErrors: "Ask AI to fix errors",
     goToBoard: "Go to board",
+    exportPng: "Export PNG",
+    exportingPng: "Exporting PNG…",
     renameFile: "Rename file…",
     duplicate: "Duplicate",
     front: "Bring to front",
