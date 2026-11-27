@@ -180,6 +180,8 @@ npm run design           # http://localhost:4317
 
 `npx` keeps the copy it downloaded first, so run `npx easel-canvas@latest` to get a new version (and `npm i -D easel-canvas@latest` if you pinned it). To tell you when one is out, the canvas asks the npm registry once a day which version is the latest: one request to `registry.npmjs.org`, nothing about your project. When a newer one exists, the terminal says so at start and a toast at launch shows the update command for how you installed Easel; Copy command or × puts it away until the next version. Set `EASEL_NO_UPDATE_CHECK=1` to turn the check off; it is also off in CI and when Easel runs from a git checkout.
 
+Screenshots, thumbnails and PDF/PNG export share one headless Chromium, started on the first one and closed after two minutes without any. Set `EASEL_BROWSER_IDLE_SECONDS` to change that wait (`0` closes it after every render).
+
 
 <details>
 <summary><b>Keyboard shortcuts and how-tos</b></summary>

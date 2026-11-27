@@ -1,5 +1,5 @@
 // AI-generated with Claude Code, 2026-11-06, reviewed by Hyun Park
-// Thumbnail sizes (#8) and the shared screenshot browser coming back after it dies (#7)
+// Thumbnail sizes (#8), the shared screenshot browser coming back after it dies (#7), and the queue (newest first, a job nobody waits for is dropped)
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import http from "node:http";
@@ -10,7 +10,7 @@ import { after, test } from "node:test";
 
 import { formatBoard } from "../server/boardFormat.mjs";
 import { createServer } from "../server/index.mjs";
-import { cachedBrowser, closeBrowser, extraRoutes, newPage, thumbPx } from "../server/routes.mjs";
+import { cachedBrowser, closeBrowser, createThumbQueue, extraRoutes, newPage, thumbPx } from "../server/routes.mjs";
 
 after(() => closeBrowser());
 
@@ -79,4 +79,31 @@ test("a thumbnail whose request closed before its turn is still rendered (the jo
     else process.env.EASEL_HOME = prevHome;
     await fs.rm(root, { recursive: true, force: true });
   }
+});
+
+test("the thumbnail queue runs the newest waiting job first and drops ones nobody waits for", async () => {
+  const q = createThumbQueue(1);
+  const order = [];
+  let release;
+  const first = q.push(() => new Promise((r) => (release = r)).then(() => order.push("a")));
+  const gone = { b: false, c: false, d: false };
+  const jobs = ["b", "c", "d"].map((k) => q.push(async () => order.push(k), () => gone[k]).catch((e) => (e.dropped ? `dropped ${k}` : Promise.reject(e))));
+  gone.c = true; // its board scrolled away before its turn
+  assert.deepEqual(q.stats(), { running: 1, waiting: 3 });
+  release();
+  await first;
+  assert.deepEqual(await Promise.all(jobs), [3, "dropped c", 2]);
+  assert.deepEqual(order, ["a", "d", "b"]);
+  assert.deepEqual(q.stats(), { running: 0, waiting: 0 });
+});
+
+test("a started thumbnail job finishes even if its request closes", async () => {
+  const q = createThumbQueue(2);
+  let gone = false;
+  const p = q.push(async () => {
+    gone = true;
+    await new Promise((r) => setImmediate(r));
+    return "made";
+  }, () => gone);
+  assert.equal(await p, "made");
 });
