@@ -4,7 +4,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { activityRoutes } from "./activity.mjs";
-import { closeBrowser, withPage } from "./browser.mjs";
+import { closeBrowser, gotoSettled, withPage } from "./browser.mjs";
 import { boardRoutes } from "./boards.mjs";
 import { chatRoutes } from "./chat.mjs";
 import { tokenRoutes } from "./tokens.mjs";
@@ -81,7 +81,7 @@ function thumbQueue(job) {
 export async function screenshot(ctx, port, file, elPath) {
   const board = (await ctx.store.readBoard()).boards[file];
   return withPage({ viewport: { width: board?.w ?? 390, height: board?.h ?? 844 }, deviceScaleFactor: 2 }, async (page) => {
-    await page.goto(`http://127.0.0.1:${port}/screens/${encodeURI(file)}`, { waitUntil: "networkidle" });
+    await gotoSettled(page, `http://127.0.0.1:${port}/screens/${encodeURI(file)}`);
     const outDir = path.join(await easelDir(ctx.dir), "screenshots");
     await fs.mkdir(outDir, { recursive: true });
     const name = `${file.replace(/[\\/]/g, "_").replace(/\.html$/, "")}${elPath ? "--" + elPath.replace(/\//g, "-") : ""}.png`;

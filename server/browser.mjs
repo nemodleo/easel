@@ -164,6 +164,35 @@ export const closeBrowser = pool.close;
 /** For tests: the browser currently cached for screenshots, if any */
 export const cachedBrowser = pool.cached;
 
+/**
+ * Goes to url and waits until the board has settled: the load event, web fonts, then no request in flight for quietMs.
+ * Replaces waitUntil "networkidle", whose fixed 500 ms quiet window was most of every screenshot. A page that never goes
+ * quiet (polling) is captured after maxWaitMs instead of failing.
+ */
+export async function gotoSettled(page, url, { timeout = 30000, quietMs = 100, maxWaitMs = 5000 } = {}) {
+  const inflight = new Set();
+  const on = (r) => inflight.add(r);
+  const off = (r) => inflight.delete(r);
+  page.on("request", on);
+  page.on("requestfinished", off);
+  page.on("requestfailed", off);
+  try {
+    await page.goto(url, { waitUntil: "load", timeout });
+    await page.evaluate(() => document.fonts?.ready.then(() => undefined)).catch(() => {});
+    const end = Date.now() + maxWaitMs;
+    let quietSince = Date.now();
+    while (Date.now() < end) {
+      if (inflight.size) quietSince = Date.now();
+      else if (Date.now() - quietSince >= quietMs) break;
+      await new Promise((r) => setTimeout(r, 20));
+    }
+  } finally {
+    page.off("request", on);
+    page.off("requestfinished", off);
+    page.off("requestfailed", off);
+  }
+}
+
 /** Can PDF/PNG export run here? { ok } or { ok: false, reason } in one line, without launching when the downloaded Chromium is on disk */
 export async function browserStatus() {
   let chromium;

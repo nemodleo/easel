@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import { test } from "node:test";
 
-import { createBrowserPool, idleMsFromEnv, IDLE_SECONDS } from "../server/browser.mjs";
+import { createBrowserPool, gotoSettled, idleMsFromEnv, IDLE_SECONDS } from "../server/browser.mjs";
 
 /** Fake playwright Browser: newPage gives a page in its own context; kill() is the process dying */
 function fakeBrowser(log) {
@@ -274,4 +274,23 @@ test("EASEL_BROWSER_IDLE_SECONDS sets the idle period", () => {
   assert.equal(idleMsFromEnv({ EASEL_BROWSER_IDLE_SECONDS: "" }), IDLE_SECONDS * 1000);
   assert.equal(idleMsFromEnv({ EASEL_BROWSER_IDLE_SECONDS: "soon" }), IDLE_SECONDS * 1000);
   assert.equal(idleMsFromEnv({ EASEL_BROWSER_IDLE_SECONDS: "-1" }), IDLE_SECONDS * 1000);
+});
+
+test("gotoSettled waits for requests the page starts after load", async () => {
+  const page = new EventEmitter();
+  page.off = page.removeListener;
+  const req = {};
+  let finishedAt = 0;
+  page.goto = async (url, o) => {
+    assert.equal(o.waitUntil, "load");
+    setTimeout(() => page.emit("request", req), 5); // a fetch right after load
+    setTimeout(() => {
+      finishedAt = Date.now();
+      page.emit("requestfinished", req);
+    }, 60);
+  };
+  page.evaluate = async () => {};
+  await gotoSettled(page, "http://x/", { quietMs: 30 });
+  assert.ok(finishedAt > 0, "returned only after the late request finished");
+  assert.equal(page.listenerCount("request"), 0, "listeners removed");
 });
