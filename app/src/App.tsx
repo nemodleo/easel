@@ -36,9 +36,11 @@ const mod = navigator.platform.includes("Mac") ? "⌘" : "Ctrl+";
 
 type Saved = { view?: View; page?: string | null; left?: boolean; minimap?: boolean };
 const stateKey = (title: string) => `design-canvas:${title}`;
+/** This tab's own copy comes first: localStorage is shared by every tab, so a reload would otherwise land on the view another tab
+ * (another window size) saved last, often an empty area */
 function loadSaved(title: string): Saved {
   try {
-    return JSON.parse(localStorage.getItem(stateKey(title)) ?? "{}");
+    return JSON.parse(sessionStorage.getItem(stateKey(title)) ?? localStorage.getItem(stateKey(title)) ?? "{}");
   } catch {
     return {};
   }
@@ -569,7 +571,9 @@ export function App() {
     if (!board || !restored.current) return;
     const t = window.setTimeout(() => {
       try {
-        localStorage.setItem(stateKey(board.title), JSON.stringify({ view, page: currentPage, left: narrow ? undefined : leftOpen, minimap: minimapOpen } satisfies Saved));
+        const saved = JSON.stringify({ view, page: currentPage, left: narrow ? undefined : leftOpen, minimap: minimapOpen } satisfies Saved);
+        localStorage.setItem(stateKey(board.title), saved);
+        sessionStorage.setItem(stateKey(board.title), saved);
       } catch {
         /* Failing to save does not affect behavior */
       }

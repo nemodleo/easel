@@ -160,6 +160,8 @@ export const extraRoutes = [
       const base = f.replace(/[\\/]/g, "_");
       const stamp = `${base}.${Math.round(st.mtimeMs)}.`;
       const out = path.join(dir, `${stamp}${px}.jpg`);
+      // Read the port now: a job that waits in the queue runs after its request may have closed, and a closed socket has no localPort
+      const port = req.socket.localPort;
       let buf = await fs.readFile(out).catch(() => null);
       if (!buf) {
         buf = await thumbQueue(async () => {
@@ -171,7 +173,7 @@ export const extraRoutes = [
           // Long side ≈ px device pixels, so large boards stay sharp when zoomed out on a 2× display
           const page = await newPage({ viewport: { width: w, height: h }, deviceScaleFactor: Math.min(2, px / Math.max(w, h)) });
           try {
-            await page.goto(`http://127.0.0.1:${req.socket.localPort}/screens/${encodeURI(f)}`, { waitUntil: "load", timeout: 15000 });
+            await page.goto(`http://127.0.0.1:${port}/screens/${encodeURI(f)}`, { waitUntil: "load", timeout: 15000 });
             await page.waitForTimeout(150);
             const b = await page.screenshot({ type: "jpeg", quality: 80 });
             // Remove thumbnails of older versions (other sizes of this version stay)

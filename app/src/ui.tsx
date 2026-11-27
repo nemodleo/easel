@@ -315,12 +315,23 @@ export function Collapsible({ id, title, count, defaultOpen = false, right, vari
 /** Whole-pixel chrome: text buttons in a row take their width rounded up, so nothing after them starts on a half pixel */
 export function snapWidths(root: HTMLElement | null, sel = "button") {
   if (!root) return;
-  for (const b of Array.from(root.querySelectorAll<HTMLElement>(sel))) {
-    b.style.width = "";
-    const w = b.getBoundingClientRect().width;
-    if (w % 1 > 0.01) b.style.width = `${Math.ceil(w)}px`;
-  }
+  const els = Array.from(root.querySelectorAll<HTMLElement>(sel));
+  // Callers run this after every render, and a pan or zoom renders the app on each wheel event. Unchanged buttons keep their
+  // widths: clearing and measuring them forced a layout of the whole page per button, every frame
+  const key = `${window.innerWidth}|${document.fonts?.status}|${els.map((b) => `${b.className}\u0001${b.textContent}`).join("\u0002")}`;
+  const last = snapped.get(root);
+  if (last && last.key === key && last.els.length === els.length && last.els.every((b, i) => b === els[i])) return;
+  // Clear all, measure all, then write: one layout for the row, not one per button
+  for (const b of els) b.style.width = "";
+  const ws = els.map((b) => b.getBoundingClientRect().width);
+  els.forEach((b, i) => {
+    if (ws[i] % 1 > 0.01) b.style.width = `${Math.ceil(ws[i])}px`;
+  });
+  // A hidden row measures 0: measure it again once it shows
+  if (ws.some((w) => w === 0)) snapped.delete(root);
+  else snapped.set(root, { key, els });
 }
+const snapped = new WeakMap<HTMLElement, { key: string; els: HTMLElement[] }>();
 
 /** Centred on the window on a whole pixel: measured after layout (a CSS translate of -50% can land on a half pixel) */
 export function useCentred(ref: RefObject<HTMLElement | null>, winW: number) {
