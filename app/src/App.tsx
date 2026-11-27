@@ -20,6 +20,7 @@ import { Icon, type IconName } from "./icons";
 import { Inspector, type Comment } from "./Inspector";
 import { busyIn, choiceGroup, ForkLinks, listDot, OccTags, shortTitle, UseButton, UseConfirm, writersOn, type Occupancy } from "./occupancy";
 import { Layers } from "./Layers";
+import { applyLive, createEcho, isPatched, shownHash, type EditResult } from "./livePatch";
 import { BoardActions, BoardOptions, FocusView, LeftPanel, Minimap } from "./panels";
 import { Play } from "./Play";
 import { pKey } from "./playKey";
@@ -110,7 +111,27 @@ export function App() {
   const [mapNarrow, setMapNarrow] = useState(false);
   const [menu, setMenu] = useState<MenuState>(null);
   const [hist, setHist] = useState({ canUndo: false, canRedo: false, undo: [] as string[], redo: [] as string[] });
+  /** reloadKeys: bumped to reload a board's iframe. versions: bumped whenever a board's file changed, reloaded or patched in place
+   *  (what is derived from its content: thumbnail, layers, lint, tweaks) */
   const [reloadKeys, setReloadKeys] = useState<Record<string, number>>({});
+  const [versions, setVersions] = useState<Record<string, number>>({});
+  const bump = (f: string) => (k: Record<string, number>) => ({ ...k, [f]: (k[f] ?? 0) + 1 });
+  /** The app's own edits shown in place, and the watcher's echoes they make (livePatch.ts) */
+  const echo = useRef(createEcho()).current;
+  /** A board's file is at hash (an echo; current: asked just now): keep the board when it already shows that, else reload it */
+  const boardChanged = useRef<(file: string, hash: string | undefined, current?: boolean) => void>(() => {});
+  boardChanged.current = (file, hash, current = false) => {
+    const frame = frames.current.get(file);
+    const d = echo.decide(file, hash, { shown: shownHash(frame, file), patched: isPatched(frame, file) }, current);
+    if (d === "queue" || d === "keep") return;
+    if (d === "check")
+      return void api
+        .get<{ hash: string }>(`/api/file-hash?f=${encodeURIComponent(file)}`)
+        .then((r) => boardChanged.current(file, r.hash, true))
+        .catch(() => boardChanged.current(file, undefined));
+    echo.reset(file);
+    setReloadKeys(bump(file));
+  };
   const [error, setError] = useState<string | null>(null);
   const [canvasSize, setCanvasSize] = useState<{ w: number; h: number } | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -327,16 +348,24 @@ export function App() {
   const doEdit = useCallback(
     async (payload: Record<string, unknown>, file: string | null = editFile) => {
       if (!file) return false;
+      // An echo of this write that arrives before the answer waits for it: the answer may let the board keep its patched DOM
+      echo.begin(file);
       try {
-        await api.post("/api/edit", { file, ...payload });
+        const r = await api.post<EditResult>("/api/edit", { file, ...payload });
+        if (r.base && r.hash && applyLive(frames.current.get(file), file, r)) {
+          echo.patched(file, r.base, r.hash);
+          setVersions(bump(file));
+        }
         return true;
       } catch (e) {
         editRef.current?.setError(String((e as Error).message));
         toast({ tone: "error", text: String((e as Error).message) });
         return false;
+      } finally {
+        for (const h of echo.end(file)) boardChanged.current(file, h);
       }
     },
-    [editFile, toast],
+    [editFile, toast, echo],
   );
   /** Double-click: edit a text-only element in place. Enter during IME composition is ignored. While typing the board takes the
    *  pointer (to place the caret); its links and buttons still do nothing, and a press outside the text ends the edit */
@@ -348,6 +377,7 @@ export function App() {
       }
       const before = el.innerText ?? "";
       setTyping(file);
+      const ownEditable = el.getAttribute("contenteditable");
       el.contentEditable = "true";
       el.focus();
       const doc = el.ownerDocument;
@@ -368,7 +398,9 @@ export function App() {
         el.removeEventListener("keydown", onKey);
         doc.removeEventListener("mousedown", guard, true);
         doc.removeEventListener("click", guard, true);
-        el.contentEditable = "false";
+        // Back to the attribute the file has: a board kept without a reload must match its source
+        if (ownEditable == null) el.removeAttribute("contenteditable");
+        else el.setAttribute("contenteditable", ownEditable);
         setTyping(null);
         // Focus left in the board would keep the app's shortcuts (Esc, ⌘Z) from the window
         if (document.activeElement === doc.defaultView?.frameElement) focusCanvas();
@@ -377,7 +409,7 @@ export function App() {
           if (cancelled) el.innerText = before;
           return;
         }
-        const { hash } = await api.get<{ hash: string }>(`/api/element?f=${encodeURIComponent(file)}&path=${encodeURIComponent(path)}`);
+        const hash = await hashOf(file, path);
         if (!(await doEdit({ op: "setText", path, hash, text }, file))) el.innerText = before; // Shift+Enter line breaks become <br> in the source
       };
       const onKey = (e: KeyboardEvent) => {
@@ -415,7 +447,13 @@ export function App() {
     },
     [doEdit],
   );
-  const hashOf = (file: string, path: string) => api.get<{ hash: string }>(`/api/element?f=${encodeURIComponent(file)}&path=${encodeURIComponent(path)}`).then((r) => r.hash);
+  /** An element's hash for the next edit. Also the safety net for a board patched in place: when the file is not the version the board
+   *  shows (nothing on the way to say so), the board reloads */
+  const hashOf = (file: string, path: string) =>
+    api.get<{ hash: string; fileHash?: string }>(`/api/element?f=${encodeURIComponent(file)}&path=${encodeURIComponent(path)}`).then((r) => {
+      if (r.fileHash && isPatched(frames.current.get(file), file)) boardChanged.current(file, r.fileHash, true);
+      return r.hash;
+    });
   /** Move element: compute the new path after moving and reselect it */
   const moveElement = async (path: string, plan: DropPlan) => {
     if (!editFile) return;
@@ -487,8 +525,12 @@ export function App() {
     () =>
       connectEvents((e: ServerEvent) => {
         if (e.type === "file-changed") {
-          setReloadKeys((k) => ({ ...k, [e.file]: (k[e.file] ?? 0) + 1 }));
-          if (e.kind !== "change") void load();
+          setVersions(bump(e.file));
+          if (e.kind !== "change") {
+            echo.reset(e.file);
+            setReloadKeys(bump(e.file));
+            void load();
+          } else boardChanged.current(e.file, e.hash);
         } else if (e.type === "board-changed" && e.source !== clientId) {
           void load();
           act.reload();
@@ -1028,7 +1070,7 @@ export function App() {
   // Right-click on an element inside the board being edited
   elementMenuRef.current = (path, at) => {
     if (!editFile) return;
-    const getHash = () => api.get<{ hash: string }>(`/api/element?f=${encodeURIComponent(editFile)}&path=${encodeURIComponent(path)}`).then((r) => r.hash);
+    const getHash = () => hashOf(editFile, path);
     const el = frames.current.get(editFile)?.contentDocument ? elementAt(frames.current.get(editFile)!.contentDocument!, path) : null;
     const up = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : null;
     setMenu({
@@ -1068,7 +1110,11 @@ export function App() {
     // If focus stays inside the iframe, shortcuts never reach the app
     (document.activeElement as HTMLElement | null)?.blur?.();
     focusCanvas();
-    if (f) setReloadKeys((k) => ({ ...k, [f]: (k[f] ?? 0) + 1 }));
+    if (f) {
+      echo.reset(f);
+      setReloadKeys(bump(f));
+      setVersions(bump(f));
+    }
   };
   // During Play in place, also catch Esc pressed inside the iframe (even after navigating)
   useEffect(() => {
@@ -1202,11 +1248,11 @@ export function App() {
   }, [inlinePlay]);
   const lintTarget = editFile ?? (selected.length === 1 ? selected[0] : null);
   /** The board's own CSS variables: choosing a token writes the variable the board already has for it */
-  const vars = useMemo(() => boardVars(editFile ? frames.current.get(editFile)?.contentDocument : null), [editFile, frameTick, reloadKeys[editFile ?? ""], edit.state.selection?.hash]);
+  const vars = useMemo(() => boardVars(editFile ? frames.current.get(editFile)?.contentDocument : null), [editFile, frameTick, versions[editFile ?? ""], edit.state.selection?.hash]);
   useEffect(() => {
     if (!lintTarget) return setLint(null);
     api.get<{ files: Record<string, LintItem[]> }>(`/api/lint?f=${encodeURIComponent(lintTarget)}`).then((r) => setLint(r.files[lintTarget] ?? [])).catch(() => setLint(null));
-  }, [lintTarget, reloadKeys[lintTarget ?? ""], tokensVersion]);
+  }, [lintTarget, versions[lintTarget ?? ""], tokensVersion]);
   useEffect(() => {
     if (!lintTarget) return setA11y(null);
     const run = () => {
@@ -1215,7 +1261,7 @@ export function App() {
     };
     const t = window.setTimeout(run, 600);
     return () => window.clearTimeout(t);
-  }, [lintTarget, frameTick, reloadKeys[lintTarget ?? ""], tokens?.minTarget, view.zoom >= 0.25]);
+  }, [lintTarget, frameTick, versions[lintTarget ?? ""], tokens?.minTarget, view.zoom >= 0.25]);
   /** Menus that open from the dock rise 8px above it, from the button's left edge */
   const fromDock = (e: { currentTarget: Element }) => {
     const r = e.currentTarget.getBoundingClientRect();
@@ -1882,6 +1928,7 @@ export function App() {
             selectedNotes={selectedNotes}
             editFile={editFile}
             reloadKeys={reloadKeys}
+            versions={versions}
             onSelect={select}
             onSelectNote={(id, add) => {
               if (!id) return setSelectedNotes([]);
@@ -2238,7 +2285,7 @@ export function App() {
           {!editFile && one && board.boards[one] && readTweaks(frames.current.get(one)?.contentDocument) && (
             <Collapsible id="tweaks" title={strings.sections.tweaks}>
               <TweaksPanel
-              key={`${one}-${reloadKeys[one] ?? 0}-${frameTick}`}
+              key={`${one}-${versions[one] ?? 0}-${frameTick}`}
               doc={readTweaks(frames.current.get(one)?.contentDocument) ? frames.current.get(one)!.contentDocument : null}
               onSave={async (values) => {
                 try {
@@ -2312,7 +2359,7 @@ export function App() {
                 onAttr={(name, value) => void doEdit({ op: "setAttr", path: sel.path, hash: sel.hash, name, value })}
                 onWrap={async (display) => {
                   const ordered = [...paths].sort((a, b) => Number(a.split("/").pop()) - Number(b.split("/").pop()));
-                  const hashes = await Promise.all(ordered.map((p) => api.get<{ hash: string }>(`/api/element?f=${encodeURIComponent(editFile)}&path=${encodeURIComponent(p)}`).then((r) => r.hash)));
+                  const hashes = await Promise.all(ordered.map((p) => hashOf(editFile, p)));
                   if (await doEdit({ op: "wrap", paths: ordered, hashes, display })) void edit.select([ordered[0]]);
                 }}
               >
@@ -2326,14 +2373,14 @@ export function App() {
             return (
               <Layers
                 file={lf}
-                version={reloadKeys[lf] ?? 0}
+                version={versions[lf] ?? 0}
                 selected={editFile ? edit.state.paths : []}
                 onSelect={(p, add) => {
                   const cur = editFile ? edit.state.paths : [];
                   pickElement(lf, add ? (cur.includes(p) ? cur.filter((x) => x !== p) : [...cur, p]) : [p]);
                 }}
                 onMove={async (path, toParentPath, index) => {
-                  const { hash } = await api.get<{ hash: string }>(`/api/element?f=${encodeURIComponent(lf)}&path=${encodeURIComponent(path)}`);
+                  const hash = await hashOf(lf, path);
                   if (await doEdit({ op: "move", path, hash, toParentPath, index }, lf)) pickElement(lf, [toParentPath ? `${toParentPath}/${index}` : String(index)]);
                 }}
               />

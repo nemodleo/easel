@@ -49,6 +49,8 @@ type Props = {
   /** Board playing in place (the iframe is interactive) */
   playing?: string | null;
   reloadKeys: Record<string, number>;
+  /** Bumped on every change of a board's content, also one shown in place without a reload (thumbnails follow it) */
+  versions?: Record<string, number>;
   onSelect: (files: string[], mode: "replace" | "toggle" | "add") => void;
   onSelectNote: (id: string | null, add?: boolean) => void;
   /** Marquee result: boards and notes inside the rectangle (additive with Shift) */
@@ -438,6 +440,7 @@ export function Canvas(p: Props) {
               playing={p.playing === f}
               near={near}
               reloadKey={p.reloadKeys[f] ?? 0}
+              version={p.versions?.[f] ?? p.reloadKeys[f] ?? 0}
               onPress={(e, from) => pressBoard(e, f, from, live)}
               onPressMove={(e) => moveBoardPress(e, f, live)}
               onRelease={(e) => releaseBoard(e, f)}
@@ -494,6 +497,7 @@ function BoardView(props: {
   /** A fork or the original of one: its tags stay in one row */
   forkScene?: boolean;
   reloadKey: number;
+  version: number;
   onPress: (e: RPointerEvent, from: "frame" | "label") => void;
   onPressMove: (e: RPointerEvent) => void;
   onRelease: (e: RPointerEvent) => void;
@@ -623,7 +627,7 @@ function BoardView(props: {
           <LiveFrame reloadKey={props.reloadKey} iframeRef={props.iframeRef} src={props.screens.url(props.file)} html={props.screens.html?.(props.file)} title={title} interactive={!!props.playing || !!props.typing} />
         ) : (
           <div className={`board-placeholder ${props.near ? "loading" : "far"}`} style={{ fontSize: Math.min(64, 14 / zoom) }}>
-            {props.near && props.screens.thumbs && <Thumb file={props.file} v={props.reloadKey} px={thumbSize(Math.max(b.w, b.h) * zoom * (window.devicePixelRatio || 1))} />}
+            {props.near && props.screens.thumbs && <Thumb file={props.file} v={props.version} px={thumbSize(Math.max(b.w, b.h) * zoom * (window.devicePixelRatio || 1))} />}
             <span className="ph-title" data-hint={props.near ? "" : strings.canvas.notLoaded}>{title}</span>
             {props.near && <span className="ph-bar" style={{ height: 3 / Math.max(zoom, 0.05) }} aria-hidden="true" />}
           </div>
