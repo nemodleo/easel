@@ -230,11 +230,11 @@ tool(
 tool(
   "create_board",
   {
-    description: "Create a new board (HTML file) from a template and place it on the canvas. Templates: blank (Blank), mobile (390×844 Mobile screen), desktop (1440×900 Desktop screen), doc (Document). Edit the created file directly afterwards.",
+    description: "Create a new board (HTML file) from a template and place it on the canvas. Templates: blank (Blank), mobile (390×844 Mobile screen), tablet (834×1194 Tablet screen), desktop (1440×900 Desktop screen), watch (198×242 Watch screen), doc (800×1000 Document), email (600×1200 Email). Edit the created file directly afterwards.",
     inputSchema: {
       file: z.string().optional().describe("File name, e.g. scr-40.html; generated if omitted"),
       title: z.string().optional(),
-      template: z.enum(["blank", "mobile", "desktop", "doc"]).optional(),
+      template: z.enum(["blank", "mobile", "tablet", "desktop", "watch", "doc", "email"]).optional(),
       x: z.number().optional(),
       y: z.number().optional(),
       w: z.number().optional(),

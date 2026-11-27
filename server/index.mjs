@@ -13,6 +13,7 @@ import { createBoardStore } from "./board.mjs";
 import { isTrackedRel } from "./copies.mjs";
 import { rootOf, toPosix } from "./fsutil.mjs";
 import { createHistory, requestScope } from "./history.mjs";
+import { contentHash } from "./livePatch.mjs";
 import { createOccupancy } from "./occupancy.mjs";
 import { writeEntry } from "./registry.mjs";
 import { checkUpdate } from "./update.mjs";
@@ -91,8 +92,10 @@ export function safeJoin(root, rel) {
 }
 
 // When serving screen HTML, inject an error-collecting script into <head> (the file is untouched). The parent window (canvas) gathers them into the errored boards list
-const PROBE = `<script data-dc-probe>(function(){var f=decodeURIComponent(location.pathname.replace(/^\\/screens\\//,""));function send(m){try{if(parent!==window)parent.postMessage(Object.assign({type:"dc-error",file:f},m),"*")}catch(e){}}send({start:true});addEventListener("error",function(e){var t=e.target;if(t&&t!==window&&(t.src||t.href)){send({kind:"resource",message:"Failed to load: "+(t.getAttribute("src")||t.getAttribute("href"))})}else{send({kind:"script",message:String(e.message||e),line:e.lineno,col:e.colno})}},true);addEventListener("unhandledrejection",function(e){send({kind:"script",message:"Promise: "+String(e.reason&&e.reason.message||e.reason)})});addEventListener("load",function(){send({loaded:true})});function tw(){var el=document.getElementById("board-tweaks");if(!el)return;try{var d=JSON.parse(el.textContent);for(var k in d){var t=d[k];if(!t||typeof t!=="object")continue;var v=t.type==="boolean"?(t.value?"1":"0"):String(t.value)+(t.type==="number"&&t.unit?t.unit:"");if(t.var)document.documentElement.style.setProperty(t.var,v);document.documentElement.setAttribute("data-tweak-"+k,t.type==="boolean"?(t.value?"on":"off"):String(t.value))}}catch(e){send({kind:"script",message:"board-tweaks JSON error: "+e.message})}}if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",tw);else tw()})()</script>`;
-export function injectProbe(html) {
+const PROBE_TAG = `<script data-dc-probe data-dc-src="@SRC@">(function(){var f=decodeURIComponent(location.pathname.replace(/^\\/screens\\//,""));function send(m){try{if(parent!==window)parent.postMessage(Object.assign({type:"dc-error",file:f},m),"*")}catch(e){}}send({start:true});addEventListener("error",function(e){var t=e.target;if(t&&t!==window&&(t.src||t.href)){send({kind:"resource",message:"Failed to load: "+(t.getAttribute("src")||t.getAttribute("href"))})}else{send({kind:"script",message:String(e.message||e),line:e.lineno,col:e.colno})}},true);addEventListener("unhandledrejection",function(e){send({kind:"script",message:"Promise: "+String(e.reason&&e.reason.message||e.reason)})});addEventListener("load",function(){send({loaded:true})});function tw(){var el=document.getElementById("board-tweaks");if(!el)return;try{var d=JSON.parse(el.textContent);for(var k in d){var t=d[k];if(!t||typeof t!=="object")continue;var v=t.type==="boolean"?(t.value?"1":"0"):String(t.value)+(t.type==="number"&&t.unit?t.unit:"");if(t.var)document.documentElement.style.setProperty(t.var,v);document.documentElement.setAttribute("data-tweak-"+k,t.type==="boolean"?(t.value?"on":"off"):String(t.value))}}catch(e){send({kind:"script",message:"board-tweaks JSON error: "+e.message})}}if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",tw);else tw()})()</script>`;
+/** src: the content hash of the file as served (data-dc-src), so the app knows which version of the file a board shows */
+export function injectProbe(html, src = contentHash(html)) {
+  const PROBE = PROBE_TAG.replace("@SRC@", src);
   const m = /<meta[^>]*charset[^>]*>/i.exec(html) ?? /<head[^>]*>/i.exec(html) ?? /<html[^>]*>/i.exec(html) ?? /<!doctype[^>]*>/i.exec(html);
   return m ? html.slice(0, m.index + m[0].length) + PROBE + html.slice(m.index + m[0].length) : PROBE + html;
 }

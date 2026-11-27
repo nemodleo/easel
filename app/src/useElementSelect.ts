@@ -98,10 +98,14 @@ export function useElementSelect(file: string | null, getFrame: (f: string) => H
       attach();
       if (pathsRef.current.length) void select(pathsRef.current);
     };
+    // An own edit shown in place (no reload): same document, new hashes for the selected elements
+    const onPatched = () => pathsRef.current.length && void select(pathsRef.current);
     if (frame.contentDocument?.readyState === "complete") attach();
     frame.addEventListener("load", onLoad);
+    frame.addEventListener("dc-patched", onPatched);
     return () => {
       frame.removeEventListener("load", onLoad);
+      frame.removeEventListener("dc-patched", onPatched);
       detach();
     };
   }, [file, getFrame, select, refresh]);
