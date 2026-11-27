@@ -22,6 +22,7 @@
     "demo": "node bin/server.mjs --dir examples/demo --open",
     "build": "vite build app --config vite.config.mjs && vite build app --config vite.config.mjs --mode viewer",
     "prepack": "npm run build",
+    "version": "node tools/plugin-sync.mjs && git add plugin",
     "mcp": "node bin/mcp.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node --test test/*.test.mjs",
