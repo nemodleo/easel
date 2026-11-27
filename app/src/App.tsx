@@ -226,7 +226,8 @@ export function App() {
   }, []);
   const loadComments = useCallback(() => api.get<{ comments: Comment[] }>("/api/comments").then((r) => setComments(r.comments)).catch(() => {}), []);
   const loadHistory = useCallback(() => api.get<typeof hist>("/api/history").then(setHist).catch(() => {}), []);
-  const loadErrors = useCallback(() => api.get<{ errors: Record<string, BoardError[]> }>("/api/errors").then((r) => setErrors(r.errors)).catch(() => {}), []);
+  // Every board that loads reports its errors, so this runs once per new iframe: the same list keeps the same object (no render)
+  const loadErrors = useCallback(() => api.get<{ errors: Record<string, BoardError[]> }>("/api/errors").then((r) => setErrors((cur) => (JSON.stringify(cur) === JSON.stringify(r.errors) ? cur : r.errors))).catch(() => {}), []);
   /* ---------- Who changed what: board tags and the History menu ---------- */
   const act = useActivity(data?.dir ?? null);
   const [tagPop, setTagPop] = useState<{ file: string; key: string; conflict: string[] | null; busy: boolean } | null>(null);
@@ -2066,10 +2067,12 @@ export function App() {
               </>
             )}
             iframeRef={(f, el) => {
-              // The ref callback is called again with null → el on every render. Update only for a genuinely new iframe
+              // The ref callback is called again with null → el on every render. Update only for a genuinely new iframe, and render the
+              // app only for a board whose page it reads (edited, played, checked, tweaked, comment pins, change outlines): not for each one a pan loads
               if (el && frames.current.get(f) !== el) {
                 frames.current.set(f, el);
-                setFrameTick((t) => t + 1);
+                const readsPage = f === editFile || f === inlinePlay || f === lintTarget || f === one || comments.some((c) => c.file === f && !c.resolved) || act.tagsOf(f).some((t) => t.paths.length);
+                if (readsPage) setFrameTick((t) => t + 1);
               }
             }}
           />
