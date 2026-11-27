@@ -54,6 +54,8 @@ type Props = {
   /** Board playing in place (the iframe is interactive) */
   playing?: string | null;
   reloadKeys: Record<string, number>;
+  /** Bumped on every change of a board's content, also one shown in place without a reload (thumbnails follow it) */
+  versions?: Record<string, number>;
   onSelect: (files: string[], mode: "replace" | "toggle" | "add") => void;
   onSelectNote: (id: string | null, add?: boolean) => void;
   /** Marquee result: boards and notes inside the rectangle (additive with Shift) */
@@ -527,6 +529,7 @@ export function Canvas(p: Props) {
               near={near}
               waiting={waiting}
               reloadKey={p.reloadKeys[f] ?? 0}
+              version={p.versions?.[f] ?? p.reloadKeys[f] ?? 0}
               pickable={picking && live}
               h={h}
               overlay={overlayOf(f)}
@@ -597,6 +600,8 @@ const BoardView = memo(function BoardView(props: {
   /** A fork or the original of one: its tags stay in one row */
   forkScene?: boolean;
   reloadKey: number;
+  /** The board's content version (its thumbnail URL changes with it) */
+  version: number;
   /** A click on the frame picks the element under the pointer (select tool, live board) */
   pickable: boolean;
   h: ItemHandlers;
@@ -723,13 +728,13 @@ const BoardView = memo(function BoardView(props: {
             <LiveFrame reloadKey={props.reloadKey} iframeRef={(el) => h.iframeRef(file, el)} src={props.screens.url(props.file)} html={props.screens.html?.(props.file)} title={title} interactive={!!props.playing || !!props.typing} onLoad={() => setReady(true)} />
             {!ready && props.screens.thumbs && (
               <div className="board-placeholder loading board-cover" style={{ position: "absolute", inset: 0, pointerEvents: "none", fontSize: Math.min(64, 14 / zoom) }} aria-hidden="true">
-                <Thumb file={props.file} v={props.reloadKey} px={THUMB_SIZES[0]} />
+                <Thumb file={props.file} v={props.version} px={THUMB_SIZES[0]} />
               </div>
             )}
           </>
         ) : (
           <div className={`board-placeholder ${props.near ? "loading" : "far"}`} style={{ fontSize: Math.min(64, 14 / zoom) }}>
-            {props.near && props.screens.thumbs && <Thumb file={props.file} v={props.reloadKey} px={props.waiting ? THUMB_SIZES[0] : thumbSize(Math.max(b.w, b.h) * zoom * (window.devicePixelRatio || 1))} />}
+            {props.near && props.screens.thumbs && <Thumb file={props.file} v={props.version} px={props.waiting ? THUMB_SIZES[0] : thumbSize(Math.max(b.w, b.h) * zoom * (window.devicePixelRatio || 1))} />}
             <span className="ph-title" data-hint={props.near ? "" : strings.canvas.notLoaded}>{title}</span>
             {props.near && <span className="ph-bar" style={{ height: 3 / Math.max(zoom, 0.05) }} aria-hidden="true" />}
           </div>
