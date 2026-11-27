@@ -1,0 +1,2 @@
+Name   Command  Args                          Env  Cwd  Status   Auth
+easel  npx      -y -p easel-canvas easel-mcp  -    -    enabled  Unsupported

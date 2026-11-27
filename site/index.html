@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Easel · a design canvas for coding agents</title>
+<meta name="description" content="A design canvas where your coding agents and you work on the same real HTML. Screens stay HTML files in your repo; Claude Code, Codex, Cursor Agent and Gemini CLI edit them with you. Open source, runs on your machine.">
+<link rel="canonical" href="{{ORIGIN}}">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ebeae6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#161615" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Easel">
+<meta property="og:url" content="{{ORIGIN}}">
+<meta property="og:title" content="Easel · a design canvas for coding agents">
+<meta property="og:description" content="A design canvas where your coding agents and you work on the same real HTML. npx easel-canvas@latest --demo">
+<meta property="og:image" content="{{ORIGIN}}media/social-preview.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta property="og:image:alt" content="Easel: a design canvas where your coding agents and you work on the same real HTML">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Easel · a design canvas for coding agents">
+<meta name="twitter:description" content="A design canvas where your coding agents and you work on the same real HTML.">
+<meta name="twitter:image" content="{{ORIGIN}}media/social-preview.png">
+<link rel="stylesheet" href="style.css">
+<script>document.documentElement.classList.add("js");</script>
+<script src="main.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#watch">Skip to the recording</a>
+
+<div class="top">
+  <!-- The one floating card on a wide screen; on a phone its parts sit around the recording -->
+  <div class="card">
+    <nav class="nav" aria-label="Site">
+      <a class="mark" href="./" aria-label="Easel, home">Easel</a><span class="ver">{{VERSION}}</span>
+      <span class="links">
+        <a class="navlink" href="https://github.com/{{REPO}}">GitHub</a>
+        <a class="navlink wide-only" href="https://www.npmjs.com/package/easel-canvas">npm</a>
+        <a class="navlink wide-only" href="https://github.com/{{REPO}}#readme">Docs</a>
+      </span>
+    </nav>
+    <div class="intro">
+      <h1>A design canvas where your coding agents and you work on the same real HTML.</h1>
+      <p class="lede">Your screens stay HTML files in your repo. Claude Code, Codex, Cursor Agent, Gemini CLI or your own command edit them with you.</p>
+      <div class="cmd hero-cmd"><span class="prompt" aria-hidden="true">$</span><code class="cmdtext">npx easel-canvas@latest --demo</code><button class="copy" type="button" data-copy="npx easel-canvas@latest --demo" aria-label="Copy the command: npx easel-canvas@latest --demo"><svg class="copy-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg><span class="copy-word">Copy</span></button></div>
+      <p class="small meta"><span>Runs on 127.0.0.1</span><span>No account</span><span>MIT</span><span>Node 20+</span></p>
+      <div class="foot wide-only">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg>
+        <p class="small">Around this card is a view-only Easel export of the bundled Intercut demo, not a picture of one: pan it, open a board, press Play.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Wide screens only: the live export. main.js adds the iframe; nothing of it loads on a phone -->
+  <div class="stage" id="stage" aria-label="View-only Easel canvas of the Intercut demo" role="region" data-src="canvas/index.html?embed&amp;dock=left&amp;inset=80,24,-40,668&amp;fit=brand.html,home.html,film.html,ticket.html,programme.html">
+    <noscript><img class="stage-still" src="media/canvas-still.webp" alt="Easel with the Intercut No.14 demo: twelve boards on one canvas, the board list at the left and the inspector at the right" width="1440" height="900"><p class="notice">The live canvas needs JavaScript. This is a screenshot of Easel with the same demo.</p></noscript>
+  </div>
+
+  <section class="watch" id="watch" aria-labelledby="watch-h">
+    <div class="wrap">
+      <div class="sec-head wide-only">
+        <p class="label">Watch, then run</p>
+        <h2 id="watch-h">One real run: edit, ask an agent, undo, share.</h2>
+      </div>
+      <figure class="player" id="player">
+        <div class="frame">
+          <video id="run" muted playsinline loop preload="none" controls width="1920" height="1200" poster="media/poster-960.webp" aria-label="Recording of a real Easel session with Claude Code on the Intercut demo">
+            <source src="media/run-1920.mp4" type="video/mp4" media="(min-width: 700px)">
+            <source src="media/run-960.mp4" type="video/mp4">
+          </video>
+          <span class="badge"><i aria-hidden="true"></i>Recording · Claude Code</span>
+          <button class="playpause" type="button" id="playpause" hidden aria-label="Play the recording"><svg class="i-play" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5l11 7-11 7z"/></svg><svg class="i-pause" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5h3v14H7zM14 5h3v14h-3z"/></svg></button>
+          <button class="bigplay" type="button" id="bigplay" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5l11 7-11 7z"/></svg>Play, 37 s</button>
+          <span class="time" id="time" hidden>0:00 / 0:37</span>
+          <p class="notice" id="video-failed" hidden>The recording didn’t load. <a href="https://github.com/{{REPO}}#readme">The README has the same run as a GIF.</a></p>
+        </div>
+        <div class="track" id="track" hidden aria-hidden="true"><i id="progress"></i></div>
+        <div class="moments" id="moments" role="group" aria-label="Jump to a moment in the recording" hidden>
+          <button class="chip" type="button" data-t="0"><span class="label">0:00</span>Canvas</button>
+          <button class="chip" type="button" data-t="4.85"><span class="label">0:05</span>Edit</button>
+          <button class="chip" type="button" data-t="13.1"><span class="label">0:13</span>Ask</button>
+          <button class="chip" type="button" data-t="28.4"><span class="label">0:28</span>Undo</button>
+          <button class="chip" type="button" data-t="31.7"><span class="label">0:32</span>Share</button>
+        </div>
+        <figcaption class="small cap">A real Claude Code run on the bundled Intercut demo. Muted, 37&nbsp;s, loops. The agent’s working time is sped up 16× (about 93&nbsp;s shown in 6); everything else plays at real speed.</figcaption>
+      </figure>
+    </div>
+  </section>
+</div>
+
+<main>
+  <section class="sec why" aria-labelledby="why-h">
+    <div class="wrap">
+      <p class="label">Why now</p>
+      <h2 id="why-h">The agents moved into the repo. The design didn’t.</h2>
+      <ol class="three">
+        <li><span class="n" aria-hidden="true">1</span><p><strong>Coding agents already write the UI.</strong> They change real files in your repo, every day.</p></li>
+        <li><span class="n" aria-hidden="true">2</span><p><strong>The design still lives somewhere else:</strong> a design file, a chat artifact, a hosted tool. The agent works from a copy.</p></li>
+        <li><span class="n" aria-hidden="true">3</span><p><strong>Easel puts the design where the agents work:</strong> HTML files in your repo, on a canvas you both edit.</p></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="sec proofs" aria-labelledby="proofs-h">
+    <div class="wrap">
+      <p class="label">Four proofs</p>
+      <h2 id="proofs-h">Each claim, with the frame that shows it.</h2>
+      <div class="grid">
+        <article class="proof">
+          <img src="media/proof-edit.webp" width="1040" height="780" loading="lazy" decoding="async" alt="The My cut phone screen on the canvas with its spliced title retyped from WINTER to RAIN in place, under a You · editing tag">
+          <h3>Edit the real screen</h3>
+          <p>Retype a title on the canvas and Easel patches that one text node in the source file. Formatting, comments and the rest of the file stay as they were.</p>
+          <pre class="diff" aria-label="The change in the source file"><span class="dh">{{DIFF_HEAD}}</span>
+<span class="dd">{{DIFF_DEL}}</span>
+<span class="da">{{DIFF_ADD}}</span></pre>
+          <p class="small src">Still from the recording at 0:07. The diff is that edit run through Easel’s own edit code at build time.</p>
+          <button class="link seek" type="button" data-t="4.85">Watch it at 0:05</button>
+        </article>
+        <article class="proof">
+          <img src="media/proof-ask.webp" width="1040" height="780" loading="lazy" decoding="async" alt="The AI tab after the Claude Code run: the end of its reply, Changed 1 board with Undo this run and Compare, next to the redrawn red ticket screen">
+          <h3>Agents work as teammates</h3>
+          <p>Ask Claude Code, Codex, Cursor Agent or Gemini CLI from the canvas, with your selection as context. The board redraws as the agent writes, and the whole run undoes in one step. A Claude Code run’s permission requests come up as cards you answer there.</p>
+          <p class="small src">Still from the recording at 0:27. The permission card is not in this recording.</p>
+          <button class="link seek" type="button" data-t="13.1">Watch it at 0:13</button>
+        </article>
+        <article class="proof">
+          <img src="media/proof-agents.webp" width="1040" height="780" loading="lazy" decoding="async" alt="Two Social square boards side by side: Claude Code is editing the first, Codex is editing a fork of it, each with a who-changed tag, and a note: Forked 13:09, Codex started while Claude Code was editing">
+          <h3>Many agents, no overwrites</h3>
+          <p>One writer per board. A second agent on a busy board is given a fork next to it, and every change carries a tag with who made it.</p>
+          <p class="small src">Screenshot: two MCP clients, reporting as Claude Code and Codex, wrote one board through Easel’s tools. Scripted for the screenshot, not a live model run.</p>
+        </article>
+        <article class="proof">
+          <img src="media/proof-share.webp" width="1040" height="780" loading="lazy" decoding="async" alt="The Share popover: Web folder exported to intercut/easel-export/, with Reveal and Copy deploy command, then PDF and PNG, and the same command for the terminal">
+          <h3>Share a view-only copy</h3>
+          <p>Share writes static files: the boards, notes, comments and Play, stamped with the export time and commit. Any static host serves them. The canvas at the top of this page is one.</p>
+          <p class="small src">Still from the recording at 0:36.</p>
+          <button class="link seek" type="button" data-t="31.7">Watch it at 0:32</button>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec compare" aria-labelledby="cmp-h">
+    <div class="wrap">
+      <p class="label">Side by side</p>
+      <h2 id="cmp-h">A difference of mechanism, not of taste.</h2>
+      <div class="table-scroll" role="region" aria-label="Comparison table" tabindex="0">
+        <table>
+          <thead><tr><th scope="col"><span class="sr">Question</span></th><th scope="col">A design file in a design tool</th><th scope="col">A design in a chat artifact</th><th scope="col" class="us">Easel</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Where the design lives</th><td data-label="A design file in a design tool">In the tool’s own file format, usually in its cloud</td><td data-label="A design in a chat artifact">In the chat service, attached to a conversation</td><td data-label="Easel" class="us">HTML files in your repo</td></tr>
+            <tr><th scope="row">Who can edit it</th><td data-label="A design file in a design tool">People with an edit seat; agents through the tool’s plugin or MCP server, where it offers one</td><td data-label="A design in a chat artifact">You, through that assistant</td><td data-label="Easel" class="us">You and any agent that writes files: {{AGENTS}} agent CLIs built in, {{TOOLS}} MCP tools</td></tr>
+            <tr><th scope="row">What you hand to engineering</th><td data-label="A design file in a design tool">A link and specs; the UI is written again in code, by hand or by an agent</td><td data-label="A design in a chat artifact">Code you copy or download into the repo</td><td data-label="Easel" class="us">The same HTML, reviewed in the same pull request</td></tr>
+            <tr><th scope="row">If the tool goes away</th><td data-label="A design file in a design tool">You keep what you exported</td><td data-label="A design in a chat artifact">You keep what you copied out</td><td data-label="Easel" class="us">The files stay; any browser opens them</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec how" aria-labelledby="how-h">
+    <div class="wrap">
+      <p class="label">How it works</p>
+      <h2 id="how-h">Files, then the canvas, then your agent.</h2>
+      <ol class="three steps">
+        <li>
+          <span class="n" aria-hidden="true">1</span>
+          <h3>Files</h3>
+          <p>Each <code>screens/*.html</code> file is one board. Positions, notes and comments sit next to them in small JSON files that merge with git.</p>
+        </li>
+        <li>
+          <span class="n" aria-hidden="true">2</span>
+          <h3>Canvas</h3>
+          <div class="cmd sm"><code class="cmdtext">npx easel-canvas</code><button class="copy" type="button" data-copy="npx easel-canvas" aria-label="Copy the command: npx easel-canvas"><span class="copy-word">Copy</span></button></div>
+          <p>Opens <code>./docs/design</code> on 127.0.0.1. Only the part of the file you change is rewritten.</p>
+        </li>
+        <li>
+          <span class="n" aria-hidden="true">3</span>
+          <h3>Agent</h3>
+          <div class="cmd sm"><code class="cmdtext">npx easel-canvas connect</code><button class="copy" type="button" data-copy="npx easel-canvas connect" aria-label="Copy the command: npx easel-canvas connect"><span class="copy-word">Copy</span></button></div>
+          <p>Adds Easel’s MCP server to Claude Code, Cursor, Gemini CLI and Codex. The in-app chat needs no setup for Claude Code.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="sec apps" aria-labelledby="apps-h">
+    <div class="wrap">
+      <p class="label">Inside the apps you already use</p>
+      <h2 id="apps-h">Not one more window. The canvas comes to your agent.</h2>
+      <div class="two">
+        <article class="app-block">
+          <h3>Inside the Claude desktop app</h3>
+          <p>The Code tab runs Claude Code in your project, so the server <code>connect</code> writes gives that session Easel’s tools: it lists boards, reads your selection, checks tokens and leaves comments. The canvas can sit in the app’s Browser pane, beside the conversation.</p>
+          <ol class="steps-sm">
+            <li><span class="n" aria-hidden="true">1</span><div><p>In your project. The app asks you to approve the project’s server once.</p><div class="cmd sm"><code class="cmdtext">npx easel-canvas connect</code><button class="copy" type="button" data-copy="npx easel-canvas connect" aria-label="Copy the command: npx easel-canvas connect"><span class="copy-word">Copy</span></button></div></div></li>
+            <li><span class="n" aria-hidden="true">2</span><div><p>Add the canvas as a preview server in <code>.claude/launch.json</code>, then ask Claude to open it.</p><pre class="snippet">{ "name": "easel", "runtimeExecutable": "npx",
+  "runtimeArgs": ["-y", "easel-canvas", "--port", "4317", "--no-open"],
+  "port": 4317 }</pre></div></li>
+          </ol>
+          <p class="small ev-l">Transcript of a real run: Claude Code {{CLAUDE_VER}} with the server above, on a copy of the demo, {{RUN_DATE}}. Run from a terminal; the Code tab runs the same Claude Code.</p>
+          <pre class="transcript" aria-label="Transcript of the Claude Code run">{{CLAUDE_TRANSCRIPT}}</pre>
+        </article>
+        <article class="app-block">
+          <h3>Inside Codex</h3>
+          <p>The same command writes Easel’s server into Codex’s config, which the Codex CLI, the IDE extension and the ChatGPT desktop app share. Codex then has the same tools; the Codex app’s in-app browser can show the canvas at its local address.</p>
+          <ol class="steps-sm">
+            <li><span class="n" aria-hidden="true">1</span><div><p>In your project, with Codex installed.</p><div class="cmd sm"><code class="cmdtext">npx easel-canvas connect</code><button class="copy" type="button" data-copy="npx easel-canvas connect" aria-label="Copy the command: npx easel-canvas connect"><span class="copy-word">Copy</span></button></div></div></li>
+            <li><span class="n" aria-hidden="true">2</span><div><p>What it adds to <code>~/.codex/config.toml</code>, as written by <code>connect</code>:</p><pre class="snippet">{{CODEX_SNIPPET}}</pre></div></li>
+            <li><span class="n" aria-hidden="true">3</span><div><p>Keep the canvas running (<code>npx easel-canvas</code>) and restart Codex.</p></div></li>
+          </ol>
+          <p class="small ev-l">Output of <code>codex mcp list</code> (Codex CLI {{CODEX_VER}}) with that config, {{RUN_DATE}}:</p>
+          <pre class="transcript cols" aria-label="Output of codex mcp list" tabindex="0">{{CODEX_LIST}}</pre>
+          <p class="small">A transcript of a Codex run using these tools is not here yet.</p>
+        </article>
+      </div>
+      <p class="routes"><strong>Two routes to the same files.</strong> From Easel’s AI tab, Easel starts the agent’s CLI for you with your selection as context, and the whole run undoes in one step. From inside the agent’s app, the agent reaches the canvas through MCP, writes the HTML with its own tools, and its edits come up on the canvas with a who-changed tag.</p>
+    </div>
+  </section>
+
+  <section class="sec start" aria-labelledby="start-h">
+    <div class="wrap">
+      <p class="label">Start</p>
+      <h2 id="start-h">Try it this minute.</h2>
+      <div class="start-grid">
+        <div>
+          <p class="small step-l">The demo, copied to <code>./easel-demo</code></p>
+          <div class="cmd"><span class="prompt" aria-hidden="true">$</span><code class="cmdtext">npx easel-canvas@latest --demo</code><button class="copy accent" type="button" data-copy="npx easel-canvas@latest --demo" aria-label="Copy the command: npx easel-canvas@latest --demo"><span class="copy-word">Copy</span></button></div>
+          <p class="small step-l">Your own screens</p>
+          <div class="cmd"><span class="prompt" aria-hidden="true">$</span><code class="cmdtext">npx easel-canvas --init</code><button class="copy" type="button" data-copy="npx easel-canvas --init" aria-label="Copy the command: npx easel-canvas --init"><span class="copy-word">Copy</span></button></div>
+          <p class="small">Runs on 127.0.0.1. No account. Node 20 or newer.</p>
+        </div>
+        <div class="btns">
+          <a class="btn primary" href="https://github.com/{{REPO}}">GitHub</a>
+          <a class="btn quiet" href="https://www.npmjs.com/package/easel-canvas">npm</a>
+          <a class="btn quiet" href="https://github.com/{{REPO}}#readme">Docs</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <p><span class="mark-sm">Easel</span> {{VERSION}} · MIT · runs on 127.0.0.1, no account.</p>
+    <p class="small">This page’s canvas is an Easel export of <code>examples/demo</code>, made on {{EXPORTED}} from <a class="link" href="https://github.com/{{REPO}}/tree/{{COMMIT}}/examples/demo"><code>{{REPO}}@{{COMMIT}}</code></a>.</p>
+    <p class="small">Questions and bugs: <a class="link" href="https://github.com/{{REPO}}/issues">open an issue</a>.</p>
+    <p class="small">Claude and Claude Code are trademarks of Anthropic. Codex and ChatGPT are trademarks of OpenAI. Easel is not affiliated with either.</p>
+  </div>
+</footer>
+</body>
+</html>
