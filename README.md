@@ -34,7 +34,22 @@ Already have HTML screens? Run it in your project:
 npx easel-canvas                  # opens ./docs/design (or the current folder if it has screens/)
 npx easel-canvas --init           # starts a new ./docs/design with one screen
 npx easel-canvas --dir ./designs  # any folder of screens/*.html
+npx easel-canvas up               # the same in the background: prints the URL, reuses a canvas already running here
 ```
+
+## Install into your agent
+
+One line gives your agent the Easel tools and a skill that knows the canvas: when to open it, how to claim and write a board, check tokens, look at a screenshot and leave a comment, and how to lay out alternatives for you to pick from.
+
+| Agent | Install | What you get |
+| --- | --- | --- |
+| **Claude Code** | `claude plugin marketplace add nemodleo/easel --sparse .claude-plugin plugin && claude plugin install easel@easel` | MCP tools, the `easel` skill, `/easel:open` and `/easel:variants` |
+| **Codex** | `codex plugin marketplace add nemodleo/easel --sparse .agents/plugins --sparse plugin && codex plugin add easel@easel` | MCP tools and the `easel` skill |
+| **Cursor** | `npx skills add nemodleo/easel --skill easel -a cursor` | The `easel` skill; add the tools with `npx easel-canvas connect` |
+
+`--sparse` checks out only the plugin's folders instead of the whole repository with its screenshots, so the install stays fast on a slow connection.
+
+Then, in your project, ask for what you want: *"open the design canvas"*, *"make three variants of the sign-up screen side by side"*, *"fix what I selected"*. In Claude Code, `/easel:open` starts the canvas for the project (or shows the one already running) and `/easel:variants signup.html 4` lays out four alternatives in a row below the original. The agent starts the canvas with `npx easel-canvas up`, which prints the URL and never starts a second one for the same folder.
 
 ## Why Easel
 
@@ -91,7 +106,7 @@ npx easel-canvas --dir ./designs  # any folder of screens/*.html
 
 Keep the canvas running (`npx easel-canvas`). Agents write HTML files directly, and what they change shows up in the canvas's undo history (one step per in-app AI request, or per burst of edits from an outside agent); the MCP server lets them **see** (`list_boards`, `read_board`, `screenshot`, `list_errors`), **know what you mean** (`get_selection` with the selected element, visible boards and the current page), **talk** (comments and replies) and **arrange** (`place_board`, `create_board`, notes, pages, `check_tokens`, `save_snapshot`). When several agents share a canvas, `claim_board` (before editing a file with their own tools) or `write_board` (a whole board through Easel) keeps one writer per board: a second agent on a busy board is given a fork next to it and told which file it is on.
 
-Then, in your project folder:
+Then, in your project folder (not needed for an agent that has the [plugin](#install-into-your-agent), which brings the same server):
 
 ```bash
 npx easel-canvas connect
