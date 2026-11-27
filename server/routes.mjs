@@ -57,26 +57,44 @@ export { cachedBrowser, closeBrowser, newPage, withPage } from "./browser.mjs";
 const THUMB_PX = [600, 1200, 2400];
 export const thumbPx = (v) => THUMB_PX.find((s) => s >= Number(v)) ?? (Number(v) > 0 ? THUMB_PX[THUMB_PX.length - 1] : THUMB_PX[0]);
 
-/** Generate at most two thumbnails at a time */
-let running = 0;
-const waiting = [];
-function thumbQueue(job) {
-  return new Promise((resolve, reject) => {
-    const run = async () => {
-      running++;
-      try {
-        resolve(await job());
-      } catch (e) {
-        reject(e);
-      } finally {
-        running--;
-        waiting.shift()?.();
-      }
-    };
-    if (running < 2) void run();
-    else waiting.push(run);
-  });
+/**
+ * Thumbnail jobs, at most two at a time. The newest request goes first (the boards the user is looking at now asked last),
+ * and a job still waiting when its request closes (board scrolled away, tab closed) is dropped. A job that has started
+ * always finishes, so its thumbnail is cached for the next request.
+ */
+export function createThumbQueue(limit = 2) {
+  let running = 0;
+  const waiting = [];
+  const next = () => {
+    while (running < limit && waiting.length) {
+      const job = waiting.pop();
+      if (job.gone()) job.reject(Object.assign(new Error("Thumbnail request closed before its turn"), { dropped: true }));
+      else void job.run();
+    }
+  };
+  return {
+    /** gone(): true once nobody waits for the result */
+    push(fn, gone = () => false) {
+      return new Promise((resolve, reject) => {
+        const run = async () => {
+          running++;
+          try {
+            resolve(await fn());
+          } catch (e) {
+            reject(e);
+          } finally {
+            running--;
+            next();
+          }
+        };
+        waiting.push({ run, gone, reject });
+        next();
+      });
+    },
+    stats: () => ({ running, waiting: waiting.length }),
+  };
 }
+const thumbQueue = createThumbQueue(2);
 
 export async function screenshot(ctx, port, file, elPath) {
   const board = (await ctx.store.readBoard()).boards[file];
@@ -159,9 +177,11 @@ export const extraRoutes = [
       const out = path.join(dir, `${stamp}${px}.jpg`);
       // Read the port now: a job that waits in the queue runs after its request may have closed, and a closed socket has no localPort
       const port = req.socket.localPort;
+      let gone = false;
+      res.on("close", () => (gone = true));
       let buf = await fs.readFile(out).catch(() => null);
       if (!buf) {
-        buf = await thumbQueue(async () => {
+        buf = await thumbQueue.push(async () => {
           await fs.mkdir(dir, { recursive: true });
           await fs.writeFile(path.join(dir, ".gitignore"), "*\n").catch(() => {});
           const board = (await ctx.store.readBoard()).boards[f];
@@ -177,7 +197,11 @@ export const extraRoutes = [
             await fs.writeFile(out, b);
             return b;
           });
+        }, () => gone).catch((e) => {
+          if (e.dropped) return null;
+          throw e;
         });
+        if (!buf) return; // nobody is waiting for it any more
       }
       res.writeHead(200, { "Content-Type": "image/jpeg", "Content-Length": buf.length, "Cache-Control": "max-age=31536000, immutable" });
       res.end(buf);
