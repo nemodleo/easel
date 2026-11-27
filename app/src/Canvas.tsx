@@ -408,15 +408,15 @@ export function Canvas(p: Props) {
   const lastMove = useRef(0);
   useEffect(() => {
     settled.current = false;
-    // On a slow machine the steps of one gesture come further apart than 150 ms: wait three steps' time then, so pages do not
-    // start loading between two steps of the same pan or zoom
+    // On a slow machine the steps of one gesture come further apart than 150 ms: wait three steps' time then (a step under 400 ms
+    // apart counts as the same gesture), so pages do not start loading between two steps of the same pan or zoom
     const now = performance.now();
     const step = now - lastMove.current;
     lastMove.current = now;
     const t = window.setTimeout(() => {
       settled.current = true;
       pump();
-    }, Math.max(LIVE_SETTLE_MS, step < 1000 ? step * 3 : 0));
+    }, step < 400 ? Math.max(LIVE_SETTLE_MS, step * 3) : LIVE_SETTLE_MS);
     return () => window.clearTimeout(t);
   }, [view.x, view.y, view.zoom]);
   useEffect(() => () => window.clearTimeout(pumping.current), []);
