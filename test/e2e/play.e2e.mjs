@@ -116,3 +116,43 @@ async function openBoardNoWait(page, file) {
   await page.keyboard.press("Shift+Digit2");
   await wait(600);
 }
+
+test("the label's ▶ shows on a selected un-flagged board, plays it, turns into Stop, and never writes board.json", async () => {
+  const { page, url } = env;
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  await page.goto(url);
+  await page.waitForSelector(".board");
+  await wait(800);
+  const saves = [];
+  const onReq = (r) => r.method() !== "GET" && r.url().includes("/api/board") && saves.push(r.url());
+  page.on("request", onReq);
+  const before = await env.read("board.json");
+  const play = page.locator(`.board[data-file="${F}"] .board-label .board-play`);
+  // Zoomed to the board, then deselected: an un-flagged board's ▶ is there but hidden; selecting the board shows it
+  await openBoard(page, url, F);
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  await page.mouse.move(5, 5);
+  await page.locator(`.board.selected`).waitFor({ state: "detached" });
+  await wait(300); // the row fades over 80ms
+  // Shown: laid out (not display: none) and its row not faded out
+  const shown = () => play.evaluate((el) => getComputedStyle(el).display !== "none" && getComputedStyle(el.parentElement).opacity !== "0");
+  assert.equal(await shown(), false, "hidden at rest");
+  await page.evaluate((f) => {
+    const label = document.querySelector(`.board[data-file="${f}"] .board-label`);
+    for (const type of ["pointerdown", "pointerup"]) label.dispatchEvent(new PointerEvent(type, { bubbles: true, button: 0, pointerId: 1 }));
+  }, F);
+  await page.locator(`.board.selected[data-file="${F}"]`).waitFor();
+  await wait(300);
+  assert.equal(await shown(), true, "visible once selected");
+  assert.equal(await play.getAttribute("title"), "Play (P)");
+  await play.click();
+  await page.locator(`.board.playing[data-file="${F}"]`).waitFor();
+  assert.equal(await play.getAttribute("aria-label"), "Stop Play");
+  await play.click();
+  await page.locator(".board.playing").waitFor({ state: "detached" });
+  await wait(800);
+  page.off("request", onReq);
+  assert.equal(await env.read("board.json"), before, "board.json is byte-identical");
+  assert.deepEqual(saves, [], "no board.json save was sent");
+});

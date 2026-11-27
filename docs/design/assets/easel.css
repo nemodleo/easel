@@ -142,6 +142,8 @@ kbd {
 .board:hover .board-file, .board.selected .board-file, .board.editing .board-file { opacity: 1; }
 .board-btns { display: flex; gap: 2px; margin-left: auto; flex: none; opacity: 0; transition: opacity 80ms; }
 .board:hover .board-btns, .board.selected .board-btns, .board.editing .board-btns { opacity: 1; }
+/* Show Play button (is_interactive): the ▶ stays visible at rest; a playing board keeps its Stop */
+.board-btns:has(> .board-play.always), .board.playing .board-btns { opacity: 1; }
 .board-btns .icon-btn { background: var(--panel); border-color: var(--line); }
 /* The interactive-board dot (the agent picker further down has a .dot of its own) */
 .lab-row > .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; }
@@ -1002,11 +1004,11 @@ button.danger { color: var(--warn); }
 .board-btns.pinned { opacity: 1; }
 .lab-row:has(.board-btns.pinned) .board-file { display: none; } /* the file name gives way, so the title keeps a few letters */
 .lab-row:has(.board-btns.pinned) .board-title { flex: 1 1 auto; min-width: 3em; }
-.board:not(:hover):not(.selected):not(.editing) .board-btns.pinned > :not(.use-btn) { display: none; }
+.board:not(:hover):not(.selected):not(.editing):not(.playing) .board-btns.pinned > :not(.use-btn):not(.always) { display: none; }
 .oc .board-btns .icon-btn.use-btn { width: auto; gap: 4px; padding: 0 8px; } /* wins over the 24px .icon-btn below */
 .oc .board-btns .icon-btn.use-btn.icon-only { width: 24px; padding: 0; }
 .board-btns .use-label { font-size: 12px; font-weight: 600; }
-.oc .board-btns .use-btn.pressed { background: var(--pressed); }
+.oc .board-btns .use-btn.pressed, .oc .board-btns .board-play.pressed { background: var(--pressed); }
 .board-btns .use-btn[aria-disabled="true"] { opacity: 0.4; cursor: default; }
 .oc .board-btns .use-btn[aria-disabled="true"]:hover { background: var(--panel); }
 .menu.confirm { z-index: 260; width: 288px; min-width: 0; max-width: calc(100vw - 16px); gap: 4px; padding: 12px 16px; }

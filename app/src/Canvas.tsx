@@ -527,6 +527,22 @@ function BoardView(props: {
     props.onContext(e);
   };
   const stop = (e: RPointerEvent) => e.stopPropagation();
+  // ▶ on every board: always shown with Show Play button (is_interactive), otherwise while the board is selected or hovered (CSS).
+  // While the board plays it stops it. Playing is viewing: nothing is written to board.json
+  const playBtn = b.w * zoom >= 110 && (
+    <button
+      className={`icon-btn sm board-play ${b.is_interactive ? "always" : ""} ${props.playing ? "pressed" : ""}`}
+      aria-label={props.playing ? strings.canvas.stopPlay : strings.canvas.play}
+      title={props.playing ? strings.canvas.stopPlayTitle : strings.canvas.playTitle}
+      onPointerDown={stop}
+      onClick={(e) => {
+        e.stopPropagation();
+        props.onPlay();
+      }}
+    >
+      <Icon name={props.playing ? "stop" : "play"} size={14} />
+    </button>
+  );
   return (
     <div
       className={`board ${props.selected ? "selected" : ""} ${props.editing ? "editing" : ""} ${props.playing ? "playing" : ""} ${b.frameless ? "frameless" : ""} ${b.is_interactive ? "interactive" : ""} ${props.ring ? "held" : ""}`}
@@ -565,15 +581,16 @@ function BoardView(props: {
             </span>
           )}
           {b.w * zoom >= 160 && title !== props.file && !(compact && fork) && <span className="board-file">{props.file}</span>}
-          {compact && props.selected && props.buttons && <span className="board-btns pinned">{props.buttons}</span>}
+          {compact && props.selected && (props.buttons || playBtn) && (
+            <span className="board-btns pinned">
+              {props.buttons}
+              {playBtn}
+            </span>
+          )}
           {!compact && b.w * zoom >= 110 && (
             <span className={`board-btns ${props.buttons ? "pinned" : ""}`}>
               {props.buttons}
-              {b.is_interactive && (
-                <button className="icon-btn sm" aria-label="Play" title="Play" onPointerDown={stop} onClick={(e) => { e.stopPropagation(); props.onPlay(); }}>
-                  <Icon name="play" size={14} />
-                </button>
-              )}
+              {playBtn}
             </span>
           )}
         </span>
