@@ -1,6 +1,6 @@
 // AI-generated with Claude Code, 2026-10-09, reviewed by Hyun Park
 // Infinite canvas: tools (select, hand, board, title, note), pan and zoom, multi-select, group move, snap guides, boards (iframes) with labels and sizes, notes. PLAN.md section 5.
-import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent as RMouseEvent, type PointerEvent as RPointerEvent, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent as RMouseEvent, type PointerEvent as RPointerEvent, type ReactNode } from "react";
 
 import { isDrag } from "./directSelect";
 import { stickyBg } from "./drawing";
@@ -8,6 +8,7 @@ import { Icon } from "./icons";
 import type { Board, BoardItem, Note, ScreenSource, Tool, View } from "./types";
 import { scrollInside } from "./useElementSelect";
 import { strings } from "./strings";
+import { useView, type ViewStore } from "./viewStore";
 
 // PLAN said 10%, but allow down to 4% to fit all 98 boards (about 17,700 tall) on one screen
 export const MIN_ZOOM = 0.04;
@@ -34,8 +35,8 @@ type Gesture = null | { kind: "pan"; sx: number; sy: number; vx: number; vy: num
 type Props = {
   board: Board;
   files: string[];
-  view: View;
-  setView: (v: View | ((v: View) => View)) => void;
+  /** The view (pan and zoom): only the canvas follows it, the rest of the app does not re-render on a wheel step */
+  view: ViewStore;
   tool: Tool;
   setTool: (t: Tool) => void;
   visibleBoards: string[];
@@ -69,17 +70,17 @@ type Props = {
   onCreateBoard: (r: Rect) => void;
   onCreateNote: (kind: Note["kind"], at: { x: number; y: number }) => void;
   onContext: (t: ContextTarget, e: { clientX: number; clientY: number }) => void;
-  renderBoardOverlay?: (f: string) => ReactNode;
+  renderBoardOverlay?: (f: string, zoom: number) => ReactNode;
   /** Tags stacked above a board's title (who changed it); not drawn while the label is too small to show the title, or compact */
   renderBoardTags?: (f: string) => ReactNode;
   /** Buttons that stay visible in a board's label row (Use this), before Play; compact: the label is one row (zoomed out) */
   renderBoardButtons?: (f: string, compact: boolean) => ReactNode;
   /** Colour of the ring around a board an agent is writing right now */
   boardRing?: (f: string) => string | null;
-  /** Things drawn over boards (shapes) — world coordinates */
-  worldLayer?: ReactNode;
+  /** Things drawn over boards (shapes) — world coordinates; drawn again when the zoom or the function changes */
+  worldLayer?: (zoom: number) => ReactNode;
   /** Things drawn under notes and boards (the fork arrows) — world coordinates */
-  underLayer?: ReactNode;
+  underLayer?: (zoom: number) => ReactNode;
   iframeRef?: (f: string, el: HTMLIFrameElement | null) => void;
   onSize?: (s: { w: number; h: number }) => void;
   /** View-only (exported viewer): dragging pans, a press selects, nothing moves, resizes or edits */
@@ -88,6 +89,8 @@ type Props = {
 };
 
 export function Canvas(p: Props) {
+  const view = useView(p.view);
+  const setView = p.view.set;
   const rootRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 1200, h: 800 });
@@ -128,7 +131,7 @@ export function Canvas(p: Props) {
     el.style.willChange = "transform";
     const t = setTimeout(() => (el.style.willChange = ""), 200);
     return () => clearTimeout(t);
-  }, [p.view.x, p.view.y, p.view.zoom]);
+  }, [view.x, view.y, view.zoom]);
 
   // Wheel: with ⌘/Ctrl (including trackpad pinch) zoom around the cursor, otherwise pan
   useEffect(() => {
@@ -139,7 +142,7 @@ export function Canvas(p: Props) {
       const mx = e.clientX - r.left;
       const my = e.clientY - r.top;
       if (e.ctrlKey || e.metaKey) {
-        p.setView((v) => {
+        setView((v) => {
           const z = clamp(v.zoom * Math.exp(-e.deltaY * 0.01), MIN_ZOOM, MAX_ZOOM);
           const wx = (mx - v.x) / v.zoom;
           const wy = (my - v.y) / v.zoom;
@@ -149,12 +152,12 @@ export function Canvas(p: Props) {
         // Over the board that has an element selected, the wheel scrolls the board's own content first (what Edit mode used to allow)
         const frame = (e.target as Element | null)?.closest?.(".board-frame[data-inside]")?.querySelector("iframe") ?? null;
         if (scrollInside(frame, e.clientX, e.clientY, e.deltaX, e.deltaY)) return;
-        p.setView((v) => ({ ...v, x: v.x - e.deltaX, y: v.y - e.deltaY }));
+        setView((v) => ({ ...v, x: v.x - e.deltaX, y: v.y - e.deltaY }));
       }
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, [p.setView]);
+  }, [setView]);
 
   // Holding Space switches to the hand tool
   useEffect(() => {
@@ -173,7 +176,6 @@ export function Canvas(p: Props) {
     };
   }, []);
 
-  const { view } = p;
   const toWorld = (cx: number, cy: number) => {
     const r = rootRef.current!.getBoundingClientRect();
     return { x: (cx - r.left - view.x) / view.zoom, y: (cy - r.top - view.y) / view.zoom };
@@ -205,7 +207,7 @@ export function Canvas(p: Props) {
     const g = gesture.current;
     if (!g) return;
     if (g.kind === "pan") {
-      p.setView((v) => ({ ...v, x: g.vx + e.clientX - g.sx, y: g.vy + e.clientY - g.sy }));
+      setView((v) => ({ ...v, x: g.vx + e.clientX - g.sx, y: g.vy + e.clientY - g.sy }));
       return;
     }
     const w = toWorld(e.clientX, e.clientY);
@@ -380,6 +382,8 @@ export function Canvas(p: Props) {
     forkScene.add(f);
     if (shownBoards.has(o.of)) forkScene.add(o.of);
   }
+  const underLayer = useMemo(() => p.underLayer?.(view.zoom), [p.underLayer, view.zoom]);
+  const worldLayer = useMemo(() => p.worldLayer?.(view.zoom), [p.worldLayer, view.zoom]);
   return (
     <div
       ref={rootRef}
@@ -398,7 +402,7 @@ export function Canvas(p: Props) {
       aria-label={strings.canvas.aria}
     >
       <div ref={worldRef} className="world" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }}>
-        {p.underLayer}
+        {underLayer}
         {p.visibleNotes.map((id) => (
           <NoteView
             key={id}
@@ -448,7 +452,7 @@ export function Canvas(p: Props) {
               onPlay={() => p.onPlay(f)}
               onRename={() => p.onRename(f)}
               onContext={(e) => p.onContext({ type: "board", file: f }, e)}
-              overlay={p.renderBoardOverlay?.(f)}
+              overlay={p.renderBoardOverlay?.(f, view.zoom)}
               compact={b.w * view.zoom >= 48 && view.zoom < COMPACT_LABEL_ZOOM && forkScene.has(f)}
               forkScene={forkScene.has(f)}
               tags={b.w * view.zoom >= 48 && !(view.zoom < COMPACT_LABEL_ZOOM && forkScene.has(f)) && p.playing !== f ? p.renderBoardTags?.(f) : null}
@@ -458,7 +462,7 @@ export function Canvas(p: Props) {
             />
           );
         })}
-        {p.worldLayer}
+        {worldLayer}
         {guides.map((g, i) =>
           g.axis === "x" ? (
             <div key={i} className="guide" style={{ left: g.at, top: g.from, width: 1 / view.zoom, height: g.to - g.from }} />

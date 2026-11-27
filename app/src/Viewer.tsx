@@ -15,6 +15,7 @@ import { Play } from "./Play";
 import { strings } from "./strings";
 import type { ExportData, Note, ScreenSource, View } from "./types";
 import { useCentred } from "./ui";
+import { useView, useViewStore } from "./viewStore";
 
 export const EASEL_URL = "https://github.com/nemodleo/easel";
 const encodePath = (f: string) => f.split("/").map(encodeURIComponent).join("/");
@@ -38,7 +39,9 @@ export function Viewer({ data }: { data: ExportData }) {
     .filter((id) => onPage(shapes[id]))
     .sort((a, b) => (shapes[a].z ?? 0) - (shapes[b].z ?? 0));
 
-  const [view, setView] = useState<View>({ x: 0, y: 0, zoom: 1 });
+  const viewStore = useViewStore({ x: 0, y: 0, zoom: 1 });
+  const setView = viewStore.set;
+  const view = useView(viewStore);
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [selected, setSelected] = useState<string[]>([]);
   const [playFile, setPlayFile] = useState<string | null>(null);
@@ -211,8 +214,7 @@ export function Viewer({ data }: { data: ExportData }) {
         <Canvas
           board={board}
           files={data.files}
-          view={view}
-          setView={setView}
+          view={viewStore}
           tool="select"
           setTool={() => {}}
           visibleBoards={visibleBoards}
@@ -262,7 +264,7 @@ export function Viewer({ data }: { data: ExportData }) {
               </div>
             );
           }}
-          worldLayer={
+          worldLayer={() => (
             <>
               <ShapesLayer shapes={shapes} ids={visibleShapes} zoom={view.zoom} selected={[]} interactive={false} onSelect={() => {}} onChange={() => {}} onContext={() => {}} />
               {open && openPos && (
@@ -289,7 +291,7 @@ export function Viewer({ data }: { data: ExportData }) {
                 </div>
               )}
             </>
-          }
+          )}
           iframeRef={(f, el) => {
             if (!el || frames.current.get(f) === el) return;
             frames.current.set(f, el);
