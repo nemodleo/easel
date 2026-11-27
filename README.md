@@ -148,6 +148,12 @@ npx easel-canvas export --page Onboarding --pdf --png
 npx easel-canvas export --boards home.html,ticket.html --out dist/design-preview
 ```
 
+To show the copy inside another page, frame its `index.html` with `?embed`: the board list and comments card step aside, the zoom joins the dock, and the wheel stays with your page until someone clicks the canvas (Esc or a click outside gives it back). `fit` names the boards (or note ids) the opening view frames, `inset` keeps that view clear of what your page floats over the frame (CSS order, in px; a negative side lets boards run off that edge), and `dock` puts the dock `left`, `center` or `right`:
+
+```html
+<iframe src="easel-export/index.html?embed&fit=home.html,ticket.html&inset=80,24,0,668&dock=left" title="Design canvas"></iframe>
+```
+
 Exporting again replaces what the previous export of the same kind wrote there (a small `.easel-export.json` lists it) and leaves anything else in the folder alone; a non-empty folder Easel did not create is never cleared. Dot folders (`.easel/`, `.thumbs/`…) and files outside the design folder are never copied. A single file inlines the screens' images, fonts, CSS and scripts but not HTML embedded with `<iframe>`; the export lists what it skipped.
 
 ## Pin it in your project
