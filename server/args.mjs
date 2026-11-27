@@ -1,6 +1,6 @@
 // AI-generated with Claude Code, 2026-10-09, reviewed by Hyun Park
-// Command-line args: [connect] [--dir <design folder>] [--port 4317] [--open] [--demo] [--init] [--help] [--version],
-// plus --agents a,b and --dry-run for connect, --out, --page, --boards a,b, --single-file, --pdf, --png for export,
+// Command-line args: [connect|export|up|status] [--dir <design folder>] [--port 4317] [--open] [--demo] [--init] [--help] [--version],
+// plus --agents a,b and --dry-run for connect, --json for up and status, --out, --page, --boards a,b, --single-file, --pdf, --png for export,
 // and --chat / --permission for easel-mcp (the server of an in-app chat run: canvas tools and its permission tool / that tool only).
 // Default design folder: <repo>/docs/design when Easel lives in <repo>/tools/<name> (submodule); otherwise
 // ./docs/design or the current folder if it has screens/ (npx).
@@ -25,7 +25,7 @@ export const DEFAULT_DIR = defaultDir();
 const expand = (p) => path.resolve(p.replace(/^~(?=\/)/, process.env.HOME ?? "~"));
 
 export function parseArgs(argv = process.argv.slice(2)) {
-  const out = { command: null, dir: null, port: DEFAULT_PORT, portGiven: false, dirGiven: false, agents: null, dryRun: false, out: null, page: null, boards: null, singleFile: false, pdf: false, png: false, permission: false, chat: false, open: false, noOpen: false, demo: false, init: false, help: false, version: false, prod: false };
+  const out = { command: null, dir: null, port: DEFAULT_PORT, portGiven: false, dirGiven: false, agents: null, dryRun: false, json: false, out: null, page: null, boards: null, singleFile: false, pdf: false, png: false, permission: false, chat: false, open: false, noOpen: false, demo: false, init: false, help: false, version: false, prod: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const next = () => argv[++i];
@@ -36,6 +36,7 @@ export function parseArgs(argv = process.argv.slice(2)) {
     else if (a === "--agents") out.agents = next();
     else if (a.startsWith("--agents=")) out.agents = a.slice(9);
     else if (a === "--dry-run") out.dryRun = true;
+    else if (a === "--json") out.json = true;
     else if (a === "--out") out.out = argv[i + 1] ? expand(next()) : null;
     else if (a.startsWith("--out=")) out.out = expand(a.slice(6));
     else if (a === "--page") out.page = next();
@@ -45,7 +46,7 @@ export function parseArgs(argv = process.argv.slice(2)) {
     else if (a === "--single-file") out.singleFile = true;
     else if (a === "--pdf") out.pdf = true;
     else if (a === "--png") out.png = true;
-    else if (i === 0 && (a === "connect" || a === "export")) out.command = a;
+    else if (i === 0 && ["connect", "export", "up", "status"].includes(a)) out.command = a;
     else if (a === "--open") out.open = true;
     else if (a === "--no-open") out.noOpen = true;
     else if (a === "--demo") out.demo = true;
