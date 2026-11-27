@@ -99,13 +99,21 @@ export function Canvas(p: Props) {
 
   useLayoutEffect(() => {
     const el = rootRef.current!;
-    const ro = new ResizeObserver(() => {
+    const measure = () => {
       const s = { w: el.clientWidth, h: el.clientHeight };
-      setSize(s);
+      // A hidden container (a collapsed pane, display: none) measures 0: keep the last real size. Taken as the view, 0 × 0 marks
+      // every board out of view and unloads them all, and a hidden page gets no new ResizeObserver callback until it renders again
+      if (!s.w || !s.h) return;
+      setSize((o) => (o.w === s.w && o.h === s.h ? o : s));
       p.onSize?.(s);
-    });
+    };
+    const ro = new ResizeObserver(measure);
     ro.observe(el);
-    return () => ro.disconnect();
+    document.addEventListener("visibilitychange", measure);
+    return () => {
+      ro.disconnect();
+      document.removeEventListener("visibilitychange", measure);
+    };
   }, []);
 
   // will-change only while the view moves: kept on, Chromium holds the old raster scale and boards stay blurry after a zoom
@@ -407,7 +415,11 @@ export function Canvas(p: Props) {
         ))}
         {p.visibleBoards.map((f) => {
           const b = p.board.boards[f];
-          const live = inView(b) && (!screens.thumbs || view.zoom >= IFRAME_MIN_ZOOM || Math.max(b.w, b.h) * view.zoom >= LIVE_MIN_SCREEN_PX || p.editFile === f);
+          // The board being played, edited or typed in is always live, whatever the zoom or the measured view says: Play on a thumbnail
+          // (a tall board fitted below 25%) or on a placeholder (a view measured while the pane was hidden) shows an empty board
+          const pinned = p.playing === f || p.editFile === f || p.typing === f;
+          const near = pinned || inView(b);
+          const live = pinned || (near && (!screens.thumbs || view.zoom >= IFRAME_MIN_ZOOM || Math.max(b.w, b.h) * view.zoom >= LIVE_MIN_SCREEN_PX));
           const selected = p.selected.includes(f);
           return (
             <BoardView
@@ -424,7 +436,7 @@ export function Canvas(p: Props) {
               editing={p.editFile === f}
               typing={p.typing === f}
               playing={p.playing === f}
-              near={inView(b)}
+              near={near}
               reloadKey={p.reloadKeys[f] ?? 0}
               onPress={(e, from) => pressBoard(e, f, from, live)}
               onPressMove={(e) => moveBoardPress(e, f, live)}
@@ -515,6 +527,22 @@ function BoardView(props: {
     props.onContext(e);
   };
   const stop = (e: RPointerEvent) => e.stopPropagation();
+  // ▶ on every board: always shown with Show Play button (is_interactive), otherwise while the board is selected or hovered (CSS).
+  // While the board plays it stops it. Playing is viewing: nothing is written to board.json
+  const playBtn = b.w * zoom >= 110 && (
+    <button
+      className={`icon-btn sm board-play ${b.is_interactive ? "always" : ""} ${props.playing ? "pressed" : ""}`}
+      aria-label={props.playing ? strings.canvas.stopPlay : strings.canvas.play}
+      title={props.playing ? strings.canvas.stopPlayTitle : strings.canvas.playTitle}
+      onPointerDown={stop}
+      onClick={(e) => {
+        e.stopPropagation();
+        props.onPlay();
+      }}
+    >
+      <Icon name={props.playing ? "stop" : "play"} size={14} />
+    </button>
+  );
   return (
     <div
       className={`board ${props.selected ? "selected" : ""} ${props.editing ? "editing" : ""} ${props.playing ? "playing" : ""} ${b.frameless ? "frameless" : ""} ${b.is_interactive ? "interactive" : ""} ${props.ring ? "held" : ""}`}
@@ -553,15 +581,16 @@ function BoardView(props: {
             </span>
           )}
           {b.w * zoom >= 160 && title !== props.file && !(compact && fork) && <span className="board-file">{props.file}</span>}
-          {compact && props.selected && props.buttons && <span className="board-btns pinned">{props.buttons}</span>}
+          {compact && props.selected && (props.buttons || playBtn) && (
+            <span className="board-btns pinned">
+              {props.buttons}
+              {playBtn}
+            </span>
+          )}
           {!compact && b.w * zoom >= 110 && (
             <span className={`board-btns ${props.buttons ? "pinned" : ""}`}>
               {props.buttons}
-              {b.is_interactive && (
-                <button className="icon-btn sm" aria-label="Play" title="Play" onPointerDown={stop} onClick={(e) => { e.stopPropagation(); props.onPlay(); }}>
-                  <Icon name="play" size={14} />
-                </button>
-              )}
+              {playBtn}
             </span>
           )}
         </span>
