@@ -69,3 +69,50 @@ test("with no board selected P is the pen", async () => {
   assert.equal(await page.locator(".board.playing").count(), 0);
   await page.keyboard.press("Escape");
 });
+
+// A playing board always has its live frame. Two ways it used to get a placeholder instead: a tall board fitted in a short window
+// sits below 25% and under 640 px on screen (the thumbnail rule), and a canvas measured while hidden (0 × 0) counted every board
+// as out of view and unloaded them all, the playing one too
+test("a playing board stays live: a tall board fitted in a narrow window, and while the canvas is hidden", async () => {
+  const { page, url } = env;
+  const T = "scr-02.html";
+  const b = JSON.parse(await env.read("board.json"));
+  b.boards[T] = { ...b.boards[T], h: 9960 };
+  await env.write("board.json", JSON.stringify(b, null, 2));
+  await page.setViewportSize({ width: 630, height: 830 });
+  try {
+    await page.goto(url);
+    await page.waitForSelector(".board");
+    await openBoardNoWait(page, T);
+    const zoom = await page.evaluate(() => Number(/scale\(([\d.]+)\)/.exec(document.querySelector(".world").style.transform)[1]));
+    assert.ok(zoom < 0.25 && 9960 * zoom < 640, `the fitted board is drawn as a thumbnail (zoom ${zoom})`);
+    assert.equal(await page.locator(`.board[data-file="${T}"] iframe`).count(), 0, "not live before Play");
+    await page.keyboard.press("p");
+    await page.locator(`.board.playing[data-file="${T}"]`).waitFor();
+    await page.locator(`.board.playing[data-file="${T}"] .board-frame iframe`).waitFor({ timeout: 3000 });
+
+    // Hide the canvas (a collapsed pane): the playing board keeps the same frame, and so do the other boards
+    const tag = await page.addStyleTag({ content: ".canvas { display: none !important }" });
+    await page.evaluate(() => (document.querySelector(".board.playing iframe").dataset.mark = "1"));
+    await wait(300);
+    assert.equal(await page.locator(".board.playing iframe[data-mark]").count(), 1, "the playing board's frame survives the hidden canvas");
+    assert.equal(await page.locator(".board-placeholder.far").count(), 0, "a hidden canvas does not mark boards out of view");
+    await tag.evaluate((el) => el.remove());
+    await wait(300);
+    assert.equal(await page.locator(".board.playing iframe[data-mark]").count(), 1, "still the same frame once shown again");
+    await page.keyboard.press("Escape");
+  } finally {
+    await page.setViewportSize({ width: 1600, height: 1000 });
+  }
+});
+
+/** Selects a board by its title row and fits it (Shift+2), without waiting for a live frame the way openBoard does */
+async function openBoardNoWait(page, file) {
+  await page.evaluate((f) => {
+    const label = document.querySelector(`.board[data-file="${f}"] .board-label`);
+    for (const type of ["pointerdown", "pointerup"]) label.dispatchEvent(new PointerEvent(type, { bubbles: true, button: 0, pointerId: 1 }));
+  }, file);
+  await wait(100);
+  await page.keyboard.press("Shift+Digit2");
+  await wait(600);
+}
