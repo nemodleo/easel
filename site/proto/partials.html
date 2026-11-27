@@ -1,0 +1,41 @@
+<!--TOPBAR-->
+<header class="topbar">
+  <a class="mark" href="../../">Easel</a><span class="ver">{{VERSION}}</span>
+  <nav class="links" aria-label="Site">
+    <a class="navlink" href="https://github.com/{{REPO}}">GitHub</a>
+    <a class="navlink wide-only" href="https://www.npmjs.com/package/easel-canvas">npm</a>
+    <a class="navlink wide-only" href="https://github.com/{{REPO}}#readme">Docs</a>
+  </nav>
+</header>
+<!--CMD-->
+<div class="cmd"><span class="prompt" aria-hidden="true">$</span><code class="cmdtext">npx easel-canvas@latest --demo</code><button class="copy {{CMD_CLASS}}" type="button" data-copy="npx easel-canvas@latest --demo" aria-label="Copy the command: npx easel-canvas@latest --demo"><span class="copy-word">Copy</span></button></div>
+<!--PROOF_EDIT-->
+<section class="screen" aria-labelledby="proof-h">
+  <div class="w">
+    <h2 class="claim" id="proof-h">Edit in place: only that line of the file changes.</h2>
+    <figure class="big"><img src="../../media/proto-edit-wide.webp" width="1920" height="1200" loading="lazy" decoding="async" alt="Easel with the My cut phone screen selected: its spliced title retyped from WINTER to RAIN on the canvas, the inspector showing the title's text properties"></figure>
+    <p class="fact">Still from the real recording at 0:07. The same edit, run through Easel’s own edit code, rewrites one line of <code>screens/home.html</code>: <code>{{DIFF_DEL_SHORT}}</code> becomes <code>{{DIFF_ADD_SHORT}}</code>.</p>
+  </div>
+</section>
+<!--PROOF_UNDO-->
+<section class="screen" aria-labelledby="proof-h">
+  <div class="w">
+    <h2 class="claim" id="proof-h">Ask an agent: the whole run is one undo.</h2>
+    <figure class="big"><img src="../../media/proto-undo-wide.webp" width="1920" height="1200" loading="lazy" decoding="async" alt="Easel after undoing the Claude Code run: the My cut screen back to black, and in the AI tab the line Run undone, 1 board restored, with Redo"></figure>
+    <p class="fact">Still from the real recording at 0:30: one Undo took back everything the Claude Code run had changed, here one board; Redo puts it back.</p>
+  </div>
+</section>
+<!--START-->
+<section class="screen" aria-labelledby="start-h">
+  <div class="w">
+    <h2 class="claim" id="start-h">Try it this minute.</h2>
+    <div class="start-two">
+      <div><p class="small step-l">The demo, copied to <code>./easel-demo</code></p><div class="cmd"><span class="prompt" aria-hidden="true">$</span><code class="cmdtext">npx easel-canvas@latest --demo</code><button class="copy ink" type="button" data-copy="npx easel-canvas@latest --demo" aria-label="Copy the command: npx easel-canvas@latest --demo"><span class="copy-word">Copy</span></button></div></div>
+      <div><p class="small step-l">Your own screens</p><div class="cmd"><span class="prompt" aria-hidden="true">$</span><code class="cmdtext">npx easel-canvas --init</code><button class="copy ink" type="button" data-copy="npx easel-canvas --init" aria-label="Copy the command: npx easel-canvas --init"><span class="copy-word">Copy</span></button></div></div>
+    </div>
+    <div class="start-links"><a class="btn primary" href="https://github.com/{{REPO}}">GitHub</a><a class="btn quiet" href="https://www.npmjs.com/package/easel-canvas">npm</a><a class="btn quiet" href="https://github.com/{{REPO}}#readme">Docs</a></div>
+  </div>
+</section>
+<!--NOTE-->
+<p class="protonote">Prototype {{N}} of 3 for the first screen, with two sample screens of the rest. Compare: <a href="../1/">1 · watch an agent</a> · <a href="../2/">2 · the screen and its file</a> · <a href="../3/">3 · the canvas, whole</a> · <a href="../../">the current page</a>.</p>
+<!--END-->

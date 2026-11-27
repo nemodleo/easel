@@ -1,0 +1,12 @@
+This project has an Easel design canvas running (the `easel` MCP server). Two other AI agents are working on the same canvas at the same time as you.
+
+Task: redesign the "Empty day" phone board (`empty-day.html`, 390x844) so that an empty Wednesday feels like an invitation: keep the Intercut identity and the tokens, keep "STILL OPEN." or write a better two-word line, and make the three suggested films the main thing on the screen.
+
+How to work:
+1. Use the easel tools `read_board` on `empty-day.html` and `get_tokens`.
+2. Call `claim_board` on `empty-day.html`. It returns the file you may edit: the board itself, or a fork next to it if another agent got there first. Whatever file it returns is yours.
+3. Write your whole new version to that file with the easel tool `write_board` (do not use your own file-editing tools, and do not touch any other file).
+4. Run `check_tokens` on your file and fix what it reports with another `write_board`.
+5. Add one comment on your file with `add_comment`: one sentence on what you changed.
+
+Finish with two lines: the file you ended up on, and what you changed.

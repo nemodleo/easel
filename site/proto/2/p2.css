@@ -1,0 +1,48 @@
+.p2 .lab { margin-top: 28px; }
+.lab-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.ask { font-size: 20px; line-height: 1.4; }
+.lab-btns { display: flex; gap: 8px; }
+.pair { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 32px; align-items: start; }
+.file { font-size: 14px; color: var(--muted); margin-bottom: 8px; }
+.file b { color: var(--text); font-weight: 600; }
+.board { position: relative; width: calc(390px * var(--k)); height: calc(844px * var(--k)); --k: 0.66; border-radius: calc(36px * var(--k)); overflow: hidden; box-shadow: var(--frame-rest); background: #0a0a0a; }
+.board iframe { position: absolute; left: 0; top: 0; width: 390px; height: 844px; border: 0; transform: scale(var(--k)); transform-origin: 0 0; }
+.sel { position: absolute; pointer-events: none; box-shadow: 0 0 0 2px var(--select); border-radius: 2px; }
+.etb { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding: 6px 8px; width: max-content; max-width: 100%; border-radius: 12px; background: var(--panel); box-shadow: var(--float); font-size: 13px; }
+.etb-name { font-weight: 600; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.etb-sep { width: 1px; height: 20px; background: var(--line); }
+.etb-l { color: var(--muted); }
+.swatches { display: flex; gap: 6px; }
+.sw-btn { width: 44px; height: 44px; border-radius: 8px; border: 1px solid var(--line); padding: 0; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1); }
+.sw-btn:hover { border-color: var(--line-strong); }
+.src { position: relative; height: calc(844px * 0.66 + 0px); overflow: auto; margin: 0; padding: 8px 0; border-radius: var(--r-lg); background: var(--panel); box-shadow: var(--frame-rest); font: 13px/20px var(--mono); white-space: pre; }
+.src .ln { display: block; padding: 0 16px 0 0; }
+.src .ln::before { content: attr(data-n); display: inline-block; width: 44px; margin-right: 12px; text-align: right; color: var(--line-strong); }
+.src .ln.del { background: color-mix(in srgb, var(--del) 14%, transparent); color: var(--del); text-decoration: line-through; text-decoration-thickness: 1px; }
+.src .ln.del::before { color: var(--del); }
+.src .ln.add { background: color-mix(in srgb, var(--add) 16%, transparent); color: var(--text); }
+.src .ln.add::before { color: var(--add); font-weight: 700; }
+.diffline { min-height: 24px; margin-top: 12px; font-size: 16px; line-height: 1.5; color: var(--text); }
+.fine { margin-top: 16px; }
+.agent { width: min(1200px, 100% - 32px); padding: 0; border: 0; border-radius: var(--r-lg); background: var(--panel); color: var(--text); box-shadow: var(--float); }
+.agent::backdrop { background: rgba(17, 17, 17, 0.6); }
+.agent-head { display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 16px; }
+.agent-head .btn { margin-left: auto; }
+.agent video { display: block; width: 100%; height: auto; }
+.badge-ink { display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border-radius: var(--pill); background: var(--text); color: var(--panel); font-size: 12px; }
+.still { width: 100%; height: auto; }
+@media (max-width: 899px) {
+  .lab-head { flex-direction: column; align-items: stretch; }
+  .ask { font-size: 16px; }
+  .pair { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .board { --k: 0.8; margin: 0 auto; }
+  .board-col .file { text-align: center; }
+  .etb { margin: 12px auto 0; }
+  .src { height: auto; max-height: 320px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .src .ln { padding-left: 56px; text-indent: -56px; }
+  .src .ln:not(.near) { display: none; }
+}
+@media (min-width: 900px) and (max-height: 780px) { .board { --k: 0.54; } .src { position: relative; height: calc(844px * 0.54); } }
+/* JavaScript off: the sentence, the command and a still; nothing that would not respond */
+html:not(.js) .board, html:not(.js) .src-col, html:not(.js) .lab-head, html:not(.js) .etb, html:not(.js) .fine { display: none; }
+html:not(.js) .pair { grid-template-columns: minmax(0, 1fr); }

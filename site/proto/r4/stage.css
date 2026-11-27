@@ -1,0 +1,245 @@
+/* Round 4: the page around the stage. The stage's own parts (labels, tags, spinner, Use this one, the confirm, the caption, the toast)
+   are Easel's CSS in app.css, taken from main at build time; this file only places them and sizes the boards. */
+.oc { --t-in: 180ms; --t-out: 120ms; --ease-appear: cubic-bezier(0.2, 0, 0, 1); --ease-leave: cubic-bezier(0.4, 0, 1, 1); --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.06); --select-weak: #dfe8fb; --accent-weak: #fbeadf; font-size: 13px; line-height: 1.4; }
+@media (prefers-color-scheme: dark) { .oc { --select-weak: #213258; --accent-weak: #44291a; } }
+
+/* ---------- First screen: the sentence at the left, the stage at the right ---------- */
+.hero4 { display: grid; grid-template-columns: minmax(340px, 410px) minmax(0, 1fr); gap: 40px; align-items: stretch; height: calc(100vh - 64px); min-height: 720px; max-height: 1000px; padding: 8px 40px 28px; }
+.r4-lede { display: flex; flex-direction: column; justify-content: center; gap: 20px; padding-bottom: 24px; }
+.r4-lede h1 { font-size: 40px; line-height: 1.1; font-weight: 650; letter-spacing: -0.024em; text-wrap: balance; }
+.r4-lede h1 .who { white-space: nowrap; }
+.r4-lede .what { font-size: 16px; line-height: 1.5; color: var(--muted); max-width: 36ch; }
+.r4-lede .cmd { width: 100%; }
+.honest { font-size: 12px; line-height: 16px; color: var(--muted); max-width: 46ch; }
+.honest a { color: var(--muted); }
+.right { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+
+/* The request as it was typed */
+.askline { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; border-radius: var(--r-lg); background: var(--panel); box-shadow: var(--float); font-size: 14px; line-height: 20px; }
+.askline .you { flex: none; font: 600 12px/20px var(--sans); color: var(--muted); text-transform: none; }
+.askline q { quotes: none; color: var(--text); }
+.askline .to { flex: none; margin-left: auto; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.askline a { color: var(--muted); }
+
+/* ---------- The stage ---------- */
+.st4 #ocbox { position: relative; }
+.st4 { --k: 0.6; position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; padding-top: 12px; }
+.st4 .row { position: relative; display: flex; align-items: flex-start; }
+.v4 { position: relative; flex: none; width: calc(390px * var(--k)); transition: opacity var(--t-out, 120ms); }
+.v4 + .v4 { margin-left: 24px; }
+.v4-codex { margin-left: 64px !important; }
+.v4.absent .board-frame, .v4.absent .board-label, .v4.absent .open-big, .v4.absent .calls, .v4.absent .said { visibility: hidden; }
+.v4.gone { opacity: 0; visibility: hidden; transition: opacity 120ms, visibility 0s 120ms; }
+/* Where an answer will land: the page's own quiet outline, not an Easel element */
+.slot { display: none; position: absolute; inset: 0; border: 1.5px dashed var(--line-strong); border-radius: calc(36px * var(--k)); opacity: 0.6; }
+.v4.absent:not(.gone) .slot { display: block; }
+.v4.absent .secs { color: var(--muted); }
+.v4 .board { position: relative; width: calc(390px * var(--k)); height: calc(844px * var(--k)); margin-top: 34px; animation: appear 180ms cubic-bezier(0.2, 0, 0, 1) both; }
+.v4.absent .board { animation: none; }
+.oc .v4 .board-label { width: 100%; cursor: default; }
+.oc .v4 .board-file { opacity: 1; }
+.open-big { display: none; }
+.v4 .board-frame { position: absolute; inset: 0; overflow: hidden; border-radius: calc(36px * var(--k)); background: #0a0a0a; box-shadow: var(--shadow-1); }
+.v4 .board-frame iframe { position: absolute; left: 0; top: 0; width: 390px; height: 844px; border: 0; transform: scale(var(--k)); transform-origin: 0 0; background: #0a0a0a; }
+.v4 .board-frame iframe.next { visibility: hidden; }
+.oc .use-btn { position: relative; }
+.oc .use-btn::before { content: ""; position: absolute; inset: -10px -6px; } /* 24 drawn, 44 to hit */
+.st4[data-phase="after"]:not(.picked):not(.kept-all) .use-btn.ready { box-shadow: 0 0 0 1px var(--line-strong); }
+
+.maker { display: flex; align-items: baseline; gap: 8px; margin-top: 36px; font-size: 16px; line-height: 20px; }
+.maker b { font-weight: 600; }
+.maker .secs { font: 14px/20px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.v4.running .maker .secs { color: var(--text); }
+.calls { margin-top: 6px; height: 54px; font: 12px/16px var(--mono); color: var(--muted); overflow: hidden; }
+.calls li { display: flex; gap: 8px; overflow: hidden; }
+.calls li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.calls li time { flex: none; font-variant-numeric: tabular-nums; }
+.calls li.new { color: var(--text); }
+.calls li:not(:nth-last-child(-n + 3)) { display: none; }
+/* After the run: the calls give way to the agent's own comment, in its words */
+.said { margin-top: 6px; height: 54px; font-size: 13px; line-height: 18px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.st4:not([data-phase="after"]) .said { display: none; }
+.st4[data-phase="after"] .calls { display: none; }
+.st4[data-phase="before"] .calls, .st4.picked .calls { visibility: hidden; }
+
+/* The app's caption under the block of forks, 10px under it; the dashed arrow from the original to the first fork */
+.fork-caption-row { height: 0; position: relative; visibility: hidden; }
+.fork-caption-row.on { visibility: visible; }
+.fork-caption-row span { position: absolute; font-size: 12px; line-height: 16px; color: var(--muted); white-space: nowrap; margin-left: -4px; padding: 0 4px; background: var(--bg); }
+.fork-arrow { position: absolute; inset: 0; pointer-events: none; visibility: hidden; }
+.fork-arrow.on { visibility: visible; }
+.fork-arrow svg { position: absolute; overflow: visible; fill: none; stroke: var(--line-strong); stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.5; }
+.fork-arrow .ln { stroke-dasharray: 6 6; }
+
+.oc .menu.confirm { position: absolute; }
+.oc .toasts { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); }
+
+/* After a pick: the next step */
+.next { display: none; position: absolute; left: calc(390px * var(--k) + 64px); top: calc(60px + 12px + 844px * var(--k) * 0.36); width: min(460px, 100% - 390px * var(--k) - 64px); flex-direction: column; align-items: flex-start; gap: 16px; }
+.st4.picked .next { display: flex; }
+.st4.picked ~ .bar .replay { visibility: hidden; }
+.next p { font-size: 20px; line-height: 28px; font-weight: 600; }
+.next .cmd { width: 100%; }
+.next .back { height: 44px; padding: 0 4px; border: 0; background: none; color: var(--muted); font: 14px var(--sans); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+
+/* Replay controls */
+.replay { display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 4px; border: 0; background: none; color: var(--text); font: 600 14px/1 var(--sans); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line-strong); }
+.replay:hover { text-decoration-color: currentColor; }
+.clockbox { display: none; align-items: baseline; gap: 6px; font: 14px/20px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.st4.playing ~ .bar .clockbox, .clockbox.on { display: inline-flex; }
+.clockbox .clock { color: var(--text); font-weight: 600; }
+
+html:not(.js) .st4, html:not(.js) .needs-js { display: none !important; }
+.stills { display: none; }
+html:not(.js) .stills { display: flex; gap: 24px; margin-top: 24px; }
+.stills figure { flex: 1; min-width: 0; }
+.stills img { width: 100%; height: auto; border-radius: 16px; }
+.stills figcaption { margin-top: 8px; font-size: 14px; }
+
+/* ---------- Follow-on screens ---------- */
+.where .claim { max-width: 22ch; }
+.where-cmd { max-width: 460px; margin-top: 24px; }
+.where-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin-top: 40px; }
+.app-card { display: flex; flex-direction: column; gap: 12px; padding: 24px; border-radius: var(--r-lg); background: var(--panel); box-shadow: var(--frame-rest); }
+.app-card h3 { font-size: 20px; line-height: 1.25; font-weight: 600; }
+.app-card .see { font-size: 16px; line-height: 1.5; }
+.app-card ol { display: flex; flex-direction: column; gap: 8px; padding-left: 20px; list-style: decimal; font-size: 14px; line-height: 20px; }
+.app-card .ev { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line); font-size: 12px; line-height: 16px; color: var(--muted); }
+.app-card .ev pre { margin-top: 8px; padding: 10px 12px; border-radius: var(--r); background: var(--panel-2); color: var(--text); font: 12px/16px var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.app-card .open { font-size: 14px; line-height: 20px; color: var(--muted); }
+.where-shot { margin-top: 32px; }
+.where-shot img { width: 100%; height: auto; border-radius: var(--r-lg); box-shadow: var(--float); }
+.where-shot figcaption { margin-top: 8px; font-size: 12px; color: var(--muted); }
+
+@keyframes pulse { 50% { opacity: 0.45; } }
+@keyframes appear { from { opacity: 0; transform: translateY(4px); } }
+@media (prefers-reduced-motion: reduce) { .v4 .board { animation: none; } }
+
+/* ---------- p/5: the request waiting to be sent ---------- */
+.composer { display: flex; flex-direction: column; gap: 12px; padding: 16px 16px 12px 20px; border-radius: var(--r-lg); background: var(--panel); box-shadow: var(--float); }
+.composer .c-text { font-size: 16px; line-height: 24px; }
+.composer .you { display: inline-block; margin-right: 10px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.composer .c-text a { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.c-foot { display: flex; align-items: center; gap: 16px; }
+.chips { margin: 0; padding: 0; list-style: none; display: flex; gap: 6px; flex-wrap: wrap; }
+.chips li { display: inline-flex; align-items: baseline; gap: 6px; height: 32px; padding: 0 12px; border-radius: var(--pill); background: var(--panel-2); font-size: 14px; line-height: 32px; }
+.chips b { font-weight: 600; }
+.chips .st { font: 12px/32px var(--mono); color: var(--muted); }
+.chips li[data-state="working"] .st { color: var(--text); }
+.chips li[data-state="working"] .st::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: currentColor; animation: pulse 1s infinite; }
+.ask { margin-left: auto; flex: none; height: 48px; padding: 0 24px; border: 0; border-radius: var(--pill); background: var(--accent); color: var(--accent-text); font: 600 16px/1 var(--sans); cursor: pointer; }
+.ask:hover:not(:disabled) { background: var(--accent-hover); }
+.ask:focus-visible { outline: 2px solid var(--select); outline-offset: 2px; }
+.ask:disabled { opacity: 1; background: var(--panel-2); color: var(--muted); cursor: default; }
+.ask.nudge { animation: nudge 900ms ease-in-out 1; }
+@keyframes nudge { 40% { transform: scale(1.06); box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 22%, transparent); } }
+.composer[data-state="running"] .ask, .composer[data-state="done"] .ask { display: none; }
+.composer .clockbox { margin-left: auto; }
+.composer[data-state="ready"] .clockbox { display: none; }
+.composer[data-state="running"] .clockbox, .composer[data-state="done"] .clockbox { display: inline-flex; }
+@media (prefers-reduced-motion: reduce) { .ask.nudge, .chips .st::before { animation: none !important; } }
+
+
+/* The honest caption: one line under the stage; the full text in a disclosure */
+.bar { position: relative; flex-wrap: wrap; row-gap: 0; }
+.howmade { display: inline-block; font-size: 12px; line-height: 16px; color: var(--muted); }
+.howmade summary { display: inline-block; min-height: 44px; cursor: pointer; list-style: none; padding: 14px 0; }
+.howmade summary::-webkit-details-marker { display: none; }
+.howmade summary u { color: var(--text); text-underline-offset: 3px; text-decoration-color: var(--line-strong); }
+.howmade[open] summary u { text-decoration-color: currentColor; }
+.howmade .hm-body { position: absolute; z-index: 30; left: 0; bottom: calc(100% - 4px); width: min(560px, 100%); display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: var(--r-lg); background: var(--panel); box-shadow: var(--float); color: var(--text); font-size: 13px; line-height: 18px; }
+.howmade .hm-body p { color: var(--muted); }
+.howmade .hm-body a { color: var(--text); }
+html:not(.js) .howmade .hm-body { position: static; margin-top: 8px; }
+
+/* ---------- Thumbnails: one row of three at any width ---------- */
+.st4.mini .v4 + .v4 { margin-left: 8px; }
+.st4.mini .v4-codex { margin-left: 12px !important; }
+.st4.mini .v4 .board { margin-top: 34px; }
+.st4.mini .board-frame iframe { pointer-events: none; }
+.st4.mini .open-big { display: block; position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; padding: 0; border: 0; border-radius: calc(36px * var(--k)); background: transparent; cursor: zoom-in; }
+.st4.mini .open-big:focus-visible { outline: 2px solid var(--select); outline-offset: 2px; }
+.st4.mini .open-big:hover { box-shadow: 0 0 0 2px var(--line-strong); }
+.st4 .oc .board-label.compact { height: 30px; }
+.st4.mini .maker { flex-wrap: wrap; column-gap: 6px; row-gap: 0; margin-top: 30px; font-size: 13px; line-height: 18px; }
+.st4.mini .maker .secs { font-size: 12px; line-height: 18px; }
+.st4.mini .calls { height: 16px; margin-top: 2px; }
+.st4.mini .calls li:not(:last-child) { display: none; }
+.st4.mini .calls li time { display: none; }
+.st4.mini .said { display: none; }
+.st4.mini .next { left: calc(390px * var(--k) + 32px); top: 30px; }
+
+/* ---------- One version, large (the second level on small widths) ---------- */
+.big4 { --k: 0.6; width: min(100vw - 16px, calc(390px * var(--k) + 48px)); max-width: none; max-height: calc(100vh - 16px); padding: 12px 24px 20px; border: 0; border-radius: 16px; background: var(--bg); color: var(--text); box-shadow: var(--float); overflow: visible; }
+.big4::backdrop { background: rgba(17, 17, 17, 0.6); }
+.big-top { display: flex; align-items: center; gap: 8px; margin: 0 -12px 8px; }
+.big-stops { display: flex; flex: 1; gap: 4px; padding: 4px; border-radius: var(--r-lg); background: var(--panel-2); }
+.oc .big-stops button { flex: 1; height: 36px; padding: 0 4px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: 13px; font-weight: 600; justify-content: center; }
+.oc .big-stops button[aria-current="true"] { background: var(--panel); color: var(--text); box-shadow: var(--shadow-1); }
+.oc .big-close { width: 44px; height: 44px; }
+.big-body { position: relative; }
+.big4 .board { position: relative; width: calc(390px * var(--k)); height: calc(844px * var(--k)); margin-top: 60px; }
+.oc.big4 .board-label { width: 100%; cursor: default; }
+.oc.big4 .board-file { opacity: 1; }
+.big4 .board-frame { position: absolute; inset: 0; overflow: hidden; border-radius: calc(36px * var(--k)); background: #0a0a0a; box-shadow: var(--shadow-1); }
+.big4 .board-frame iframe { position: absolute; left: 0; top: 0; width: 390px; height: 844px; border: 0; transform: scale(var(--k)); transform-origin: 0 0; }
+.big4 .board-frame iframe.next { visibility: hidden; }
+.big4 .maker { margin-top: 12px; }
+.big4 .said { display: block; height: auto; margin-top: 4px; -webkit-line-clamp: 4; }
+
+/* ---------- Narrower than 900: one column, the sentence short, the stage right under it ---------- */
+@media (max-width: 899px) {
+  .hero4 { display: block; height: auto; min-height: 0; max-height: none; padding: 4px 20px 24px; }
+  .r4-lede { padding: 4px 0 16px; gap: 12px; }
+  .r4-lede h1 { font-size: 30px; line-height: 1.12; }
+  .r4-lede .what { font-size: 15px; line-height: 1.45; max-width: 60ch; }
+  .r4-lede .cmd { max-width: 460px; }
+  .askline { flex-wrap: wrap; padding: 10px 14px; gap: 2px 10px; }
+  .askline q { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .askline .to { margin-left: 0; }
+  .st4 { padding-top: 4px; }
+  .fork-arrow { display: none; }
+  .stills { flex-direction: row; gap: 8px; }
+  .stills figcaption { font-size: 13px; }
+  .where-grid { grid-template-columns: minmax(0, 1fr); }
+  .composer { padding: 12px 14px; gap: 10px; }
+  .composer .c-text { font-size: 14px; line-height: 20px; }
+  .composer .chips { display: none; }
+  .c-foot { flex-wrap: wrap; gap: 8px; }
+  .ask { width: 100%; margin: 0; height: 44px; }
+  .composer .clockbox { margin-left: 0; }
+}
+@media (min-width: 600px) and (max-width: 899px) {
+  .r4-lede { display: grid; grid-template-columns: minmax(0, 1fr) 380px; column-gap: 24px; row-gap: 10px; align-items: center; }
+  .r4-lede h1 { grid-column: 1 / -1; }
+  .r4-lede .cmd { width: 380px; }
+  .askline { flex-wrap: nowrap; }
+  .askline .to { margin-left: auto; }
+}
+@media (max-width: 599px) {
+  .r4-lede h1 { font-size: 28px; }
+  .r4-lede .cmd .cmdtext, .next .cmd .cmdtext { font-size: 13px; }
+  .r4-lede .cmd, .next .cmd { padding-left: 14px; }
+  .st4.mini .next { position: static; width: auto; margin-top: 16px; }
+  .composer .c-text .you { display: none; }
+}
+@media (min-width: 600px) { .r4-lede .cmd .cmdtext { font-size: 15px; } }
+.r4-lede .cmd .copy, .next .cmd .copy { padding: 0 16px; min-width: 0; }
+.oc .toasts { width: max-content; max-width: calc(100% - 24px); }
+.app-card .ev code { font-size: 12px; }
+
+/* Under about 120px a label has room for the check alone; the maker's name sits under the board */
+.st4.tiny .board-label .lab-row > :not(.board-btns) { visibility: hidden; }
+.st4.tiny .board-label .board-btns { margin-left: auto; }
+.oc .big-stops button { white-space: nowrap; font-size: 12px; }
+@media (max-width: 599px) {
+  .askline { display: block; }
+  .askline .you { display: none; }
+  .askline q { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .askline .to { display: none; }
+  .r4-lede .what { font-size: 15px; }
+}
+.st4 + .sr + .bar, .st4 ~ .bar { margin-top: 6px; }
+.tapnote { display: none; margin-top: 4px; font-size: 13px; line-height: 18px; color: var(--muted); }
+.st4.mini .tapnote { display: block; }
+.st4[data-phase="before"] .tapnote, .st4.picked .tapnote, .st4.kept-all .tapnote { visibility: hidden; }

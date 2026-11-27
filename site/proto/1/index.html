@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Easel · prototype 1 · watch an agent change the screen</title>
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../../style.css">
+<link rel="stylesheet" href="../proto.css">
+<style>
+.p1 .player { width: min(100%, calc((100vh - 300px) * 1.6)); margin: 20px auto 0; }
+.p1 .player .frame { aspect-ratio: 16 / 10; }
+.p1 .under { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-top: 16px; }
+.p1 .moments { margin: 0; }
+.p1 .cap { margin: 0; max-width: 52ch; text-align: right; }
+@media (max-width: 899px) {
+  .p1 .w.wide { width: 100%; }
+  .p1 .player { width: 100%; margin-top: 20px; }
+  .p1 .player .frame { aspect-ratio: 960 / 744; border-radius: 0; box-shadow: none; }
+  .p1 .under { flex-direction: column; align-items: stretch; gap: 12px; padding: 0 20px; }
+  .p1 .moments { overflow-x: auto; scrollbar-width: none; }
+  .p1 .moments .label { display: none; }
+  .p1 .cap { text-align: left; }
+}
+</style>
+<script>document.documentElement.classList.add("js");</script>
+<script src="../proto.js" defer></script>
+<script src="p1.js" defer></script>
+</head>
+<body>
+{{TOPBAR}}
+<main>
+  <section class="screen p1" aria-labelledby="h1">
+    <div class="w">
+      <div class="hero-row">
+        <h1 id="h1">A design canvas where your coding agents and you work on the same real HTML.</h1>
+        {{CMD}}
+      </div>
+    </div>
+    <div class="w wide">
+      <figure class="player" id="player">
+        <div class="frame">
+          <video id="run" muted playsinline loop preload="metadata" controls width="1920" height="1200" poster="../../media/proto-ask-poster-960.webp" aria-label="Recording of a real Easel session: Claude Code turns the My cut screen into the ticket, then the run is undone">
+            <source src="../../media/run-1920.mp4#t=13.1" type="video/mp4" media="(min-width: 700px)">
+            <source src="../../media/run-960.mp4#t=13.1" type="video/mp4">
+          </video>
+          <span class="badge"><i aria-hidden="true"></i>Recording · Claude Code</span>
+          <button class="playpause" type="button" id="playpause" hidden aria-label="Play the recording"><svg class="i-play" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5l11 7-11 7z"/></svg><svg class="i-pause" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5h3v14H7zM14 5h3v14h-3z"/></svg></button>
+          <button class="bigplay" type="button" id="bigplay" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5l11 7-11 7z"/></svg>Play the run</button>
+          <span class="time" id="time" hidden>0:13 / 0:37</span>
+          <p class="notice" id="video-failed" hidden>The recording didn’t load. <a href="https://github.com/{{REPO}}#readme">The README has the same run as a GIF.</a></p>
+        </div>
+        <div class="track" id="track" hidden aria-hidden="true"><i id="progress"></i></div>
+        <div class="under">
+          <div class="moments" id="moments" role="group" aria-label="Jump to a moment in the recording" hidden>
+            <button class="chip" type="button" data-t="0"><span class="label">0:00</span>Canvas</button>
+            <button class="chip" type="button" data-t="4.85"><span class="label">0:05</span>Edit</button>
+            <button class="chip" type="button" data-t="13.1"><span class="label">0:13</span>Ask</button>
+            <button class="chip" type="button" data-t="28.4"><span class="label">0:28</span>Undo</button>
+            <button class="chip" type="button" data-t="31.7"><span class="label">0:32</span>Share</button>
+          </div>
+          <figcaption class="small cap">A real Claude Code run on the bundled demo, from the request to its undo. Muted. The agent’s working time is sped up 16× (about 93&nbsp;s shown in 6); everything else plays at real speed.</figcaption>
+        </div>
+      </figure>
+    </div>
+  </section>
+{{PROOF_EDIT}}
+{{START}}
+</main>
+{{NOTE}}
+</body>
+</html>

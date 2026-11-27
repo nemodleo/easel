@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="board-size" content="390x844">
+<title>Intercut — Wednesday, still open</title>
+<style>
+@font-face{font-family:"Anton";src:url("../assets/fonts/anton-latin-400.woff2") format("woff2");font-display:block}
+@font-face{font-family:"JetBrains Mono";src:url("../assets/fonts/jetbrains-mono-latin-400.woff2") format("woff2");font-display:block}
+:root{
+  --field:#0A0A0A;--ink:#FFFFFF;--muted:#9C9C9C;--rule:#333333;
+  --safelight:#FF3D14;--on-safelight:#0A0A0A;
+  --display:"Anton","HelveticaNeue-CondensedBlack",Impact,sans-serif;
+  --mono:"JetBrains Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--field);color:var(--ink)}
+body{font-family:var(--mono);font-size:16px;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+.screen{position:relative;width:390px;height:844px;overflow:hidden;background:var(--field)}
+.display{font-family:var(--display);font-weight:400;text-transform:uppercase;line-height:1}
+.mono{font-family:var(--mono);font-size:12px;line-height:16px;font-weight:400;letter-spacing:.04em;text-transform:uppercase}
+.status{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 24px}
+.status .time{font-family:var(--display);font-size:20px;line-height:20px}
+.topbar{height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid var(--rule)}
+.wordmark{display:flex;align-items:center;min-height:44px}
+.wordmark .display{font-size:28px}
+.cut-red{color:var(--safelight)}
+.when{text-align:right;color:var(--muted)}
+.days{height:48px;display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--rule)}
+.day-cell{display:flex;flex-direction:column;align-items:center;justify-content:center;border-right:1px solid var(--rule);min-height:44px}
+.day-cell:last-child{border-right:0}
+.day-cell .display{font-size:20px}
+.day-cell .mono{color:var(--muted)}
+.day-cell.selected{background:var(--safelight);color:var(--on-safelight)}
+.day-cell.selected .mono{color:var(--on-safelight)}
+.open-head{height:132px;padding:16px;display:flex;flex-direction:column;justify-content:space-between}
+.open-head .eyebrow{color:var(--safelight)}
+.open-head h1{margin:0;font-size:56px;line-height:1}
+.open-head .hint{color:var(--muted)}
+.picks-head{height:48px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.picks-head .left{color:var(--ink)}
+.picks-head .right{color:var(--muted)}
+.film{height:128px;display:block;position:relative;padding:12px 16px;border-bottom:1px solid var(--rule)}
+.film.featured{background:var(--safelight);color:var(--on-safelight);border-color:var(--safelight)}
+.film-top{display:flex;justify-content:space-between;align-items:center}
+.film-top .category{text-align:right;color:var(--muted)}
+.featured .film-top .category{color:var(--on-safelight)}
+.film-title{position:absolute;top:40px;left:16px;right:16px;font-size:40px;line-height:1;white-space:nowrap}
+.film-title.long{font-size:28px;top:48px}
+.film-bottom{position:absolute;bottom:12px;left:16px;right:16px;display:flex;justify-content:space-between;align-items:center}
+.film-bottom .detail{color:var(--muted)}
+.featured .film-bottom .detail{color:var(--on-safelight)}
+.add{display:flex;align-items:center;justify-content:center;width:64px;height:44px;border:1px solid var(--ink);color:var(--ink)}
+.featured .add{border-color:var(--on-safelight);color:var(--on-safelight)}
+.add .display{font-size:28px}
+.programme-bar{height:76px;position:absolute;left:0;right:0;bottom:56px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:var(--ink);color:var(--field)}
+.programme-bar .display{font-size:28px}
+.programme-bar .count{text-align:right}
+.tabs{height:56px;position:absolute;bottom:0;left:0;right:0;display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--rule);background:var(--field)}
+.tab{display:flex;align-items:center;justify-content:center;position:relative;color:var(--muted)}
+.tab.on{color:var(--ink)}
+.tab.on::before{content:"";position:absolute;top:-1px;left:0;right:0;height:4px;background:var(--safelight)}
+</style>
+</head>
+<body>
+<main class="screen">
+  <div class="status"><span class="time">18:55</span><span class="mono">5G · 82%</span></div>
+  <header class="topbar">
+    <a class="wordmark" href="home.html" aria-label="Intercut, my cut"><span class="display">Inter</span><span class="display cut-red">Cut</span></a>
+    <span class="when mono">Day 7 of 11<br>Wed 10.03</span>
+  </header>
+  <nav class="days" aria-label="Festival days">
+    <a class="day-cell" href="programme.html"><span class="display">07</span><span class="mono">Su</span></a>
+    <a class="day-cell" href="programme.html"><span class="display">08</span><span class="mono">Mo</span></a>
+    <a class="day-cell" href="programme.html"><span class="display">09</span><span class="mono">Tu</span></a>
+    <a class="day-cell selected" href="empty-day.html" aria-current="date"><span class="display">10</span><span class="mono">We</span></a>
+    <a class="day-cell" href="programme.html"><span class="display">11</span><span class="mono">Th</span></a>
+    <a class="day-cell" href="programme.html"><span class="display">12</span><span class="mono">Fr</span></a>
+    <a class="day-cell" href="programme.html"><span class="display">13</span><span class="mono">Sa</span></a>
+  </nav>
+  <header class="open-head">
+    <span class="eyebrow mono">Your cut / Wed 10.03 / 0 films</span>
+    <h1 class="display">Still open.</h1>
+    <span class="hint mono">A good night starts somewhere.</span>
+  </header>
+  <section class="picks" aria-label="Three films to start with">
+    <div class="picks-head mono"><span class="left">Start with one of these</span><span class="right">01 — 03</span></div>
+    <a class="film featured" href="film.html" aria-label="Add Velvet Ration, 16:00, to your cut">
+      <div class="film-top mono"><span>01 / 16:00</span><span class="category">Competition</span></div>
+      <span class="film-title display">Velvet Ration</span>
+      <div class="film-bottom"><span class="detail mono">C5 / 100 min</span><span class="add"><span class="display">+ Add</span></span></div>
+    </a>
+    <a class="film" href="film.html" aria-label="Add Hollow Bay, 19:45, to your cut">
+      <div class="film-top mono"><span>02 / 19:45</span><span class="category">First films</span></div>
+      <span class="film-title display">Hollow Bay</span>
+      <div class="film-bottom"><span class="detail mono">C1 / 98 min</span><span class="add"><span class="display">+ Add</span></span></div>
+    </a>
+    <a class="film" href="film.html" aria-label="Add Wide Awake Tuesday, 22:45, to your cut">
+      <div class="film-top mono"><span>03 / 22:45</span><span class="category">Midnight</span></div>
+      <span class="film-title long display">Wide Awake Tuesday</span>
+      <div class="film-bottom"><span class="detail mono">C6 / 88 min</span><span class="add"><span class="display">+ Add</span></span></div>
+    </a>
+  </section>
+  <a class="programme-bar" href="programme.html"><span class="display">See all films →</span><span class="count mono">29 on<br>Wednesday</span></a>
+  <nav class="tabs mono" aria-label="Sections">
+    <a class="tab" href="programme.html">Programme</a>
+    <a class="tab on" href="home.html" aria-current="page">My cut</a>
+    <a class="tab" href="ticket.html">Tickets</a>
+  </nav>
+</main>
+</body>
+</html>

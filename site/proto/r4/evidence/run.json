@@ -1,0 +1,303 @@
+{
+ "t0": "2026-11-19T05:57:29Z",
+ "times": {
+  "codex": 43,
+  "claude": 81,
+  "cursor": 163
+ },
+ "titles": {
+  "empty-day.html": "Empty day",
+  "empty-day-codex.html": "Empty day \u00b7 Codex",
+  "empty-day-cursor.html": "Empty day \u00b7 Cursor"
+ },
+ "origins": {
+  "empty-day.html": null,
+  "empty-day-codex.html": {
+   "kind": "fork",
+   "of": "empty-day.html",
+   "by": "Codex",
+   "while": "Claude Code",
+   "at": "2026-11-19T05:57:43.501Z"
+  },
+  "empty-day-cursor.html": {
+   "kind": "fork",
+   "of": "empty-day.html",
+   "by": "Cursor",
+   "while": "Claude Code",
+   "at": "2026-11-19T05:57:49.851Z"
+  }
+ },
+ "events": {
+  "claude": [
+   {
+    "tool": "read_board",
+    "args": {
+     "file": "empty-day.html"
+    },
+    "t": 10.81,
+    "src": "log"
+   },
+   {
+    "tool": "get_tokens",
+    "args": {},
+    "t": 10.82,
+    "src": "log"
+   },
+   {
+    "tool": "claim_board",
+    "args": {
+     "file": "empty-day.html"
+    },
+    "t": 12.78,
+    "src": "log",
+    "got": "empty-day.html",
+    "forked": false
+   },
+   {
+    "tool": "write_board",
+    "args": {
+     "file": "empty-day.html"
+    },
+    "t": 64.0,
+    "src": "log",
+    "shows": "empty-day.html"
+   },
+   {
+    "tool": "check_tokens",
+    "args": {
+     "file": "empty-day.html"
+    },
+    "t": 64.23,
+    "src": "log",
+    "issues": 0
+   },
+   {
+    "tool": "check_tokens",
+    "args": {
+     "file": "empty-day.html"
+    },
+    "t": 67.13,
+    "src": "log",
+    "issues": 0
+   },
+   {
+    "tool": "add_comment",
+    "args": {
+     "file": "empty-day.html",
+     "text": "Shrank \"STILL OPEN.\" to one 56px line (with \"open.\" in safelight) so the three films become tall 152px cards with 40px titles, a start\u2013end time and a full-height safelight \"+ Add\" column, and the programme bar now reads as the fallback (\"Or open the programme\")."
+    },
+    "t": 71.35,
+    "src": "log",
+    "text": "Shrank \"STILL OPEN.\" to one 56px line (with \"open.\" in safelight) so the three films become tall 152px cards with 40px titles, a start\u2013end time and a full-height safelight \"+ Add\" column, and the programme bar now reads as the fallback (\"Or open the programme\").",
+    "author": "Claude Code",
+    "at": "2026-11-19T05:58:40.391Z"
+   }
+  ],
+  "codex": [
+   {
+    "tool": "read_board",
+    "args": {
+     "file": "empty-day.html"
+    },
+    "t": 13.3,
+    "src": "placed"
+   },
+   {
+    "tool": "get_tokens",
+    "args": {},
+    "t": 13.9,
+    "src": "placed"
+   },
+   {
+    "tool": "claim_board",
+    "args": {
+     "file": "empty-day.html"
+    },
+    "t": 14.5,
+    "src": "board.json: the fork's origin.at",
+    "got": "empty-day-codex.html",
+    "forked": true
+   },
+   {
+    "tool": "write_board",
+    "args": {
+     "file": "empty-day-codex.html"
+    },
+    "t": 21.07,
+    "src": "placed",
+    "shows": "empty-day-codex.write1.html"
+   },
+   {
+    "tool": "check_tokens",
+    "args": {
+     "file": "empty-day-codex.html"
+    },
+    "t": 27.65,
+    "src": "placed",
+    "issues": 0
+   },
+   {
+    "tool": "screenshot",
+    "args": {
+     "file": "empty-day-codex.html"
+    },
+    "t": 34.22,
+    "src": "first screenshot file created"
+   },
+   {
+    "tool": "read_board",
+    "args": {
+     "file": "empty-day-codex.html"
+    },
+    "t": 36.7,
+    "src": "placed"
+   },
+   {
+    "tool": "write_board",
+    "args": {
+     "file": "empty-day-codex.html"
+    },
+    "t": 39.17,
+    "src": "last write: the file's mtime",
+    "shows": "empty-day-codex.html"
+   },
+   {
+    "tool": "check_tokens",
+    "args": {
+     "file": "empty-day-codex.html"
+    },
+    "t": 40.3,
+    "src": "placed",
+    "issues": 0
+   },
+   {
+    "tool": "screenshot",
+    "args": {
+     "file": "empty-day-codex.html"
+    },
+    "t": 41.42,
+    "src": "second screenshot: the file's mtime"
+   },
+   {
+    "tool": "add_comment",
+    "args": {
+     "file": "empty-day-codex.html",
+     "text": "I made the three suggested films the focus with large tappable cards, kept the Intercut wordmark and Night tokens, and framed Wednesday as still open."
+    },
+    "t": 42.9,
+    "src": "the comment's createdAt",
+    "text": "I made the three suggested films the focus with large tappable cards, kept the Intercut wordmark and Night tokens, and framed Wednesday as still open.",
+    "author": "Codex",
+    "at": "2026-11-19T05:58:11.903Z"
+   }
+  ],
+  "cursor": [
+   {
+    "tool": "read_board",
+    "args": {
+     "file": "empty-day.html"
+    },
+    "t": 16.05,
+    "src": "log",
+    "end": 16.16
+   },
+   {
+    "tool": "get_tokens",
+    "args": {},
+    "t": 16.47,
+    "src": "log",
+    "end": 16.55
+   },
+   {
+    "tool": "claim_board",
+    "args": {
+     "file": "empty-day.html"
+    },
+    "t": 20.85,
+    "src": "log",
+    "end": 20.93,
+    "got": "empty-day-cursor.html",
+    "forked": true
+   },
+   {
+    "tool": "list_boards",
+    "args": {},
+    "t": 21.35,
+    "src": "log",
+    "end": 21.43
+   },
+   {
+    "tool": "write_board",
+    "args": {
+     "file": "empty-day-cursor.html"
+    },
+    "t": 75.7,
+    "src": "log",
+    "end": 75.97,
+    "shows": "empty-day-cursor.write1.html"
+   },
+   {
+    "tool": "check_tokens",
+    "args": {
+     "file": "empty-day-cursor.html"
+    },
+    "t": 79.64,
+    "src": "log",
+    "end": 79.76,
+    "issues": 0
+   },
+   {
+    "tool": "screenshot",
+    "args": {
+     "file": "empty-day-cursor.html"
+    },
+    "t": 80.05,
+    "src": "log",
+    "end": 82.28
+   },
+   {
+    "tool": "write_board",
+    "args": {
+     "file": "empty-day-cursor.html"
+    },
+    "t": 145.42,
+    "src": "log",
+    "end": 145.5,
+    "shows": "empty-day-cursor.html"
+   },
+   {
+    "tool": "check_tokens",
+    "args": {
+     "file": "empty-day-cursor.html"
+    },
+    "t": 149.53,
+    "src": "log",
+    "end": 149.69,
+    "issues": 0
+   },
+   {
+    "tool": "screenshot",
+    "args": {
+     "file": "empty-day-cursor.html"
+    },
+    "t": 149.98,
+    "src": "log",
+    "end": 150.99
+   },
+   {
+    "tool": "add_comment",
+    "args": {
+     "file": "empty-day-cursor.html",
+     "text": "Shrunk STILL OPEN. into a compact invite strip so the numbered film picks (01\u201303) own the screen as the way into an empty Wednesday.",
+     "author": "Cursor"
+    },
+    "t": 160.91,
+    "src": "log",
+    "end": 160.99,
+    "text": "Shrunk STILL OPEN. into a compact invite strip so the numbered film picks (01\u201303) own the screen as the way into an empty Wednesday.",
+    "author": "Cursor",
+    "at": "2026-11-19T06:00:09.916Z"
+   }
+  ]
+ }
+}
