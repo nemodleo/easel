@@ -44,11 +44,15 @@ function loadSaved(title: string): Saved {
 }
 
 type BoardError = { kind: string; message: string; line?: number };
+/** The New board menu (server/boards.mjs TEMPLATES), in groups split by a line: blank, screens from small to large, page-shaped */
 const TEMPLATES = [
-  { id: "blank", label: strings.templates.blank, size: "390×844", w: 390, h: 844 },
-  { id: "mobile", label: strings.templates.mobile, size: "390×844", w: 390, h: 844 },
-  { id: "desktop", label: strings.templates.desktop, size: "1440×900", w: 1440, h: 900 },
-  { id: "doc", label: strings.templates.doc, size: "800×1000", w: 800, h: 1000 },
+  { id: "blank", label: strings.templates.blank, size: "390×844", w: 390, h: 844, group: 0 },
+  { id: "watch", label: strings.templates.watch, size: "198×242", w: 198, h: 242, group: 1 },
+  { id: "mobile", label: strings.templates.mobile, size: "390×844", w: 390, h: 844, group: 1 },
+  { id: "tablet", label: strings.templates.tablet, size: "834×1194", w: 834, h: 1194, group: 1 },
+  { id: "desktop", label: strings.templates.desktop, size: "1440×900", w: 1440, h: 900, group: 1 },
+  { id: "doc", label: strings.templates.doc, size: "800×1000", w: 800, h: 1000, group: 2 },
+  { id: "email", label: strings.templates.email, size: "600×1200", w: 600, h: 1200, group: 2 },
 ] as const;
 
 const TOOLS: { id: Tool; icon: IconName; label: string; hint: string; key: string }[] = [
@@ -735,7 +739,16 @@ export function App() {
     void createBoard({ x: Math.round(cx - t.w / 2), y: Math.round(cy - t.h / 2), w: t.w, h: t.h }, t.id).then(() => setView(fitView([{ x: cx - t.w / 2, y: cy - t.h / 2, w: t.w, h: t.h }], size, 80, clearArea())));
   };
   const templateMenu = (at: { clientX: number; clientY: number }) =>
-    setMenu({ x: at.clientX, y: at.clientY, up: true, title: strings.menu.newBoard, items: TEMPLATES.map((t) => ({ label: `${t.label} · ${t.size}`, icon: t.id === "doc" ? ("page" as IconName) : ("board" as IconName), shortcut: t.id === "blank" ? strings.menu.drawWithB : undefined, run: () => createFromTemplate(t) })) });
+    setMenu({
+      x: at.clientX,
+      y: at.clientY,
+      up: true,
+      title: strings.menu.newBoard,
+      items: TEMPLATES.flatMap((t, i): MenuItem[] => [
+        ...(i && TEMPLATES[i - 1].group !== t.group ? ["sep" as const] : []),
+        { label: `${t.label} · ${t.size}`, icon: t.group === 2 ? "page" : "board", shortcut: t.id === "blank" ? strings.menu.drawWithB : undefined, run: () => createFromTemplate(t) },
+      ]),
+    });
   /** Open chat (with an optional draft and attachments) */
   const openChat = (draft?: string, files?: string[]) => {
     setRightTab("chat");

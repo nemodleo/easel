@@ -38,6 +38,9 @@ export const strings = {
     mobile: "Mobile screen",
     desktop: "Desktop screen",
     doc: "Document",
+    tablet: "Tablet screen",
+    watch: "Watch screen",
+    email: "Email",
   },
 
   tools: {
