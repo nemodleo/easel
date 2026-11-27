@@ -20,6 +20,10 @@ export const LIVE_MIN_SCREEN_PX = 640;
 /** Below this zoom the labels of forks and their originals are one 24px row (compact): rows of forks placed 120px apart leave it room
  * from 23% up, a full label (title and a tag row, 56px) only from 47%. Other boards keep their tags */
 export const COMPACT_LABEL_ZOOM = 0.5;
+/** A board that becomes live waits until the view has been still this long (ms), so a pan or zoom never loads pages mid-gesture */
+export const LIVE_SETTLE_MS = 150;
+/** ...then boards go live one at a time, nearest the centre first, this far apart (ms), instead of all pages loading in one task */
+export const LIVE_STAGGER_MS = 40;
 /** Thumbnail resolutions the server renders (long side, device px). A board asks for the smallest one that covers it on screen */
 export const THUMB_SIZES = [600, 1200, 2400];
 export const thumbSize = (screenPx: number) => THUMB_SIZES.find((s) => s >= screenPx) ?? THUMB_SIZES[THUMB_SIZES.length - 1];
@@ -382,6 +386,46 @@ export function Canvas(p: Props) {
     forkScene.add(f);
     if (shownBoards.has(o.of)) forkScene.add(o.of);
   }
+  /* ---------- Live frames: mounted after the view settles, one at a time, nearest the centre first ---------- */
+  // Which boards should be live is decided below on every render; `mounted` is which of them already have their page. A board that
+  // should be live and is not yet shows its thumbnail meanwhile. The board being played, edited or typed in is live at once
+  const mounted = useRef(new Set<string>());
+  const wanted = useRef<string[]>([]);
+  const settled = useRef(false);
+  const pumping = useRef(0);
+  const [, setMountTick] = useState(0);
+  const pump = () => {
+    if (pumping.current || !settled.current) return;
+    const next = wanted.current.find((f) => !mounted.current.has(f));
+    if (!next) return;
+    mounted.current.add(next);
+    setMountTick((t) => t + 1);
+    pumping.current = window.setTimeout(() => {
+      pumping.current = 0;
+      pump();
+    }, LIVE_STAGGER_MS);
+  };
+  useEffect(() => {
+    settled.current = false;
+    const t = window.setTimeout(() => {
+      settled.current = true;
+      pump();
+    }, LIVE_SETTLE_MS);
+    return () => window.clearTimeout(t);
+  }, [view.x, view.y, view.zoom]);
+  useEffect(() => () => window.clearTimeout(pumping.current), []);
+  // Boards that should be live (filled in while rendering the boards below), nearest the view's centre first
+  const wantLive: { f: string; d: number }[] = [];
+  const cx = vx + vw / 2;
+  const cy = vy + vh / 2;
+  useEffect(() => {
+    const want = new Set(wantLive.map((w) => w.f));
+    // A board that left the view gets its thumbnail back and waits its turn again when it returns
+    for (const f of mounted.current) if (!want.has(f)) mounted.current.delete(f);
+    wanted.current = wantLive.sort((a, b) => a.d - b.d).map((w) => w.f);
+    pump();
+  });
+
   // Boards and notes get one stable set of handlers that call this render's functions, so a board whose own props did not change
   // is not rendered again when the view moves or another board is dragged
   const latest = useRef({ p, pressBoard, moveBoardPress, releaseBoard, picking });
@@ -453,7 +497,11 @@ export function Canvas(p: Props) {
           // (a tall board fitted below 25%) or on a placeholder (a view measured while the pane was hidden) shows an empty board
           const pinned = p.playing === f || p.editFile === f || p.typing === f;
           const near = pinned || inView(b);
-          const live = pinned || (near && (!screens.thumbs || view.zoom >= IFRAME_MIN_ZOOM || Math.max(b.w, b.h) * view.zoom >= LIVE_MIN_SCREEN_PX));
+          const shouldLive = pinned || (near && (!screens.thumbs || view.zoom >= IFRAME_MIN_ZOOM || Math.max(b.w, b.h) * view.zoom >= LIVE_MIN_SCREEN_PX));
+          if (shouldLive) wantLive.push({ f, d: pinned ? -1 : Math.hypot(b.x + b.w / 2 - cx, b.y + b.h / 2 - cy) });
+          if (pinned) mounted.current.add(f);
+          const live = pinned || (shouldLive && mounted.current.has(f));
+          const waiting = shouldLive && !live;
           const selected = p.selected.includes(f);
           return (
             <BoardView
@@ -471,6 +519,7 @@ export function Canvas(p: Props) {
               typing={p.typing === f}
               playing={p.playing === f}
               near={near}
+              waiting={waiting}
               reloadKey={p.reloadKeys[f] ?? 0}
               pickable={picking && live}
               h={h}
@@ -535,6 +584,8 @@ const BoardView = memo(function BoardView(props: {
   typing?: boolean;
   playing?: boolean;
   near?: boolean;
+  /** Should be live and waits its turn (the view is moving, or boards before it are loading): its thumbnail shows meanwhile */
+  waiting?: boolean;
   /** Zoomed out in the fork scene: the label is one row */
   compact?: boolean;
   /** A fork or the original of one: its tags stay in one row */
@@ -553,6 +604,11 @@ const BoardView = memo(function BoardView(props: {
   const { item: b, zoom, file, h, live } = props;
   const resize = useDrag(zoom);
   const title = b.title ?? props.file;
+  // Until a board's page has loaded, its thumbnail stays over the frame (a thumbnail does not give way to a blank page)
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (!props.live) setReady(false);
+  }, [props.live]);
   const tiny = b.w * zoom < 48;
   const compact = !tiny && !!props.compact;
   // A fork's label: zoomed out it shows its agent (a spinner while an agent writes it); its whole story is the label's tooltip
@@ -657,10 +713,17 @@ const BoardView = memo(function BoardView(props: {
         {!props.exists ? (
           <div className="board-missing">{strings.canvas.fileMissing(props.file)}</div>
         ) : props.live ? (
-          <LiveFrame reloadKey={props.reloadKey} iframeRef={(el) => h.iframeRef(file, el)} src={props.screens.url(props.file)} html={props.screens.html?.(props.file)} title={title} interactive={!!props.playing || !!props.typing} />
+          <>
+            <LiveFrame reloadKey={props.reloadKey} iframeRef={(el) => h.iframeRef(file, el)} src={props.screens.url(props.file)} html={props.screens.html?.(props.file)} title={title} interactive={!!props.playing || !!props.typing} onLoad={() => setReady(true)} />
+            {!ready && props.screens.thumbs && (
+              <div className="board-placeholder loading board-cover" style={{ position: "absolute", inset: 0, pointerEvents: "none", fontSize: Math.min(64, 14 / zoom) }} aria-hidden="true">
+                <Thumb file={props.file} v={props.reloadKey} px={THUMB_SIZES[0]} />
+              </div>
+            )}
+          </>
         ) : (
           <div className={`board-placeholder ${props.near ? "loading" : "far"}`} style={{ fontSize: Math.min(64, 14 / zoom) }}>
-            {props.near && props.screens.thumbs && <Thumb file={props.file} v={props.reloadKey} px={thumbSize(Math.max(b.w, b.h) * zoom * (window.devicePixelRatio || 1))} />}
+            {props.near && props.screens.thumbs && <Thumb file={props.file} v={props.reloadKey} px={props.waiting ? THUMB_SIZES[0] : thumbSize(Math.max(b.w, b.h) * zoom * (window.devicePixelRatio || 1))} />}
             <span className="ph-title" data-hint={props.near ? "" : strings.canvas.notLoaded}>{title}</span>
             {props.near && <span className="ph-bar" style={{ height: 3 / Math.max(zoom, 0.05) }} aria-hidden="true" />}
           </div>
@@ -726,7 +789,7 @@ function Thumb({ file, v, px }: { file: string; v: number; px: number }) {
 }
 
 /** Inline HTML (single-file export) goes in srcdoc: the same origin as the viewer, as /screens/ is for the editor, so pins can find elements */
-function LiveFrame(props: { src: string; html?: string; title: string; reloadKey: number; interactive: boolean; iframeRef: (el: HTMLIFrameElement | null) => void }) {
+function LiveFrame(props: { src: string; html?: string; title: string; reloadKey: number; interactive: boolean; iframeRef: (el: HTMLIFrameElement | null) => void; onLoad?: () => void }) {
   const ref = useRef<HTMLIFrameElement | null>(null);
   const first = useRef(true);
   useEffect(() => {
@@ -770,6 +833,7 @@ function LiveFrame(props: { src: string; html?: string; title: string; reloadKey
       src={props.html == null ? props.src : undefined}
       srcDoc={props.html ?? undefined}
       title={props.title}
+      onLoad={props.onLoad}
       style={{ pointerEvents: props.interactive ? "auto" : "none" }}
     />
   );
