@@ -14,6 +14,7 @@ import { exportRoutes } from "./export.mjs";
 import { forkMessage, forkRoutes, routeWrite } from "./forks.mjs";
 import { easelDir, rootOf, toPosix, writeAtomic } from "./fsutil.mjs";
 import { inspect, outline } from "./html.mjs";
+import { contentHash, livePatch } from "./livePatch.mjs";
 import { readBody, safeJoin, sendJson } from "./index.mjs";
 import { watchDesign } from "./watch.mjs";
 
@@ -128,7 +129,10 @@ export const extraRoutes = [
       await writeScreen(ctx, p, next);
       ctx.history.push(`${to.file} ${b.op}`, [{ path: p, before: html, after: next }]);
       ctx.broadcast({ type: "history-changed" });
-      sendJson(res, 200, { ok: true, changed: true, ...fork });
+      // base/hash: the file's content hash before and after; live: the DOM change that turns a board showing base into one showing
+      // hash, when that is proven (server/livePatch.mjs). Never for a fork: the caller's board is not the file written
+      const live = to.forked ? null : livePatch(html, next, b);
+      sendJson(res, 200, { ok: true, changed: true, base: contentHash(html), hash: contentHash(next), ...(live ? { live } : {}), ...fork });
     },
   ],
   // Legacy route: forwards to the chronological history
@@ -231,7 +235,17 @@ export const extraRoutes = [
       const { html } = await readScreen(ctx, url.searchParams.get("f"));
       const info = inspect(html, url.searchParams.get("path") ?? "");
       if (!info) return sendJson(res, 404, { error: "Element not found (the file changed, select again)" });
-      sendJson(res, 200, { hash: info.hash, tag: info.tag, text: info.text.slice(0, 200), source: url.searchParams.get("full") ? info.source : info.source.slice(0, OUTER_LIMIT) });
+      // fileHash: the whole file now, so a board patched in place can check that it still shows the file
+      sendJson(res, 200, { hash: info.hash, fileHash: contentHash(html), tag: info.tag, text: info.text.slice(0, 200), source: url.searchParams.get("full") ? info.source : info.source.slice(0, OUTER_LIMIT) });
+    },
+  ],
+  // The content hash of a board file now (a board patched in place asks after an echo of an older version of its own edits)
+  [
+    "GET",
+    "/api/file-hash",
+    async (req, res, url, ctx) => {
+      const { html } = await readScreen(ctx, url.searchParams.get("f"));
+      sendJson(res, 200, { hash: contentHash(html) });
     },
   ],
   [
