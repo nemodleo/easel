@@ -22,6 +22,7 @@ import { busyIn, choiceGroup, ForkLinks, listDot, OccTags, shortTitle, UseButton
 import { Layers } from "./Layers";
 import { BoardActions, BoardOptions, FocusView, LeftPanel, Minimap } from "./panels";
 import { Play } from "./Play";
+import { pKey } from "./playKey";
 import { Properties } from "./Properties";
 import { ShareButton } from "./share";
 import { ContextMenu, Dialog, snapWidths, useCentred, useDialog, useToast, type MenuItem, type MenuState, Collapsible } from "./ui";
@@ -960,17 +961,13 @@ export function App() {
 
   /* ---------- Context menus ---------- */
   const boardMenuItems = (file: string): MenuItem[] => {
-    const b = board!.boards[file];
     const files = selected.includes(file) ? selected : [file];
     const many = files.length > 1;
     return [
       { label: strings.menu.selectInside, icon: "select", shortcut: "Enter", disabled: many, run: () => selectInside(file) },
-      ...(b?.is_interactive
-        ? [
-            { label: inlinePlay === file ? strings.menu.stopPlay : strings.menu.playInPlace, icon: "play" as IconName, shortcut: "P", disabled: many, run: () => (inlinePlay === file ? stopInline() : setInlinePlay(file)) },
-            { label: strings.menu.playFullScreen, icon: "play" as IconName, disabled: many, run: () => setPlayFile(file) },
-          ]
-        : []),
+      // Any board plays: trying a board is viewing it, so it needs no flag in board.json (is_interactive only shows the ▶ on its label)
+      { label: inlinePlay === file ? strings.menu.stopPlay : strings.menu.playInPlace, icon: "play", shortcut: "P", disabled: many, run: () => (inlinePlay === file ? stopInline() : setInlinePlay(file)) },
+      { label: strings.menu.playFullScreen, icon: "play", disabled: many, run: () => setPlayFile(file) },
       { label: strings.menu.askReview, icon: "comment", run: () => openChat(strings.prompts.review, files) },
       { label: strings.menu.focusView, icon: "focus", shortcut: "F", disabled: many, run: () => setFocusFile(file) },
       { label: strings.menu.askAI, icon: "comment", shortcut: `${mod}J`, run: () => openChat(undefined, files) },
@@ -1555,7 +1552,7 @@ export function App() {
       if (tp != null) return run(() => void edit.select([tp]));
       return;
     }
-    if (k === "p" && !cmd && selected.length === 1 && board.boards[selected[0]]?.is_interactive) return run(() => (inlinePlay === selected[0] ? stopInline() : setInlinePlay(selected[0])));
+    if (k === "p" && !cmd && pKey(selected, board.boards) === "play") return run(() => (inlinePlay === selected[0] ? stopInline() : setInlinePlay(selected[0])));
     if ((e.key === "Delete" || e.key === "Backspace") && selectedShapes.length && !editFile) return run(() => deleteShapes(selectedShapes));
     if (e.key === "Delete" || e.key === "Backspace") {
       if (editFile && edit.state.selection) {
