@@ -4,7 +4,7 @@ import { createRoot } from "react-dom/client";
 
 import { App } from "./App";
 import { Icon } from "./icons";
-import { strings } from "./strings";
+import { lang, strings } from "./strings";
 import { ToastHost } from "./ui";
 import "./style.css";
 
@@ -25,6 +25,7 @@ class CrashScreen extends Component<{ children: ReactNode }, { error: Error | nu
   }
 }
 
+document.documentElement.lang = lang;
 createRoot(document.getElementById("root")!).render(
   <CrashScreen>
     <ToastHost>
