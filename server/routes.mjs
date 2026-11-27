@@ -366,6 +366,11 @@ export const extraRoutes = [
       await readScreen(ctx, b.file);
       const port = Number(req.socket.localPort);
       const out = await screenshot(ctx, port, b.file, b.path || "");
+      // inline: the PNG itself, for the board menu's Export PNG to download (the copy in .easel/screenshots stays as for MCP)
+      if (b.inline) {
+        res.writeHead(200, { "Content-Type": "image/png", "Cache-Control": "no-store" });
+        return res.end(await fs.readFile(out));
+      }
       sendJson(res, 200, { path: out, relPath: toPosix(path.relative(rootOf(ctx.dir), out)) });
     },
   ],

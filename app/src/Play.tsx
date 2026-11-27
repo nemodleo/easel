@@ -106,7 +106,7 @@ export function Play({ board, file, onClose, onLocate, screens = SERVER_SCREENS 
         className="play-frame"
         src={inline ? undefined : screens.url(file)}
         srcDoc={inline ? screens.html?.(shown) : undefined}
-        title="Play"
+        title={strings.viewer.play}
         onLoad={onLoad}
         style={{ width: Math.min(item?.w ?? 390, window.innerWidth - 32) }}
       />

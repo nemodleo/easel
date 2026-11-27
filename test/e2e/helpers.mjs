@@ -49,7 +49,8 @@ export async function startEnv() {
   } catch {
     browser = await chromium.launch({ channel: "chrome" });
   }
-  const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
+  // English UI whatever the machine's language: the app picks Korean from navigator.language otherwise
+  const page = await browser.newPage({ viewport: { width: 1600, height: 1000 }, locale: "en-US" });
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e)));
   return {
