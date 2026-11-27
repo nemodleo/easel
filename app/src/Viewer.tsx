@@ -7,6 +7,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Canvas, clamp, fitView, MAX_ZOOM, MIN_ZOOM } from "./Canvas";
 import { ShapesLayer } from "./drawing";
+import { alignStart, embedArea, parseEmbed } from "./embed";
+import type { DockAlign } from "./embed";
 import { elementAt, rectOf } from "./editor";
 import { Icon } from "./icons";
 import type { Comment } from "./Inspector";
@@ -26,6 +28,8 @@ const when = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "sh
 
 export function Viewer({ data }: { data: ExportData }) {
   const { board, stamp } = data;
+  // index.html?embed…: a copy shown inside another page (see embed.ts and the README's Share section)
+  const emb = useMemo(() => parseEmbed(window.location.search), []);
   // One page left after the scope filter reads as no pages: no tabs
   const pages = board.pages.length > 1 ? board.pages : [];
   const firstPage = board.pages[0]?.id;
@@ -44,14 +48,14 @@ export function Viewer({ data }: { data: ExportData }) {
   const [playFile, setPlayFile] = useState<string | null>(null);
   const [thread, setThread] = useState<string | null>(null);
   const [narrow, setNarrow] = useState(() => window.matchMedia(NARROW).matches);
-  const [leftOpen, setLeftOpen] = useState(!narrow);
+  const [leftOpen, setLeftOpen] = useState(!narrow && !emb.embed);
   const [rightOpen, setRightOpen] = useState(!narrow);
   const [win, setWin] = useState({ w: window.innerWidth, h: window.innerHeight });
   useEffect(() => {
     const mq = window.matchMedia(NARROW);
     const on = () => {
       setNarrow(mq.matches);
-      setLeftOpen(!mq.matches);
+      setLeftOpen(!mq.matches && !emb.embed);
       setRightOpen(!mq.matches);
     };
     const resize = () => setWin({ w: window.innerWidth, h: window.innerHeight });
@@ -80,12 +84,25 @@ export function Viewer({ data }: { data: ExportData }) {
   const inset = narrow ? 8 : 12;
   const hasComments = comments.length > 0;
   const clearArea = () => {
+    if (emb.embed) {
+      // The host page says what it floats over the frame; a centred dock keeps its own band at the bottom
+      const a = embedArea(size, emb.inset);
+      return emb.dock === "center" ? { ...a, h: Math.max(100, Math.min(a.h, size.h - inset - 48 - 8 - a.y)) } : a;
+    }
     const x = !narrow && leftOpen ? inset + 240 + inset : 0;
     const right = !narrow && rightOpen && hasComments ? size.w - inset - 288 - inset : size.w;
     const y = narrow ? inset + 48 : 0;
     return { x, y, w: right - x, h: size.h - inset - 48 - 8 - y };
   };
-  const fitAll = () => setView(fitView([...visibleBoards.map((f) => board.boards[f]), ...visibleNotes.map((id) => noteRect(board.notes[id]))], size, 60, clearArea()));
+  // fit= names boards by file and notes by id; what is not on this page is left out
+  const fitRects = emb.fit.flatMap((k) => (visibleBoards.includes(k) ? [board.boards[k]] : visibleNotes.includes(k) ? [noteRect(board.notes[k])] : []));
+  const fitAll = () => {
+    const rects = fitRects.length ? fitRects : [...visibleBoards.map((f) => board.boards[f]), ...visibleNotes.map((id) => noteRect(board.notes[id]))];
+    const a = clearArea();
+    const v = fitView(rects, size, 60, a);
+    // Embedded, the view starts at the clear area's top-left corner instead of its centre, so it sits against what the host floats beside it
+    setView(emb.embed && rects.length ? alignStart(v, rects, a) : v);
+  };
   const goTo = (files: string[]) => setView(fitView(files.map((f) => board.boards[f]).filter(Boolean), size, 80, clearArea()));
   const zoomBy = (k: number) =>
     setView((v) => {
@@ -157,6 +174,31 @@ export function Viewer({ data }: { data: ExportData }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [playFile]);
 
+  // Embedded: the wheel stays with the host page until a click on the canvas; Esc or a click outside the frame gives it back
+  const [live, setLive] = useState(!emb.embed);
+  const gate = useRef<HTMLButtonElement>(null);
+  const refocusGate = useRef(false);
+  useEffect(() => {
+    if (!emb.embed || !live) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || playFile || thread) return;
+      refocusGate.current = true;
+      setLive(false);
+    };
+    // Focus moving into a board's own frame (Play) is still inside; anywhere else is outside
+    const onBlur = () => setTimeout(() => document.activeElement?.tagName !== "IFRAME" && setLive(false), 0);
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("blur", onBlur);
+    };
+  }, [live, playFile, thread]);
+  useEffect(() => {
+    if (!live && refocusGate.current) gate.current?.focus();
+    refocusGate.current = false;
+  }, [live]);
+
   const open = thread ? comments.find((c) => c.id === thread) : undefined;
   const openPos = open && visibleBoards.includes(open.file) ? pinAt(open, comments.filter((c) => c.file === open.file).indexOf(open)) : null;
   const playTarget = selected.length === 1 ? selected[0] : visibleBoards[0];
@@ -206,8 +248,13 @@ export function Viewer({ data }: { data: ExportData }) {
   const leftMax = win.h - inset - (narrow ? 8 + 48 + 8 : 12 + 160 + 12);
 
   return (
-    <div className={`app viewer oc ${narrow ? "oc-n" : ""} ${win.w <= 760 ? "narrow" : ""}`}>
-      <div className="canvas-wrap">
+    <div
+      className={`app viewer oc ${narrow ? "oc-n" : ""} ${win.w <= 760 ? "narrow" : ""} ${emb.embed ? `embed ${live ? "embed-live" : ""}` : ""}`}
+      // Play keeps to the clear area too (the part of an inset that reaches past an edge counts as none)
+      style={emb.embed ? ({ "--embed-play": [emb.inset.top, emb.inset.right, emb.inset.bottom, emb.inset.left].map((n) => `${Math.max(0, n)}px`).join(" ") } as React.CSSProperties) : undefined}
+    >
+      {/* Embedded and not taken yet: the boards are out of the tab order and the pointer's way, so the host page's focus order holds */}
+      <div className="canvas-wrap" inert={emb.embed && !live ? true : undefined}>
         <Canvas
           board={board}
           files={data.files}
@@ -303,7 +350,8 @@ export function Viewer({ data }: { data: ExportData }) {
           </div>
         )}
       </div>
-      {leftOpen ? (
+      {emb.embed && !live && <button ref={gate} className="embed-gate" aria-label={strings.viewer.embedGate} onClick={() => setLive(true)} />}
+      {emb.embed ? null : leftOpen ? (
         <LeftPanel
           className="oc-card oc-left"
           style={{ maxHeight: leftMax }}
@@ -333,13 +381,13 @@ export function Viewer({ data }: { data: ExportData }) {
           {leftHeader}
         </aside>
       )}
-      {!narrow && (
+      {!narrow && !emb.embed && (
         <nav className="oc-card oc-nav" aria-label={strings.app.navigation}>
           {rects.length > 0 && <Minimap className="oc-map" w={240} h={112} inset={8} rects={rects} selected={selected} view={view} size={size} onJump={centreOn} />}
           <div className="oc-zoom">{zoomRow}</div>
         </nav>
       )}
-      {hasComments && (
+      {hasComments && !emb.embed && (
         <aside className={`oc-card oc-right oc-cards ${rightOpen ? "" : "is-rest"}`} aria-label={strings.viewer.comments} style={{ maxHeight: win.h - inset * 2 }}>
           {narrow ? (
             <button className="oc-chead" aria-expanded={rightOpen} aria-label={strings.viewer.commentsPanel} title={strings.viewer.commentsN(comments.length)} onClick={toggleRight}>
@@ -377,7 +425,12 @@ export function Viewer({ data }: { data: ExportData }) {
           )}
         </aside>
       )}
-      <ViewerDock win={win.w} narrow={narrow} stampFull={stampFull} stamp={strings.viewer.stamp(when(stamp.at))} code={stamp.repo ? `${stamp.repo}${stamp.commit ? `@${stamp.commit}` : ""}` : ""} zoomRow={narrow ? zoomRow : null} playDisabled={!playTarget} onPlay={() => playTarget && setPlayFile(playTarget)} />
+      {emb.embed && (
+        <p className={`embed-hint dock-${emb.dock}`} role="status">
+          {live ? strings.viewer.embedHintLive : strings.viewer.embedHint}
+        </p>
+      )}
+      <ViewerDock align={emb.embed ? emb.dock : "center"} win={win.w} narrow={narrow} stampFull={stampFull} stamp={strings.viewer.stamp(when(stamp.at))} code={stamp.repo ? `${stamp.repo}${stamp.commit ? `@${stamp.commit}` : ""}` : ""} zoomRow={narrow || emb.embed ? zoomRow : null} playDisabled={!playTarget} onPlay={() => playTarget && setPlayFile(playTarget)} />
       {playFile && (
         <Play
           board={board}
@@ -396,12 +449,18 @@ export function Viewer({ data }: { data: ExportData }) {
 
 /** The dock of the copy: what it is (View only, when, which commit) and the one thing to do with it, Play. Narrow windows have no
  * navigation card, so the zoom row joins the dock there and the stamp keeps only its eye (the words stay in its title) */
-function ViewerDock(p: { win: number; narrow: boolean; stampFull: string; stamp: string; code: string; zoomRow: React.ReactNode; playDisabled: boolean; onPlay: () => void }) {
+function ViewerDock(p: { align: DockAlign; win: number; narrow: boolean; stampFull: string; stamp: string; code: string; zoomRow: React.ReactNode; playDisabled: boolean; onPlay: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const left = useCentred(ref, p.win);
   const short = p.win <= 760;
   return (
-    <div ref={ref} className="oc-dock oc-vdock" role="toolbar" aria-label={strings.viewer.bar} style={{ left: left ?? undefined, visibility: left == null ? "hidden" : undefined }}>
+    <div
+      ref={ref}
+      className="oc-dock oc-vdock"
+      role="toolbar"
+      aria-label={strings.viewer.bar}
+      style={p.align === "left" ? { left: 12 } : p.align === "right" ? { right: 12 } : { left: left ?? undefined, visibility: left == null ? "hidden" : undefined }}
+    >
       <span className="oc-stamp" role="note" aria-label={p.stampFull} title={`${p.stampFull}. ${strings.viewer.stampTitle}`}>
         <Icon name="eye" size={16} />
         {!short && (

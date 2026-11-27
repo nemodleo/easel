@@ -270,6 +270,9 @@ export const strings = {
     boardsPanel: "Boards",
     commentsPanel: "Comments panel",
     empty: "Nothing on this page",
+    embedGate: "Use the canvas: pan, zoom, open a board, press Play. Esc gives the page back.",
+    embedHint: "Click the canvas to pan and zoom",
+    embedHintLive: "Esc or a click outside gives the page back",
   },
 
   canvas: {

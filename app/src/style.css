@@ -1173,3 +1173,14 @@ button.danger { color: var(--warn); }
 .oc .pin { background: var(--pin-ink); color: #ffffff; font-weight: 600; box-shadow: 0 0 0 2px #ffffff, 0 2px 6px rgba(17, 17, 17, 0.22); }
 .oc .canvas .pin::before { content: ""; position: absolute; inset: -2px; } /* 24 drawn, 28 to hit */
 .oc .pin.on { background: var(--select); color: var(--select-text); }
+/* Embedded copy (index.html?embed): a clear layer keeps the wheel with the host page until a click; the hint sits over the dock */
+.embed-gate { position: absolute; inset: 0; z-index: 15; width: 100%; height: 100%; padding: 0; border: 0; border-radius: 0; background: transparent; cursor: pointer; }
+.embed-gate:hover:not(:disabled) { background: transparent; border: 0; }
+.embed-gate:focus-visible { outline-offset: -4px; }
+.viewer.embed-live::after { content: ""; position: absolute; inset: 0; z-index: 30; box-shadow: inset 0 0 0 2px var(--select); pointer-events: none; }
+.embed-hint { position: absolute; z-index: 20; bottom: 68px; margin: 0; padding: 0 12px; height: 28px; display: inline-flex; align-items: center; border-radius: 14px; background: var(--panel); box-shadow: var(--float); font-size: 12px; color: var(--muted); white-space: nowrap; pointer-events: none; }
+.embed-hint.dock-left { left: 12px; }
+.embed-hint.dock-right { right: 12px; }
+.embed-hint.dock-center { left: 50%; transform: translateX(-50%); }
+.viewer.embed .play { inset: var(--embed-play, 0); }
+.viewer.embed .play-frame { max-width: calc(100% - 32px); }
