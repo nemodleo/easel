@@ -6,6 +6,7 @@ import type { Rect } from "./Canvas";
 import { Icon } from "./icons";
 import type { Board, BoardItem, Page, View } from "./types";
 import { strings } from "./strings";
+import { useView, type ViewStore } from "./viewStore";
 
 /* ---------------- Left panel ---------------- */
 const GROUP_MIN = 12;
@@ -414,4 +415,9 @@ export function FocusView({ board, file, onClose, onNav }: { board: Board; file:
       </div>
     </div>
   );
+}
+
+/** The minimap, following the view store on its own (the app around it does not re-render on a pan step) */
+export function MinimapOf({ store, ...p }: { store: ViewStore } & Omit<Parameters<typeof Minimap>[0], "view">) {
+  return <Minimap {...p} view={useView(store)} />;
 }

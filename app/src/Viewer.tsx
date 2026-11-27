@@ -10,11 +10,12 @@ import { ShapesLayer } from "./drawing";
 import { elementAt, rectOf } from "./editor";
 import { Icon } from "./icons";
 import type { Comment } from "./Inspector";
-import { LeftPanel, Minimap } from "./panels";
+import { LeftPanel, MinimapOf } from "./panels";
 import { Play } from "./Play";
 import { strings } from "./strings";
 import type { ExportData, Note, ScreenSource, View } from "./types";
 import { useCentred } from "./ui";
+import { useViewStore, useViewValue } from "./viewStore";
 
 export const EASEL_URL = "https://github.com/nemodleo/easel";
 const encodePath = (f: string) => f.split("/").map(encodeURIComponent).join("/");
@@ -38,7 +39,10 @@ export function Viewer({ data }: { data: ExportData }) {
     .filter((id) => onPage(shapes[id]))
     .sort((a, b) => (shapes[a].z ?? 0) - (shapes[b].z ?? 0));
 
-  const [view, setView] = useState<View>({ x: 0, y: 0, zoom: 1 });
+  const viewStore = useViewStore({ x: 0, y: 0, zoom: 1 });
+  const setView = viewStore.set;
+  // The viewer follows the zoom (pins, the zoom row); only the canvas and the minimap follow every pan step
+  const zoom = useViewValue(viewStore, (v) => v.zoom);
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [selected, setSelected] = useState<string[]>([]);
   const [playFile, setPlayFile] = useState<string | null>(null);
@@ -132,7 +136,7 @@ export function Viewer({ data }: { data: ExportData }) {
     const r = el ? rectOf(el) : null;
     return r ? { x: r.x + r.w - 12, y: r.y - 12 } : { x: board.boards[c.file].w - 32, y: 8 + i * 30 };
   };
-  const pinScale = 1 / Math.max(view.zoom, 0.25);
+  const pinScale = 1 / Math.max(zoom, 0.25);
   const openThread = (c: Comment) => {
     reveal(c.file);
     setThread(c.id);
@@ -168,8 +172,8 @@ export function Viewer({ data }: { data: ExportData }) {
       <button className="icon-btn oc-ib" aria-label={strings.toolbar.zoomOut} title={strings.toolbar.zoomOut} onClick={() => zoomBy(1 / 2)}>
         <Icon name="minus" />
       </button>
-      <button className="zoom" aria-label={strings.toolbar.zoom100} title={strings.toolbar.zoom100} onClick={() => zoomBy(1 / view.zoom)}>
-        {Math.round(view.zoom * 100)}%
+      <button className="zoom" aria-label={strings.toolbar.zoom100} title={strings.toolbar.zoom100} onClick={() => zoomBy(1 / zoom)}>
+        {Math.round(zoom * 100)}%
       </button>
       <button className="icon-btn oc-ib" aria-label={strings.toolbar.zoomIn} title={strings.toolbar.zoomIn} onClick={() => zoomBy(2)}>
         <Icon name="plus" />
@@ -211,8 +215,7 @@ export function Viewer({ data }: { data: ExportData }) {
         <Canvas
           board={board}
           files={data.files}
-          view={view}
-          setView={setView}
+          view={viewStore}
           tool="select"
           setTool={() => {}}
           visibleBoards={visibleBoards}
@@ -262,15 +265,15 @@ export function Viewer({ data }: { data: ExportData }) {
               </div>
             );
           }}
-          worldLayer={
+          worldLayer={() => (
             <>
-              <ShapesLayer shapes={shapes} ids={visibleShapes} zoom={view.zoom} selected={[]} interactive={false} onSelect={() => {}} onChange={() => {}} onContext={() => {}} />
+              <ShapesLayer shapes={shapes} ids={visibleShapes} zoom={zoom} selected={[]} interactive={false} onSelect={() => {}} onChange={() => {}} onContext={() => {}} />
               {open && openPos && (
                 <div
                   className="thread"
                   role="dialog"
                   aria-label={strings.viewer.pin(number.get(open.id)!, open.author)}
-                  style={{ left: board.boards[open.file].x + openPos.x + 32 * pinScale, top: board.boards[open.file].y + openPos.y, transform: `scale(${1 / view.zoom})` }}
+                  style={{ left: board.boards[open.file].x + openPos.x + 32 * pinScale, top: board.boards[open.file].y + openPos.y, transform: `scale(${1 / zoom})` }}
                   onPointerDown={(e) => e.stopPropagation()}
                 >
                   <div className="thread-head">
@@ -289,7 +292,7 @@ export function Viewer({ data }: { data: ExportData }) {
                 </div>
               )}
             </>
-          }
+          )}
           iframeRef={(f, el) => {
             if (!el || frames.current.get(f) === el) return;
             frames.current.set(f, el);
@@ -335,7 +338,7 @@ export function Viewer({ data }: { data: ExportData }) {
       )}
       {!narrow && (
         <nav className="oc-card oc-nav" aria-label={strings.app.navigation}>
-          {rects.length > 0 && <Minimap className="oc-map" w={240} h={112} inset={8} rects={rects} selected={selected} view={view} size={size} onJump={centreOn} />}
+          {rects.length > 0 && <MinimapOf store={viewStore} className="oc-map" w={240} h={112} inset={8} rects={rects} selected={selected} size={size} onJump={centreOn} />}
           <div className="oc-zoom">{zoomRow}</div>
         </nav>
       )}
