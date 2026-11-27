@@ -23,12 +23,13 @@ import { Layers } from "./Layers";
 import { BoardActions, BoardOptions, FocusView, LeftPanel, Minimap } from "./panels";
 import { Play } from "./Play";
 import { pKey } from "./playKey";
+import { pngFailure, pngName, shortReason } from "./exportPng";
 import { Properties } from "./Properties";
 import { ShareButton } from "./share";
 import { ContextMenu, Dialog, snapWidths, useCentred, useDialog, useToast, type MenuItem, type MenuState, Collapsible } from "./ui";
 import { elementsInside, elementUnder, kindLabel, useElementSelect } from "./useElementSelect";
 import type { Board, BoardItem, BoardResponse, LayoutGuide, Note, Shape, ShapeKind, Tool, View } from "./types";
-import { strings } from "./strings";
+import { lang, LANGUAGES, setLang, strings } from "./strings";
 
 const DRAFT_SAVE_DELAY = 400;
 const mod = navigator.platform.includes("Mac") ? "⌘" : "Ctrl+";
@@ -46,11 +47,15 @@ function loadSaved(title: string): Saved {
 }
 
 type BoardError = { kind: string; message: string; line?: number };
+/** The New board menu (server/boards.mjs TEMPLATES), in groups split by a line: blank, screens from small to large, page-shaped */
 const TEMPLATES = [
-  { id: "blank", label: strings.templates.blank, size: "390×844", w: 390, h: 844 },
-  { id: "mobile", label: strings.templates.mobile, size: "390×844", w: 390, h: 844 },
-  { id: "desktop", label: strings.templates.desktop, size: "1440×900", w: 1440, h: 900 },
-  { id: "doc", label: strings.templates.doc, size: "800×1000", w: 800, h: 1000 },
+  { id: "blank", label: strings.templates.blank, size: "390×844", w: 390, h: 844, group: 0 },
+  { id: "watch", label: strings.templates.watch, size: "198×242", w: 198, h: 242, group: 1 },
+  { id: "mobile", label: strings.templates.mobile, size: "390×844", w: 390, h: 844, group: 1 },
+  { id: "tablet", label: strings.templates.tablet, size: "834×1194", w: 834, h: 1194, group: 1 },
+  { id: "desktop", label: strings.templates.desktop, size: "1440×900", w: 1440, h: 900, group: 1 },
+  { id: "doc", label: strings.templates.doc, size: "800×1000", w: 800, h: 1000, group: 2 },
+  { id: "email", label: strings.templates.email, size: "600×1200", w: 600, h: 1200, group: 2 },
 ] as const;
 
 const TOOLS: { id: Tool; icon: IconName; label: string; hint: string; key: string }[] = [
@@ -90,6 +95,9 @@ export function App() {
   const commentRef = useRef<HTMLTextAreaElement>(null);
   const [playFile, setPlayFile] = useState<string | null>(null);
   const [inlinePlay, setInlinePlay] = useState<string | null>(null);
+  /** Boards whose PNG is rendering: the ref stops a second click before the state lands, the state shows it on the board and menu */
+  const pngBusy = useRef(new Set<string>());
+  const [exportingPng, setExportingPng] = useState<string[]>([]);
   const [firstRunHint, setFirstRunHint] = useState(false);
   const [announce, setAnnounce] = useState("");
   const [focusFile, setFocusFile] = useState<string | null>(null);
@@ -739,7 +747,16 @@ export function App() {
     void createBoard({ x: Math.round(cx - t.w / 2), y: Math.round(cy - t.h / 2), w: t.w, h: t.h }, t.id).then(() => setView(fitView([{ x: cx - t.w / 2, y: cy - t.h / 2, w: t.w, h: t.h }], size, 80, clearArea())));
   };
   const templateMenu = (at: { clientX: number; clientY: number }) =>
-    setMenu({ x: at.clientX, y: at.clientY, up: true, title: strings.menu.newBoard, items: TEMPLATES.map((t) => ({ label: `${t.label} · ${t.size}`, icon: t.id === "doc" ? ("page" as IconName) : ("board" as IconName), shortcut: t.id === "blank" ? strings.menu.drawWithB : undefined, run: () => createFromTemplate(t) })) });
+    setMenu({
+      x: at.clientX,
+      y: at.clientY,
+      up: true,
+      title: strings.menu.newBoard,
+      items: TEMPLATES.flatMap((t, i): MenuItem[] => [
+        ...(i && TEMPLATES[i - 1].group !== t.group ? ["sep" as const] : []),
+        { label: `${t.label} · ${t.size}`, icon: t.group === 2 ? "page" : "board", shortcut: t.id === "blank" ? strings.menu.drawWithB : undefined, run: () => createFromTemplate(t) },
+      ]),
+    });
   /** Open chat (with an optional draft and attachments) */
   const openChat = (draft?: string, files?: string[]) => {
     setRightTab("chat");
@@ -963,6 +980,34 @@ export function App() {
     });
   };
 
+  /** Export PNG: the server renders the board (2×, full page) and the browser downloads it. Nothing is written to board.json */
+  const exportPng = async (file: string) => {
+    if (pngBusy.current.has(file)) return;
+    pngBusy.current.add(file);
+    setExportingPng([...pngBusy.current]);
+    const name = pngName(file);
+    toast({ text: strings.toast.pngExporting(name) });
+    try {
+      const png = await api.blob("/api/screenshot", { file, inline: true });
+      const href = URL.createObjectURL(png);
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = name;
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(href), 10000);
+      toast({ tone: "ok", text: strings.toast.pngExported(name) });
+    } catch (e) {
+      const err = e as Error & { status?: number };
+      if (pngFailure(err.status, err.message) === "browser") toast({ tone: "error", text: strings.toast.pngNeedsBrowser, code: "npx playwright install chromium", ms: 10000 });
+      else toast({ tone: "error", text: strings.toast.pngFailed(shortReason(err.message)) });
+    } finally {
+      pngBusy.current.delete(file);
+      setExportingPng([...pngBusy.current]);
+    }
+  };
+
   /* ---------- Context menus ---------- */
   const boardMenuItems = (file: string): MenuItem[] => {
     const files = selected.includes(file) ? selected : [file];
@@ -981,6 +1026,7 @@ export function App() {
       { label: strings.menu.rename, icon: "title", shortcut: "F2", disabled: many, run: () => void renameBoard(file) },
       { label: strings.menu.renameFile, icon: "link", disabled: many, run: () => void renameFile(file) },
       { label: strings.menu.duplicate, icon: "copy", shortcut: `${mod}D`, disabled: many, run: () => void duplicateBoard(file) },
+      { label: exportingPng.includes(file) ? strings.menu.exportingPng : strings.menu.exportPng, icon: "image", disabled: many || exportingPng.includes(file) || !!data?.missing.includes(file), run: () => void exportPng(file) },
       "sep",
       { label: strings.menu.front, icon: "front", shortcut: `${mod}]`, run: () => reorder(files, "front") },
       { label: strings.menu.back, icon: "back", shortcut: `${mod}[`, run: () => reorder(files, "back") },
@@ -1271,6 +1317,8 @@ export function App() {
         ...(themeNames.length > 1
           ? themeNames.map((n) => ({ label: strings.toolbar.themeOption(n), icon: "layers" as IconName, check: tokens!.active === n, run: () => void saveTokens({ ...tokens!, active: n }, strings.history.changeTheme) }))
           : []),
+        // The UI language, named in itself; switching reloads, because labels are read once when the app loads
+        { label: strings.toolbar.language(LANGUAGES.find((l) => l.id === lang)!.name), icon: "globe", run: () => setLang(LANGUAGES[(LANGUAGES.findIndex((l) => l.id === lang) + 1) % LANGUAGES.length].id) },
         "sep",
         { label: strings.toolbar.snapshot, icon: "layers", run: () => void snapshotMenu(at, true) },
       ],
@@ -1623,11 +1671,13 @@ export function App() {
     const changed = inlinePlay === f ? undefined : act.tagsOf(f).find((t) => t.paths.length && act.stateOf(t) === "fresh");
     const hov = hover?.file === f && inlinePlay !== f && !(editing && edit.state.paths.includes(hover.path)) ? hover : null;
     const mq = elMarquee?.file === f ? elMarquee.rect : null;
-    if (!editing && !pins.length && !lg.length && !changed && !hov && !mq) return null;
+    const png = exportingPng.includes(f);
+    if (!editing && !pins.length && !lg.length && !changed && !hov && !mq && !png) return null;
     // Outlines stay the same width on screen whatever the zoom
     const px = 1 / Math.max(view.zoom, 0.05);
     return (
       <div className="overlay">
+        {png && <div className="export-badge" role="status" style={{ transform: `scale(${1 / Math.max(view.zoom, 0.25)})` }}>{strings.canvas.exportingPng}</div>}
         {changed && <ChangeOutline frame={frames.current.get(f) ?? null} paths={changed.paths} zoom={view.zoom} />}
         {lg.length > 0 && board && <GuidesOverlay guides={lg} w={board.boards[f].w} h={board.boards[f].h} />}
         {hov && <Box r={hov.rect} cls="hover" px={px} />}

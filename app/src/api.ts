@@ -40,6 +40,9 @@ export const api = {
   put: <T>(path: string, body: unknown) =>
     fetch(path, { method: "PUT", headers: { "Content-Type": "application/json", ...who() }, body: JSON.stringify(body) }).then((r) => json<T>(r)),
   get: <T>(path: string) => fetch(path).then((r) => json<T>(r)),
+  /** POST that answers with a file (a PNG): the bytes, or the server's JSON error thrown like json() does */
+  blob: (path: string, body: unknown) =>
+    fetch(path, { method: "POST", headers: { "Content-Type": "application/json", ...who() }, body: JSON.stringify(body) }).then((r) => (r.ok ? r.blob() : json<never>(r))),
 };
 
 export type ServerEvent =
