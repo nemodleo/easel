@@ -199,6 +199,7 @@ npm run design           # http://localhost:4317
 | Who changed what | A board changed by someone else (an agent over MCP or the in-app chat, a file edited outside Easel, another browser) gets a tag above its title, e.g. "Codex · 2m · 1 change", with a person or agent mark and the name, and the changed element is outlined. Click the tag: the change ("Get started" → "Start free"), Before / After, and Undo (only that change; asks first if one of its boards changed since). Tags fade once you open them or select the board, and clear a day later |
 | Design system | Register tokens (`tokens.json`) and themes in the left "Tokens" tab, Theme in the View menu (⋯ at the top of the right card), Token check and Accessibility lists on the right |
 | Collaboration | Comments (Reply, Resolve, author), Snapshot menu (git-commits only the design folder) |
+| Language | English or Korean (한국어): the browser's language picks it on first load (ko-* is Korean, everything else English), Language in the View menu switches it and is remembered in this browser. The exported view-only copy follows the browser's language |
 | Share | "Share" at the top of the right card: whole canvas, this page or the selected boards as a web folder or one .html file, PDF or PNG; Reveal, Copy deploy command, and the matching `npx easel-canvas export` line |
 | Who is on which board | A board someone is editing says so above its title with a mark and the name: "Claude Code is editing…", "You · editing", then "Claude Code · done 13:52"; the board list shows a dot (blue for you, ink for anyone else). An agent holds a board from its first write until its in-app run ends, or 45 s after its last write over MCP (or when it disconnects). A second agent writing a board another agent holds works on a fork beside it ("Welcome · Codex"), with an arrow back that says when and why; you are never forked. When both are done, Use this one on either keeps that version under the original's name, title, position and comments, and sends the other to trash; one Undo brings both back |
 | Pick a variant | Variants from the AI tab land in the first free row (never on notes or boards) and each gets Use this: Apply makes it the original board and sends the other variants to trash (toast with Undo), Keep all leaves them as ordinary boards |
@@ -246,7 +247,7 @@ npm run design:css   # rebuild docs/design/assets/easel.css after changing app/s
 | --- | --- |
 | `bin/` | `server.mjs` (app server), `mcp.mjs` (MCP stdio server) |
 | `server/` | API and routes, board.json, file watching, element paths and hashes, source patching, history, chat runner, tokens |
-| `app/` | Canvas UI (Vite + React + TypeScript); all UI text lives in `app/src/strings.ts` |
+| `app/` | Canvas UI (Vite + React + TypeScript); all UI text lives in `app/src/strings.ts`, in English and Korean (the Korean object is typed against the English one, so a missing string is a type error) |
 | `test/` | `node --test` unit tests and Playwright e2e tests |
 | `tools/` | Repo maintenance scripts, not shipped: `mkcss.mjs` builds the design boards' stylesheet from the app's |
 
