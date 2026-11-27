@@ -301,10 +301,13 @@ test("PDF and PNG: a clear 501 when Chromium cannot start, and the previous expo
     await fs.mkdir(out);
     await fs.writeFile(path.join(out, MANIFEST), JSON.stringify({ easel: 1, exports: { pdf: { at: "x", files: ["design-canvas.pdf"] } } }));
     await fs.writeFile(path.join(out, "design-canvas.pdf"), "old");
-    const newPage = async () => {
-      throw new Error("Executable doesn't exist at /nowhere/chrome");
-    };
-    for (const format of ["pdf", "png"]) await assert.rejects(exportDesign({ dir: d.dir, out, format, newPage }), (e) => e.status === 501 && /Chromium/.test(e.message));
+    const { createBrowserPool } = await import("../server/browser.mjs");
+    const { withPage } = createBrowserPool({
+      launch: async () => {
+        throw new Error("Executable doesn't exist at /nowhere/chrome");
+      },
+    });
+    for (const format of ["pdf", "png"]) await assert.rejects(exportDesign({ dir: d.dir, out, format, withPage }), (e) => e.status === 501 && /Chromium/.test(e.message));
     assert.equal(await fs.readFile(path.join(out, "design-canvas.pdf"), "utf8"), "old");
   } finally {
     await d.cleanup();
