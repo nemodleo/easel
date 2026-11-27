@@ -2,7 +2,8 @@
 // The one shared headless Chromium (playwright, an optional dependency) behind screenshots, thumbnails and PDF/PNG export.
 // Launched on first use (never at server start), shared by concurrent first calls, one fresh context per render, at most
 // MAX_PAGES renders at a time (the rest wait), closed after EASEL_BROWSER_IDLE_SECONDS without a render, and launched again
-// after it dies or is killed (a render that hits a dead browser is tried once more on a new one).
+// after it dies or is killed (a render that hits a dead browser is tried once more on a new one). Files from other hosts
+// (web fonts, CDN images) are cached across renders while the browser is up (createRemoteCache).
 import { existsSync } from "node:fs";
 
 /** Default seconds without a render before the browser is closed (EASEL_BROWSER_IDLE_SECONDS overrides; 0 closes right away) */
@@ -26,11 +27,96 @@ async function launchChromium() {
   return chromium.launch().catch(() => chromium.launch({ channel: "chrome" }));
 }
 
+const LOOPBACK = new Set(["127.0.0.1", "localhost", "[::1]", "::1"]);
+const maxAgeOf = (cc) => {
+  if (/(^|,)\s*(no-store|no-cache|private)\b/i.test(cc)) return 0;
+  const m = /(?:^|,)\s*(?:s-maxage|max-age)\s*=\s*(\d+)/i.exec(cc);
+  return m ? Number(m[1]) : 0;
+};
+
+/**
+ * HTTP cache for files boards load from other hosts (web fonts, font CSS, CDN images), shared by every render while the
+ * browser is up. Each render has a fresh context, and a fresh context starts with an empty HTTP cache, so without this a
+ * board using a 2 MB CDN font downloaded it again for every thumbnail. Only GETs from non-loopback hosts are routed (the
+ * canvas's own files are no-store and stay direct). Kept: 200 responses with a positive max-age, no no-store/no-cache/
+ * private, no Set-Cookie, no Vary beyond Accept-Encoding/Origin, at most maxEntryBytes, maxBytes in all (oldest out first),
+ * keyed by URL and Origin (the CORS answer depends on it). Requests with cookies or Authorization go straight through.
+ */
+export const isRemoteUrl = (u) => (u.protocol === "http:" || u.protocol === "https:") && !LOOPBACK.has(u.hostname);
+
+export function createRemoteCache({ maxBytes = 64 * 1048576, maxEntryBytes = 8 * 1048576, now = () => Date.now(), routes = isRemoteUrl } = {}) {
+  const entries = new Map(); // key -> { status, headers, body, expires }; Map order = age
+  const inflight = new Map();
+  let bytes = 0;
+  const drop = (k) => {
+    const e = entries.get(k);
+    if (e) (bytes -= e.body.length), entries.delete(k);
+  };
+  const cacheable = (res, body) => {
+    if (res.status !== 200 || body.length > maxEntryBytes) return 0;
+    const h = res.headers;
+    if (h["set-cookie"]) return 0;
+    if (h.vary && h.vary.split(",").some((v) => !/^\s*(accept-encoding|origin)\s*$/i.test(v))) return 0;
+    return maxAgeOf(h["cache-control"] ?? "");
+  };
+  async function fetchVia(route, key) {
+    const r = await route.fetch();
+    const res = { status: r.status(), headers: r.headers(), body: await r.body() };
+    const age = cacheable(res, res.body);
+    if (age > 0) {
+      const { "set-cookie": _, ...headers } = res.headers;
+      drop(key);
+      entries.set(key, { ...res, headers, expires: now() + age * 1000 });
+      bytes += res.body.length;
+      for (const k of entries.keys()) {
+        if (bytes <= maxBytes) break;
+        drop(k);
+      }
+    }
+    return res;
+  }
+  /** The page.route handler */
+  async function handle(route) {
+    const req = route.request();
+    const h = req.headers();
+    if (req.method() !== "GET" || h.cookie || h.authorization) return route.continue().catch(() => {});
+    const key = `${req.url()}\n${h.origin ?? ""}`;
+    try {
+      let hit = entries.get(key);
+      if (hit && hit.expires <= now()) drop(key), (hit = null);
+      if (hit) {
+        entries.delete(key), entries.set(key, hit); // most recently used goes last
+      } else {
+        // Two renders asking for the same font at once share one download
+        let p = inflight.get(key);
+        if (!p) {
+          p = fetchVia(route, key).finally(() => inflight.delete(key));
+          inflight.set(key, p);
+        }
+        hit = await p;
+      }
+      await route.fulfill({ status: hit.status, headers: hit.headers, body: hit.body });
+    } catch {
+      await route.continue().catch(() => {}); // a failed fetch or a closed page: let the browser deal with it
+    }
+  }
+  return {
+    handle,
+    /** Routed URLs: http(s) on a host other than this machine */
+    routes,
+    clear() {
+      entries.clear();
+      bytes = 0;
+    },
+    stats: () => ({ entries: entries.size, bytes }),
+  };
+}
+
 /**
  * The pool. launch() returns a playwright-like Browser (isConnected, on("disconnected"), newPage(opts), close).
  * timers is injectable so tests drive the idle close without waiting.
  */
-export function createBrowserPool({ launch = launchChromium, idleMs = idleMsFromEnv(), maxPages = MAX_PAGES, timers = globalThis } = {}) {
+export function createBrowserPool({ launch = launchChromium, idleMs = idleMsFromEnv(), maxPages = MAX_PAGES, timers = globalThis, remoteCache = createRemoteCache() } = {}) {
   let browserPromise = null;
   let idleTimer = null;
   let active = 0; // pages open (each holds a slot)
@@ -78,6 +164,7 @@ export function createBrowserPool({ launch = launchChromium, idleMs = idleMsFrom
 
   async function close() {
     clearIdle();
+    remoteCache?.clear(); // the cache lives as long as the browser
     const b = await browserPromise?.catch(() => null);
     browserPromise = null;
     await b?.close().catch(() => {});
@@ -117,6 +204,7 @@ export function createBrowserPool({ launch = launchChromium, idleMs = idleMsFrom
         browser = await getBrowser(); // drops the dead one and launches again
         page = await browser.newPage(opts);
       }
+      if (remoteCache && page.route) await page.route(remoteCache.routes, remoteCache.handle).catch((e) => page.close().catch(() => {}).then(() => Promise.reject(e)));
       // browser.newPage owns its context: closing the page closes it; the context also closes when the browser goes away
       const ctx = page.context?.();
       if (ctx?.once) ctx.once("close", free);
