@@ -89,7 +89,9 @@ export async function cacheCdn(context) {
  * (component names are minified). It also collects frame times and long tasks between __perf.start() and __perf.stop() */
 export const HOOK = () => {
   const stats = { commits: 0, rendered: 0, boards: 0, notes: 0, frames: 0, canvas: 0, app: 0 };
-  window.__perf = { stats, reset: () => Object.keys(stats).forEach((k) => (stats[k] = 0)) };
+  /** Renders per board file */
+  const byFile = {};
+  window.__perf = { stats, byFile, reset: () => (Object.keys(stats).forEach((k) => (stats[k] = 0)), Object.keys(byFile).forEach((k) => delete byFile[k])) };
   let seen = new WeakSet();
   const hostOf = (f) => {
     for (let c = f.child, i = 0; c && i < 6; c = c.child, i++) if (c.tag === 5) return c.stateNode;
@@ -106,7 +108,10 @@ export const HOOK = () => {
         stats.rendered++;
         const el = hostOf(f);
         const cls = el?.classList;
-        if (cls?.contains("board")) stats.boards++;
+        if (cls?.contains("board")) {
+          stats.boards++;
+          byFile[el.dataset.file] = (byFile[el.dataset.file] ?? 0) + 1;
+        }
         else if (cls?.contains("note")) stats.notes++;
         else if (el?.tagName === "IFRAME") stats.frames++;
         else if (cls?.contains("canvas")) stats.canvas++;
