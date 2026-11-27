@@ -176,6 +176,7 @@ export function App() {
   const restored = useRef(false);
   const frames = useRef(new Map<string, HTMLIFrameElement>());
   const [frameTick, setFrameTick] = useState(0);
+  const boardNodes = useNodeCache();
   const searchRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
   const ask = useDialog();
@@ -217,7 +218,7 @@ export function App() {
     try {
       const d = await api.board();
       setData(d);
-      setBoard(d.board);
+      setBoard((prev) => keepUnchanged(prev, d.board));
       setError(null);
     } catch (e) {
       setError(String((e as Error).message));
@@ -1458,6 +1459,9 @@ export function App() {
     if (!tagOf(file, key)) return;
     setTagPop((cur) => (cur?.file === file && cur.key === key ? null : { file, key, conflict: null, busy: false }));
   };
+  const openTagRef = useRef(openTag);
+  openTagRef.current = openTag;
+  const openTagStable = useCallback((file: string, key: string) => openTagRef.current(file, key), []);
   // A tag whose popover was opened counts as seen once the popover closes (while open it stays fresh and keeps its outline)
   const openedTag = useRef<{ id: string; steps: string[] } | null>(null);
   useEffect(() => {
@@ -2003,12 +2007,18 @@ export function App() {
             onSize={setCanvasSize}
             renderBoardOverlay={renderOverlay}
             renderBoardTags={(f) => {
-              const lead = occ[f]?.length ? <OccTags list={occ[f]} /> : null;
-              return act.tagsOf(f).length || lead ? <BoardTags file={f} act={act} me={me} onOpen={openTag} lead={lead} /> : null;
+              const tags = act.tagsOf(f);
+              if (!tags.length && !occ[f]?.length) return null;
+              // The same tags as last time give the same element, so the board does not render again
+              const sig = JSON.stringify([occ[f], me, tags.map((t) => [t.key, t.by, t.person, t.outside, t.count, t.newBoard, strings.activity.ago(act.now - t.at), act.stateOf(t)])]);
+              return boardNodes(`tags:${f}`, sig, () => <BoardTags file={f} act={act} me={me} onOpen={openTagStable} lead={occ[f]?.length ? <OccTags list={occ[f]} /> : null} />);
             }}
             renderBoardButtons={(f, compact) => {
               const g = choiceGroup(board, f);
-              return g ? <UseButton file={f} group={g} busy={busyIn(occ, g)} compact={compact} open={useOpen?.file === f} onOpen={() => setUseOpen((c) => (c?.file === f ? null : { file: f, busy: false }))} /> : null;
+              if (!g) return null;
+              const busy = busyIn(occ, g);
+              const open = useOpen?.file === f;
+              return boardNodes(`use:${f}`, JSON.stringify([g, busy, compact, open]), () => <UseButton file={f} group={g} busy={busy} compact={compact} open={open} onOpen={() => setUseOpen((c) => (c?.file === f ? null : { file: f, busy: false }))} />);
             }}
             boardRing={(f) => (writersOn(occ, f).length ? "var(--line-strong)" : null)}
             underLayer={underLayer}
@@ -2640,4 +2650,30 @@ function MinimapOf({ store, ...p }: { store: ViewStore } & Omit<Parameters<typeo
 
 function ShapeDrawerOf({ store, ...p }: { store: ViewStore } & Omit<Parameters<typeof ShapeDrawer>[0], "view">) {
   return <ShapeDrawer {...p} view={useView(store)} />;
+}
+
+/** Elements drawn on boards (tags, Use buttons), kept while their signature is the same: a memoised board then skips rendering */
+function useNodeCache() {
+  const cache = useRef(new Map<string, { sig: string; node: React.ReactNode }>());
+  return useCallback((key: string, sig: string, make: () => React.ReactNode) => {
+    const hit = cache.current.get(key);
+    if (hit && hit.sig === sig) return hit.node;
+    const node = make();
+    cache.current.set(key, { sig, node });
+    return node;
+  }, []);
+}
+
+/** A board read again from the server keeps the objects of the boards, notes and shapes that did not change (all of it when nothing
+ * did), so memoised boards skip rendering after a save or another client's edit */
+export function keepUnchanged(prev: Board | null, next: Board): Board {
+  if (!prev) return next;
+  if (JSON.stringify(prev) === JSON.stringify(next)) return prev;
+  const same = <T,>(a: Record<string, T> | undefined, b: Record<string, T> | undefined) => {
+    if (!a || !b) return b;
+    const out: Record<string, T> = {};
+    for (const [k, v] of Object.entries(b)) out[k] = a[k] !== undefined && JSON.stringify(a[k]) === JSON.stringify(v) ? a[k] : v;
+    return out;
+  };
+  return { ...next, boards: same(prev.boards, next.boards)!, notes: same(prev.notes, next.notes)!, shapes: same(prev.shapes, next.shapes) };
 }
