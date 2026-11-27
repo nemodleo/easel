@@ -203,11 +203,12 @@ for (const n of SIZES) {
       console.error(`${LABEL} n=${n} rate=${rate} run ${i + 1}: open ${r.openBoardsMs}ms, pan30 p95 ${r.pan30?.p95} script ${r.pan30?.scriptMs}, load ${r.load.join("→")}`);
     }
     report.results.push({ n, ...combine(runs), load: runs.map((r) => r.load) });
+    // Saved after every size, so a run that fails later keeps what it measured
+    await fs.mkdir(path.dirname(OUT), { recursive: true });
+    await fs.writeFile(OUT, JSON.stringify(report, null, 2));
   }
   server.stop();
   await fs.copyFile(path.join(dir, "board.json.orig"), path.join(dir, "board.json"));
 }
 await browser.close();
-await fs.mkdir(path.dirname(OUT), { recursive: true });
-await fs.writeFile(OUT, JSON.stringify(report, null, 2));
 console.log(OUT);
