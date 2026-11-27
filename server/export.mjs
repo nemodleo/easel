@@ -9,7 +9,7 @@ import path from "node:path";
 
 import { TOOL_ROOT } from "./args.mjs";
 import { createBoardStore } from "./board.mjs";
-import { browserStatus, newPage as sharedNewPage } from "./browser.mjs";
+import { browserStatus, withPage as sharedWithPage } from "./browser.mjs";
 import { projectName, rootOf, toPosix } from "./fsutil.mjs";
 import { MIME, readBody, safeJoin, sendJson } from "./index.mjs";
 import { git } from "./snapshot.mjs";
@@ -404,23 +404,21 @@ async function serveDesign(dir) {
   return { url: `http://127.0.0.1:${server.address().port}`, close: () => new Promise((r) => server.close(r)) };
 }
 
-async function renderBoards(dir, boards, newPage) {
+async function renderBoards(dir, boards, withPage) {
   const srv = await serveDesign(dir);
   const shots = [];
   try {
     for (const b of boards) {
-      let pg;
       try {
-        pg = await newPage({ viewport: { width: b.w, height: b.h }, deviceScaleFactor: 2 });
+        const png = await withPage({ viewport: { width: b.w, height: b.h }, deviceScaleFactor: 2 }, async (pg) => {
+          await pg.goto(`${srv.url}/screens/${encodePath(b.file)}`, { waitUntil: "load", timeout: 20000 });
+          await pg.waitForTimeout(150);
+          return pg.screenshot({ type: "png" });
+        });
+        shots.push({ ...b, png });
       } catch (e) {
+        if (!e.opening) throw e;
         throw fail(501, `PDF and PNG need a headless Chromium (${String(e.message ?? e).split("\n")[0]}). Run npx playwright install chromium.`);
-      }
-      try {
-        await pg.goto(`${srv.url}/screens/${encodePath(b.file)}`, { waitUntil: "load", timeout: 20000 });
-        await pg.waitForTimeout(150);
-        shots.push({ ...b, png: await pg.screenshot({ type: "png" }) });
-      } finally {
-        await pg.close();
       }
     }
   } finally {
@@ -430,16 +428,13 @@ async function renderBoards(dir, boards, newPage) {
 }
 
 /** One page per board, each page the board's own size (CSS named pages) */
-async function pdfOf(shots, newPage) {
+async function pdfOf(shots, withPage) {
   const css = shots.map((s, i) => `@page b${i}{size:${s.w}px ${s.h}px;margin:0}.b${i}{page:b${i};width:${s.w}px;height:${s.h}px}`).join("");
   const body = shots.map((s, i) => `<div class="b${i}"><img src="data:image/png;base64,${s.png.toString("base64")}" alt=""></div>`).join("");
-  const pg = await newPage();
-  try {
+  return withPage(undefined, async (pg) => {
     await pg.setContent(`<!doctype html><html><head><style>html,body{margin:0}div{break-after:page;overflow:hidden}div:last-child{break-after:auto}img{display:block;width:100%;height:100%}${css}</style></head><body>${body}</body></html>`, { waitUntil: "load" });
-    return await pg.pdf({ preferCSSPageSize: true, printBackground: true });
-  } finally {
-    await pg.close();
-  }
+    return pg.pdf({ preferCSSPageSize: true, printBackground: true });
+  });
 }
 
 /* ---------- Export ---------- */
@@ -449,7 +444,7 @@ async function pdfOf(shots, newPage) {
  * scope: page (id or name) or boards ([file]); neither = everything. dryRun: build in memory and return the size only.
  * Returns { kind, out, outRel, main, mainRel, files, bytes, skipped, deploy }.
  */
-export async function exportDesign({ dir, out, store, format = "web", singleFile = false, page: pageId, boards: boardList, dryRun = false, now = new Date(), newPage = sharedNewPage }) {
+export async function exportDesign({ dir, out, store, format = "web", singleFile = false, page: pageId, boards: boardList, dryRun = false, now = new Date(), withPage = sharedWithPage }) {
   dir = path.resolve(dir);
   if (!existsSync(path.join(dir, "screens"))) throw fail(400, `No screens/ folder in ${dir}`);
   out = path.resolve(out ?? defaultOut(dir));
@@ -466,11 +461,11 @@ export async function exportDesign({ dir, out, store, format = "web", singleFile
   let main;
 
   if (kind === "pdf" || kind === "png") {
-    const status = newPage === sharedNewPage ? await browserStatus() : { ok: true };
+    const status = withPage === sharedWithPage ? await browserStatus() : { ok: true };
     if (!status.ok) throw fail(501, `PDF and PNG are unavailable here. ${status.reason}`);
-    const shots = await renderBoards(dir, scope.boards.map((f) => ({ file: f, w: board.boards[f].w, h: board.boards[f].h })), newPage);
+    const shots = await renderBoards(dir, scope.boards.map((f) => ({ file: f, w: board.boards[f].w, h: board.boards[f].h })), withPage);
     if (kind === "png") for (const s of shots) entries.push({ rel: `png/${s.file.replace(/\.html$/, "").replace(/\//g, "-")}@2x.png`, data: s.png });
-    else entries.push({ rel: `${slug(dir)}-canvas.pdf`, data: await pdfOf(shots, newPage) });
+    else entries.push({ rel: `${slug(dir)}-canvas.pdf`, data: await pdfOf(shots, withPage) });
     main = kind === "pdf" ? entries[0].rel : "png/";
   } else {
     const outInDir = out.startsWith(dir + path.sep) ? toPosix(path.relative(dir, out)) : null;

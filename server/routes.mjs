@@ -4,7 +4,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { activityRoutes } from "./activity.mjs";
-import { closeBrowser, newPage } from "./browser.mjs";
+import { closeBrowser, withPage } from "./browser.mjs";
 import { boardRoutes } from "./boards.mjs";
 import { chatRoutes } from "./chat.mjs";
 import { tokenRoutes } from "./tokens.mjs";
@@ -51,7 +51,7 @@ async function writeComments(ctx, comments) {
 
 /* ---------- Screenshots (when playwright is available) ---------- */
 // The shared Chromium lives in browser.mjs (export uses it too); re-exported here for existing callers
-export { cachedBrowser, closeBrowser, newPage } from "./browser.mjs";
+export { cachedBrowser, closeBrowser, newPage, withPage } from "./browser.mjs";
 
 /** Thumbnail sizes (long side, device px) the client may ask for; anything else snaps to the next one up. Matches THUMB_SIZES in Canvas.tsx */
 const THUMB_PX = [600, 1200, 2400];
@@ -80,8 +80,7 @@ function thumbQueue(job) {
 
 export async function screenshot(ctx, port, file, elPath) {
   const board = (await ctx.store.readBoard()).boards[file];
-  const page = await newPage({ viewport: { width: board?.w ?? 390, height: board?.h ?? 844 }, deviceScaleFactor: 2 });
-  try {
+  return withPage({ viewport: { width: board?.w ?? 390, height: board?.h ?? 844 }, deviceScaleFactor: 2 }, async (page) => {
     await page.goto(`http://127.0.0.1:${port}/screens/${encodeURI(file)}`, { waitUntil: "networkidle" });
     const outDir = path.join(await easelDir(ctx.dir), "screenshots");
     await fs.mkdir(outDir, { recursive: true });
@@ -100,9 +99,7 @@ export async function screenshot(ctx, port, file, elPath) {
       await page.screenshot({ path: out, fullPage: true });
     }
     return out;
-  } finally {
-    await page.close();
-  }
+  });
 }
 
 export const extraRoutes = [
@@ -171,8 +168,7 @@ export const extraRoutes = [
           const w = board?.w ?? 390;
           const h = board?.h ?? 844;
           // Long side ≈ px device pixels, so large boards stay sharp when zoomed out on a 2× display
-          const page = await newPage({ viewport: { width: w, height: h }, deviceScaleFactor: Math.min(2, px / Math.max(w, h)) });
-          try {
+          return withPage({ viewport: { width: w, height: h }, deviceScaleFactor: Math.min(2, px / Math.max(w, h)) }, async (page) => {
             await page.goto(`http://127.0.0.1:${port}/screens/${encodeURI(f)}`, { waitUntil: "load", timeout: 15000 });
             await page.waitForTimeout(150);
             const b = await page.screenshot({ type: "jpeg", quality: 80 });
@@ -180,9 +176,7 @@ export const extraRoutes = [
             for (const n of await fs.readdir(dir)) if (n.startsWith(base + ".") && !n.startsWith(stamp)) await fs.rm(path.join(dir, n), { force: true });
             await fs.writeFile(out, b);
             return b;
-          } finally {
-            await page.close();
-          }
+          });
         });
       }
       res.writeHead(200, { "Content-Type": "image/jpeg", "Content-Length": buf.length, "Cache-Control": "max-age=31536000, immutable" });
