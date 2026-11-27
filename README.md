@@ -188,7 +188,7 @@ npm run design           # http://localhost:4317
 | --- | --- |
 | Pan and zoom | Drag empty space, Space, or Hand (H); trackpad scroll; ⌘+wheel or pinch (4–400%). ⇧1 Fit all, ⇧2 selection, ⌘0 Zoom to 100%, Minimap (M) |
 | Find | Left "Boards" tab: ⌘K search and list; pages (drag to reorder; right-click to rename, delete, or set the launch page) |
-| Boards | Draw with the board tool (B), use a "New board" template (Blank · Watch, Mobile, Tablet and Desktop screens · Document · Email), or drop an HTML file on the canvas. Duplicate ⌘D, rename F2 (renaming the file offers to update references), Delete (confirm, trash, undo), Bring to front / Send to back ⌘] ⌘[ |
+| Boards | Draw with the board tool (B), use a "New board" template (Blank · Watch, Mobile, Tablet and Desktop screens · Document · Email), or drop an HTML file on the canvas. Duplicate ⌘D, rename F2 (renaming the file offers to update references), Delete (confirm, trash, undo), Bring to front / Send to back ⌘] ⌘[, Export PNG (right-click: downloads `<file>.png` at 2×, needs Playwright's Chromium) |
 | Multiple items | Drag on empty space to marquee-select or use Shift; move together (snap guides, Alt to disable); arrow keys 1, Shift 10, Option 100 |
 | Board options | Right "Properties": position, size, Radius, No frame, Show Play button (a dot and an always-visible ▶ on the label; not needed to play), Stretch to window, Open as launch screen, Layout guides (Columns · Rows · Grid, up to 6, ⌃G), Adjustable values |
 | View | Focus view (F, ←→), Play in place on any board (P with one board selected, or right-click; ▶ on boards with Show Play button; Esc stops), Play full screen (right-click). Playing never writes to `board.json`. With no board or several selected, P is the pen |
