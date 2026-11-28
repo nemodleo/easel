@@ -1,4 +1,0 @@
-[mcp_servers.easel]
-command = "npx"
-args = ["-y", "-p", "easel-canvas", "easel-mcp"]
-default_tools_approval_mode = "approve"  # the tools only view, comment and arrange

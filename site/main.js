@@ -1,15 +1,9 @@
-// easel.d-t-it.com: copy buttons, the recording's five moments, and the live canvas (wide screens only) that takes the wheel after a click.
+// easel.d-t-it.com: Copy buttons, the app switch, the three answers as live frames on wide screens, the embedded canvas.
+// The page reads in full without this file: stills stand in for the frames, every app's panel is shown, the share still stays.
 (() => {
-  "use strict";
-  const $ = (s, el = document) => el.querySelector(s);
-  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
-  const WIDE = window.matchMedia("(min-width: 1100px)");
+  const wide = matchMedia("(min-width: 1024px)");
 
-  /* ---------- Copy buttons ---------- */
-  const live = document.createElement("p");
-  live.className = "sr";
-  live.setAttribute("aria-live", "polite");
-  document.body.append(live);
+  /* ---------- Copy ---------- */
   async function copyText(text) {
     try {
       await navigator.clipboard.writeText(text);
@@ -17,186 +11,123 @@
     } catch {
       const ta = Object.assign(document.createElement("textarea"), { value: text });
       ta.setAttribute("readonly", "");
-      ta.style.cssText = "position:fixed;opacity:0";
+      ta.style.cssText = "position:fixed;left:-9999px;top:0";
       document.body.append(ta);
       ta.select();
-      let ok = false;
-      try {
-        ok = document.execCommand("copy");
-      } catch {}
+      const ok = document.execCommand("copy");
       ta.remove();
       return ok;
     }
   }
-  for (const b of document.querySelectorAll("[data-copy]")) {
-    const word = $(".copy-word", b);
-    let timer;
+  const live = Object.assign(document.createElement("div"), { className: "sr" });
+  live.setAttribute("aria-live", "polite");
+  live.style.cssText = "position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)";
+  document.body.append(live);
+  for (const b of document.querySelectorAll(".copy[data-copy]")) {
     b.addEventListener("click", async () => {
       const ok = await copyText(b.dataset.copy);
-      word.textContent = ok ? "✓ Copied" : "Select and copy";
-      b.classList.toggle("is-done", ok);
-      live.textContent = ok ? `Copied: ${b.dataset.copy}` : "Copying is blocked here; select the command and copy it.";
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        word.textContent = "Copy";
-        b.classList.remove("is-done");
-      }, 1800);
+      b.textContent = ok ? "Copied" : "Select it";
+      b.toggleAttribute("data-done", true);
+      live.textContent = ok ? "Copied to the clipboard" : "Could not copy: select the line instead";
+      clearTimeout(b._t);
+      b._t = setTimeout(() => {
+        b.textContent = "Copy";
+        b.removeAttribute("data-done");
+      }, 1600);
     });
   }
 
-  /* ---------- The recording ---------- */
-  const video = $("#run");
-  const pp = $("#playpause");
-  const big = $("#bigplay");
-  const time = $("#time");
-  const bar = $("#progress");
-  const chips = [...document.querySelectorAll("#moments .chip")];
-  const marks = chips.map((c) => Number(c.dataset.t));
-  let userPaused = false;
-  let started = false;
-  const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
-
-  video.removeAttribute("controls");
-  // A phone or narrow window gets the small poster from the HTML; a wide one the sharp one
-  // (only once the player comes near, so the first view does not pay for it)
-  if (window.matchMedia("(min-width: 700px)").matches && "IntersectionObserver" in window) {
-    const near = new IntersectionObserver((es) => {
-      if (!es.some((e) => e.isIntersecting)) return;
-      near.disconnect();
-      const img = new Image();
-      img.onload = () => (video.poster = img.src);
-      img.src = "media/poster-1920.webp";
-    }, { rootMargin: "200px" });
-    near.observe(video);
-  }
-  for (const el of [pp, time, $("#track"), $("#moments")]) el.hidden = false;
-
-  const sync = () => {
-    const t = video.currentTime || 0;
-    const d = video.duration || 36.8;
-    const total = Math.round(d);
-    bar.style.width = `${(t / d) * 100}%`;
-    time.textContent = `${fmt(Math.min(t, total))} / ${fmt(total)}`;
-    let at = 0;
-    marks.forEach((m, i) => {
-      if (t >= m - 0.05) at = i;
-    });
-    chips.forEach((c, i) => c.setAttribute("aria-current", started && i === at ? "true" : "false"));
-  };
-  const state = () => {
-    if (!$("#video-failed").hidden) return;
-    const playing = !video.paused;
-    pp.classList.toggle("is-playing", playing);
-    pp.setAttribute("aria-label", playing ? "Pause the recording" : "Play the recording");
-    big.hidden = playing || started;
-  };
-  const play = () => {
-    started = true;
-    if (video.preload !== "auto") video.preload = "auto";
-    const p = video.play();
-    if (p) p.catch(() => state());
-  };
-  video.addEventListener("timeupdate", sync);
-  video.addEventListener("loadedmetadata", sync);
-  video.addEventListener("play", state);
-  video.addEventListener("pause", state);
-  pp.addEventListener("click", () => {
-    if (video.paused) {
-      userPaused = false;
-      play();
-    } else {
-      userPaused = true;
-      video.pause();
+  /* ---------- App switch (tabs: arrow keys move, Home/End jump) ---------- */
+  const tabs = [...document.querySelectorAll('.seg [role="tab"]')];
+  const select = (tab, focus) => {
+    for (const t of tabs) {
+      const on = t === tab;
+      t.setAttribute("aria-selected", String(on));
+      t.tabIndex = on ? 0 : -1;
+      document.getElementById(t.getAttribute("aria-controls")).hidden = !on;
     }
-  });
-  big.addEventListener("click", () => {
-    userPaused = false;
-    play();
-  });
-  const seek = (t) => {
-    const go = () => {
-      video.currentTime = t;
-      sync();
-    };
-    if (video.readyState >= 1) go();
-    else video.addEventListener("loadedmetadata", go, { once: true });
-    userPaused = false;
-    play();
+    if (focus) tab.focus();
   };
-  chips.forEach((c) => c.addEventListener("click", () => seek(Number(c.dataset.t))));
-  // The proofs' "Watch it at …" links bring the recording into view at that moment
-  for (const b of document.querySelectorAll("button.seek")) {
-    b.addEventListener("click", () => {
-      $("#player").scrollIntoView({ behavior: reduced.matches ? "auto" : "smooth", block: "center" });
-      seek(Number(b.dataset.t));
-      pp.focus({ preventScroll: true });
-    });
+  if (tabs.length) {
+    select(tabs[0], false);
+    for (const t of tabs) {
+      t.addEventListener("click", () => select(t, false));
+      t.addEventListener("keydown", (e) => {
+        const i = tabs.indexOf(t);
+        const to = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
+        if (to === undefined) return;
+        e.preventDefault();
+        select(tabs[(to + tabs.length) % tabs.length], true);
+      });
+    }
   }
-  // Every source failed: the poster stays, and the page says so
-  const sources = [...video.querySelectorAll("source")];
-  const failed = () => {
-    $("#video-failed").hidden = false;
-    for (const el of [big, pp, time, $("#track"), $("#moments")]) el.hidden = true;
-    for (const b of document.querySelectorAll("button.seek")) b.hidden = true;
-  };
-  sources.at(-1).addEventListener("error", failed);
-  video.addEventListener("error", failed);
 
-  // Reduced motion: the poster and a Play button, no autoplay. Otherwise it plays, muted, while it is on screen
-  if (reduced.matches) big.hidden = false;
-  else if ("IntersectionObserver" in window) {
-    new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting && !userPaused) play();
-          else if (!e.isIntersecting && !video.paused) video.pause();
-        }
+  /* ---------- The three answers: the real HTML files, scaled, over their stills ---------- */
+  // Only on wide screens: the still holds the box (no layout shift) and stays if a frame fails to load.
+  function frames() {
+    for (const fig of document.querySelectorAll(".ans[data-src]")) {
+      const box = fig.querySelector(".phone");
+      if (box.querySelector("iframe")) continue;
+      const f = document.createElement("iframe");
+      f.src = fig.dataset.src;
+      f.title = "";
+      f.tabIndex = -1;
+      f.setAttribute("aria-hidden", "true");
+      f.setAttribute("scrolling", "no");
+      f.setAttribute("inert", "");
+      f.setAttribute("sandbox", "allow-same-origin");
+      const fit = () => (f.style.transform = `scale(${box.clientWidth / 390})`);
+      fit();
+      new ResizeObserver(fit).observe(box);
+      f.addEventListener("load", () => {
+        // Show the frame once its fonts are in, so it never flashes a fallback face over the still
+        const fonts = f.contentDocument?.fonts;
+        (fonts ? fonts.ready : Promise.resolve()).then(() => f.classList.add("ready"));
+      });
+      box.append(f);
+    }
+  }
+  if (wide.matches) frames();
+  else wide.addEventListener("change", (e) => e.matches && frames(), { once: true });
+
+  /* ---------- Phone: the dots follow the swipe ---------- */
+  const strip = document.getElementById("answers");
+  const dots = [...document.querySelectorAll(".dots span:not(.label)")];
+  if (strip && dots.length) {
+    strip.addEventListener(
+      "scroll",
+      () => {
+        const max = strip.scrollWidth - strip.clientWidth;
+        const i = max > 0 ? Math.round((strip.scrollLeft / max) * (dots.length - 1)) : 0;
+        dots.forEach((d, j) => d.classList.toggle("on", i === j));
       },
-      { threshold: 0.5 },
-    ).observe(video);
-  }
-  state();
-
-  /* ---------- The live canvas (wide screens only) ---------- */
-  // The export's own embed option does the rest (see the README's Share section): no board list or comments card, the opening view
-  // fitted beside the card, and the wheel left to this page until the canvas is clicked. This script only adds the frame.
-  const stage = $("#stage");
-  let loaded = false;
-  function loadCanvas() {
-    if (loaded || !WIDE.matches) return;
-    loaded = true;
-    stage.insertAdjacentHTML(
-      "beforeend",
-      `<div class="loading" aria-hidden="true"><span class="bar"></span><span class="msg">Loading the canvas…</span></div><p class="sr" role="status" id="canvas-status">Loading the canvas…</p>`,
+      { passive: true },
     );
-    const frame = document.createElement("iframe");
-    frame.title = "View-only Easel canvas of the Intercut demo. Click it to pan and zoom; Esc gives the page back.";
-    const fail = () => {
-      clearTimeout(timer);
-      stage.closest(".top").classList.add("no-canvas");
-      frame.remove();
-      $(".loading", stage)?.remove();
-      stage.insertAdjacentHTML(
-        "beforeend",
-        `<img class="stage-still" src="media/canvas-still.webp" alt="Easel with the Intercut No.14 demo: twelve boards on one canvas" width="1440" height="900">` +
-          `<p class="notice" role="status">The live canvas didn’t load. This is a screenshot of Easel with the same demo; the command in the card runs it.</p>`,
-      );
-    };
-    const timer = setTimeout(fail, 15000);
-    frame.addEventListener("load", () => {
-      clearTimeout(timer);
-      setTimeout(() => $(".loading", stage)?.remove(), 600);
-      $("#canvas-status").textContent = "The canvas has loaded.";
-    });
-    // A missing export would load an error page into the frame, so ask for it first
-    fetch(stage.dataset.src.split("?")[0], { method: "HEAD" })
-      .then((r) => {
-        if (!r.ok) throw new Error(String(r.status));
-        frame.src = stage.dataset.src;
-        stage.append(frame);
-      })
-      .catch(fail);
   }
-  loadCanvas();
-  WIDE.addEventListener?.("change", loadCanvas);
+
+  /* ---------- Share: the real export, framed with ?embed, once it scrolls near ---------- */
+  const embed = document.querySelector(".embed[data-embed]");
+  if (embed && wide.matches && "IntersectionObserver" in window) {
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((e) => e.isIntersecting)) return;
+        io.disconnect();
+        const f = document.createElement("iframe");
+        f.src = embed.dataset.embed;
+        f.title = "The bundled demo canvas, exported by Easel and framed with ?embed";
+        f.addEventListener(
+          "load",
+          () => {
+            f.classList.add("ready");
+            const cap = document.querySelector(".embed-cap");
+            if (cap?.dataset.live) cap.textContent = cap.dataset.live;
+          },
+          { once: true },
+        );
+        embed.append(f);
+      },
+      { rootMargin: "600px 0px" },
+    );
+    io.observe(embed);
+  }
 })();
