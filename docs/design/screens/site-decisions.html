@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1440">
+<meta name="board-size" content="1440x1240">
+<title>Site · decisions</title>
+<link rel="stylesheet" href="../assets/easel.css">
+<style>
+/* easel.d-t-it.com as built on 2026-11-28 (site/): the design moves it keeps and how each was built. Korean notes for the owner. */
+html,body{width:1440px;height:1240px;margin:0;overflow:hidden;background:var(--bg)}
+.ob{box-sizing:border-box;position:relative;color:var(--text);padding:56px 64px;font-family:-apple-system,"Apple SD Gothic Neo",Pretendard,sans-serif;font-size:15px;line-height:1.55}
+.ob *{box-sizing:border-box}
+.ob h1{margin:0;font-size:36px;line-height:1.2;font-weight:700;letter-spacing:-0.02em}
+.ob h3{margin:0 0 4px;font-size:16px;line-height:1.35;font-weight:700}
+.ob p{margin:0}.ob ol,.ob ul{margin:0;padding:0;list-style:none}
+.ob .sub{margin-top:10px;font-size:16px;color:var(--muted);max-width:1000px}
+.ob .muted{color:var(--muted)}
+.ob code{font:13px/1.5 var(--mono);padding:1px 5px;border-radius:4px;background:var(--panel-2);border:1px solid var(--line)}
+.ob .nbox{padding:20px 24px;border-radius:var(--r-lg);background:var(--panel);box-shadow:var(--shadow-1)}
+.ob .num{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--select);color:#fff;font:700 14px/1 -apple-system,sans-serif}
+.ob li.m{display:grid;grid-template-columns:28px 1fr;gap:4px 14px}
+.ob .how{font-size:14px;color:var(--muted);margin-top:2px}
+.ob table{width:100%;border-collapse:collapse}
+.ob th,.ob td{text-align:left;vertical-align:top;padding:10px 12px 10px 0;border-bottom:1px solid var(--line);font-size:14px}
+.ob th{font:13px/18px var(--mono);color:var(--muted);font-weight:400}
+.ob .thumb{position:relative;overflow:hidden;border-radius:8px;box-shadow:var(--frame-rest);background:var(--panel)}
+.ob .thumb iframe{position:absolute;left:0;top:0;border:0;transform-origin:0 0;pointer-events:none}
+</style>
+</head>
+<body>
+<div class="ob">
+<h1>easel.d-t-it.com · 지금 버전 (2026-11-28)</h1>
+<p class="sub">A「세 답 먼저」로 만들고, 3절에 B의 앱 스위치를 넣음. 코드 <code>site/</code>, 빌드 <code>npm run site</code> → <code>site/dist</code>, 이 보드들은 <code>node site/boards.mjs</code>로 빌드 결과에서 그림(스크립트 뺀 실제 마크업이라 세 답·임베드는 스틸로 보임).</p>
+<div style="display:grid;grid-template-columns:760px 488px;gap:48px;margin-top:32px">
+  <ol style="display:grid;gap:14px">
+    <li class="m"><span class="num">1</span><div><h3>결과를 폰 크기 그대로 셋 나란히</h3><p>19 Nov 실제 실행이 쓴 HTML 세 장. 데스크톱(1024px 이상)에선 실제 파일을 크기만 줄인 iframe(조작 안 됨)을 스틸 위에 얹고, 폰·태블릿·JS 꺼짐은 스틸.</p><p class="how">스틸이 자리를 먼저 잡아 레이아웃 이동 없음. 폰 폭은 화면 높이에 맞춰 168~216px.</p></div></li>
+    <li class="m"><span class="num">2</span><div><h3>에이전트 이름 바로 옆에 시간</h3><p>81 s · 43 s · 163 s, 순서는 문장 순서(속도순 정렬 안 함). fork 표시는 run.json의 claim 결과에서.</p></div></li>
+    <li class="m"><span class="num">3</span><div><h3>요청문을 그대로 위에 인용</h3><p><code>site/run/prompt.txt</code>에서 잘라 씀(빌드가 원문을 확인). 전체 프롬프트는 2절 링크. 폰에선 2절 맨 위로.</p></div></li>
+    <li class="m"><span class="num">4</span><div><h3>주황은 첫 화면 Copy 하나, Use this one은 앱 크기 그대로</h3><p>데모 명령 Copy만 accent. 나머지 Copy는 회색. Use this one은 앱 버튼 모양의 표시(누르는 것 아님, 폰에선 숨김).</p></div></li>
+    <li class="m"><span class="num">5</span><div><h3>둘째 화면은 실제 도구 호출 타임라인</h3><p><code>run.json</code> 시각 그대로 빌드 때 그림. Codex CLI는 시각 기록이 없어 순서만 아는 호출은 흐리게(범례에 그 사실을 씀). 폰은 에이전트별 작은 막대 + 각자 남긴 댓글 전문.</p></div></li>
+    <li class="m"><span class="num">6</span><div><h3>"어디서 열리나"는 셋째, 설치는 그 아래 목록</h3><p>설치 줄은 빌드가 main README 표에서 그대로 가져옴(<code>--sparse</code> 포함). Gemini 등은 README connect 절 링크.</p></div></li>
+    <li class="m"><span class="num">7</span><div><h3>B의 앱 스위치를 3절에</h3><p>Claude desktop app · Codex app · Cursor 탭(방향키 이동). 고르면 창 이미지·설명·설치 줄이 바뀜. 창 캡처가 없는 동안은 Easel 캔버스 스크린샷 + "Easel’s canvas on its own, in a browser tab." 캡션. JS 꺼짐이면 세 칸이 다 펼쳐짐.</p><p class="how">캡처 자리: <code>site/media/app-claude.webp</code> · <code>app-codex.webp</code> · <code>app-cursor.webp</code>, 16:10(2560×1600). 넣고 빌드하면 바로 바뀜.</p></div></li>
+  </ol>
+  <div style="display:grid;gap:16px;align-content:start">
+    <div class="thumb" style="width:488px;height:305px"><iframe src="site-page.html" width="1440" height="5948" style="width:1440px;height:5948px;transform:scale(0.3389)" scrolling="no" tabindex="-1"></iframe></div>
+    <p class="muted" style="font-size:14px">첫 화면(34%).</p>
+    <div class="nbox"><table>
+      <tr><th style="width:120px">제안과 다른 점</th><td>공유 절 그림이 Share 팝오버 스틸 대신 실제 내보내기를 <code>?embed</code>로 띄운 것(데스크톱, 가까이 스크롤하면 불러옴). 폰은 스틸.</td></tr>
+      <tr><th>문구</th><td>실행 캡션에 "command-line tools", 2절 끝에 "not the desktop apps". 상표 줄은 중립 한 줄로.</td></tr>
+      <tr><th>숫자</th><td>버전·MCP 도구 수·에이전트 수·Node·라이선스·데모 보드 수는 빌드 때 저장소에서.</td></tr>
+      <tr><th style="border:0">아직 없는 재료</th><td style="border:0">앱 창 캡처 3장. 세 에이전트 실행 녹화는 없어서 넣지 않음.</td></tr>
+    </table></div>
+  </div>
+</div>
+</div>
+</body>
+</html>

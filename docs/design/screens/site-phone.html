@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en" class="js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Site · phone, first screen</title>
+<meta name="board-size" content="390x844">
+<meta name="description" content="Easel is a design canvas that opens beside the AI app you already use. Ask Claude Code, Codex and Cursor for the same screen, see their real HTML side by side, keep the best one.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://easel.d-t-it.com/">
+<meta property="og:title" content="Easel · Ask Claude Code, Codex and Cursor for the same screen">
+<meta property="og:description" content="A design canvas that opens beside the AI app you already use. Every agent you connect draws on it, in real HTML in your repo.">
+<meta property="og:image" content="https://easel.d-t-it.com/media/social-preview.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="../assets/site/style.css">
+<style>
+/* Drawn from the built site (site/dist, 2026-11-28) by site/boards.mjs; edit the site, not this file. */
+html,body{width:390px;height:844px;overflow:hidden}html{scroll-behavior:auto}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="nav wrap">
+  <a class="mark" href="./">Easel</a><span class="ver" title="Version on npm">0.2.3</span>
+  <nav class="links" aria-label="Site">
+    <a class="navlink" href="#install">Install</a>
+    <a class="navlink gh" href="https://github.com/nemodleo/easel">GitHub</a>
+    <a class="navlink" href="https://www.npmjs.com/package/easel-canvas">npm</a>
+    <a class="navlink" href="https://github.com/nemodleo/easel#readme">Docs</a>
+  </nav>
+</header>
+
+<main id="main">
+
+<!-- 1 · The three answers -->
+<section class="hero" aria-labelledby="h-hero">
+  <div class="wrap hero-grid">
+    <div class="hero-text">
+      <h1 class="h1" id="h-hero">Ask Claude Code, Codex and Cursor for the same screen. Keep the best one.</h1>
+      <p class="lead hero-lead">Easel is a design canvas that opens beside the AI app you already use. Every agent you connect draws on it, in real HTML in your repo.</p>
+      <div class="hero-cmd"><div class="cmd"><span class="p" aria-hidden="true">$</span><code>npx easel-canvas@latest --demo</code><button class="copy" type="button" data-copy="npx easel-canvas@latest --demo" data-accent aria-label="Copy the demo line">Copy</button></div>
+        <p class="cmdnote">Try the demo on your computer first. <a class="ulink" href="#install">Install into your agent ↓</a></p>
+      </div>
+    </div>
+    <div class="hero-run">
+      <div class="prompt hero-prompt"><span class="label">Prompt</span><q>Redesign the “Empty day” phone board so that an empty Wednesday feels like an invitation … make the three suggested films the main thing on the screen.</q></div>
+      <div class="answers" id="answers">
+    <figure class="ans" data-src="run/screens/empty-day.html">
+      <figcaption class="who"><b>Claude Code</b><span class="t">81 s</span></figcaption>
+      <div class="phone"><img src="../assets/site/empty-day.webp" width="390" height="844" decoding="async" fetchpriority="high" alt="Claude Code’s version of the Empty day phone screen: Shrank &quot;STILL OPEN"></div>
+      <span class="use" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3L13 4.5"/></svg>Use this one</span>
+    </figure>
+    <figure class="ans" data-src="run/screens/empty-day-codex.html">
+      <figcaption class="who"><b>Codex</b><span class="t">43 s</span><span class="f">fork</span></figcaption>
+      <div class="phone"><img src="../assets/site/empty-day-codex.webp" width="390" height="844" decoding="async" fetchpriority="auto" alt="Codex’s version of the Empty day phone screen: I made the three suggested films the focus with large tappable cards"></div>
+      <span class="use" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3L13 4.5"/></svg>Use this one</span>
+    </figure>
+    <figure class="ans" data-src="run/screens/empty-day-cursor.html">
+      <figcaption class="who"><b>Cursor</b><span class="t">163 s</span><span class="f">fork</span></figcaption>
+      <div class="phone"><img src="../assets/site/empty-day-cursor.webp" width="390" height="844" decoding="async" fetchpriority="auto" alt="Cursor’s version of the Empty day phone screen: Shrunk STILL OPEN"></div>
+      <span class="use" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3L13 4.5"/></svg>Use this one</span>
+    </figure>
+      </div>
+      <div class="dots" aria-hidden="true"><span class="on"></span><span></span><span></span><span class="label">swipe · real run, 19 Nov 2026</span></div>
+      <p class="small run-note">A real run on 19 Nov 2026: one prompt, sent at the same second to the Claude Code, Codex and Cursor command-line tools, all on one canvas. These are the files they wrote. <a class="ulink strong" href="#run">How it happened ↓</a></p>
+    </div>
+  </div>
+</section>
+
+<!-- 2 · How it happened -->
+<section class="sec panel" id="run" aria-labelledby="h-run">
+  <div class="wrap">
+    <div class="head">
+      <p class="kicker">How it happened</p>
+      <h2 class="h2" id="h-run">Same prompt, same second, one canvas.</h2>
+      <p class="lead">Claude Code got the board first. Codex and Cursor asked for it while it was busy, so Easel gave each a fork beside it instead of letting them overwrite it. Every mark below is a real tool call.</p>
+    </div>
+    <div class="prompt run-prompt"><span class="label">Prompt</span><q>Redesign the “Empty day” phone board so that an empty Wednesday feels like an invitation … make the three suggested films the main thing on the screen.</q></div>
+    <div class="tl-wide">
+      <div class="tl" role="img" aria-label="Claude Code: 7 tool calls in 81 s, claimed the board itself. Codex: 11 tool calls in 43 s, claimed the board and was given a fork, empty-day-codex.html. Cursor: 11 tool calls in 163 s, claimed the board and was given a fork, empty-day-cursor.html.">
+  <div class="tl-axis" aria-hidden="true"><div class="tl-ticks"><span style="left:0.000%">0 s</span><span style="left:18.405%">30 s</span><span style="left:36.810%">60 s</span><span style="left:55.215%">90 s</span><span style="left:73.620%">120 s</span><span style="left:92.025%">150 s</span></div></div>
+  <div class="tl-lane" aria-hidden="true"><div class="tl-name"><b>Claude Code</b><span>7 tool calls</span></div><div class="tl-track"><span class="bar" style="width:49.693%"></span><i class="ev" style="left:6.632%" title="read_board · 10.81 s"></i><i class="ev" style="left:6.638%" title="get_tokens · 10.82 s"></i><i class="ev" style="left:7.840%" title="claim_board · 12.78 s"></i><i class="ev w" style="left:39.264%" title="write_board · 64 s"></i><i class="ev" style="left:39.405%" title="check_tokens · 64.23 s"></i><i class="ev" style="left:41.184%" title="check_tokens · 67.13 s"></i><i class="ev" style="left:43.773%" title="add_comment · 71.35 s"></i><span class="tag" style="left:7.840%">claim_board → the board itself</span><span class="tag below" style="left:39.264%">write_board</span><span class="end" style="left:49.693%">81 s</span></div></div>
+  <div class="tl-lane" aria-hidden="true"><div class="tl-name"><b>Codex</b><span>11 tool calls</span></div><div class="tl-track"><span class="bar" style="width:26.380%"></span><i class="ev placed" style="left:8.160%" title="read_board · 13.3 s (order known, time placed)"></i><i class="ev placed" style="left:8.528%" title="get_tokens · 13.9 s (order known, time placed)"></i><i class="ev" style="left:8.896%" title="claim_board · 14.5 s"></i><i class="ev w placed" style="left:12.926%" title="write_board · 21.07 s (order known, time placed)"></i><i class="ev placed" style="left:16.963%" title="check_tokens · 27.65 s (order known, time placed)"></i><i class="ev" style="left:20.994%" title="screenshot · 34.22 s"></i><i class="ev placed" style="left:22.515%" title="read_board · 36.7 s (order known, time placed)"></i><i class="ev w" style="left:24.031%" title="write_board · 39.17 s"></i><i class="ev placed" style="left:24.724%" title="check_tokens · 40.3 s (order known, time placed)"></i><i class="ev" style="left:25.411%" title="screenshot · 41.42 s"></i><i class="ev" style="left:26.319%" title="add_comment · 42.9 s"></i><span class="tag" style="left:8.896%">claim_board → a fork, empty-day-codex.html</span><span class="tag below" style="left:12.926%">write_board ×2, screenshot ×2</span><span class="end" style="left:26.380%">43 s</span></div></div>
+  <div class="tl-lane" aria-hidden="true"><div class="tl-name"><b>Cursor</b><span>11 tool calls</span></div><div class="tl-track"><span class="bar" style="width:100.000%"></span><i class="ev" style="left:9.847%" title="read_board · 16.05 s"></i><i class="ev" style="left:10.104%" title="get_tokens · 16.47 s"></i><i class="ev" style="left:12.791%" title="claim_board · 20.85 s"></i><i class="ev" style="left:13.098%" title="list_boards · 21.35 s"></i><i class="ev w" style="left:46.442%" title="write_board · 75.7 s"></i><i class="ev" style="left:48.859%" title="check_tokens · 79.64 s"></i><i class="ev" style="left:49.110%" title="screenshot · 80.05 s"></i><i class="ev w" style="left:89.215%" title="write_board · 145.42 s"></i><i class="ev" style="left:91.736%" title="check_tokens · 149.53 s"></i><i class="ev" style="left:92.012%" title="screenshot · 149.98 s"></i><i class="ev" style="left:98.718%" title="add_comment · 160.91 s"></i><span class="tag" style="left:12.791%">claim_board → a fork, empty-day-cursor.html</span><span class="tag below" style="left:46.442%">write_board</span><span class="tag below flip" style="left:89.215%">write_board again</span><span class="end" style="left:100.000%">163 s</span></div></div>
+</div>
+      <div class="legend"><span><i class="lg w"></i>write_board</span><span><i class="lg"></i>any other Easel tool call</span><span><i class="lg placed"></i>Codex’s CLI logs no times: these are in the order it made them, spaced between the times its files and comment recorded</span><span>All three started at 05:57:29 UTC. Times are when each process exited.</span></div>
+      <div class="comments"><div><p class="label">Claude Code · its own comment on the board</p><p class="said">“Shrank &quot;STILL OPEN.&quot; to one 56px line (with &quot;open.&quot; in safelight) so the three films become tall 152px cards with 40px titles, a start–end time and a full-height safelight &quot;+ Add&quot; column, and the programme bar now reads as the fallback (&quot;Or open the programme&quot;).”</p></div><div><p class="label">Codex · its own comment on the board</p><p class="said">“I made the three suggested films the focus with large tappable cards, kept the Intercut wordmark and Night tokens, and framed Wednesday as still open.”</p></div><div><p class="label">Cursor · its own comment on the board</p><p class="said">“Shrunk STILL OPEN. into a compact invite strip so the numbered film picks (01–03) own the screen as the way into an empty Wednesday.”</p></div></div>
+    </div>
+    <div class="tl-phone"><div class="pr"><div class="pr-head"><b>Claude Code</b><span class="mono">81 s</span><span class="label">got the board</span></div><div class="mini" aria-hidden="true"><span class="bar" style="width:49.693%"></span><i class="ev" style="left:6.632%"></i><i class="ev" style="left:6.638%"></i><i class="ev" style="left:7.840%"></i><i class="ev w" style="left:39.264%"></i><i class="ev" style="left:39.405%"></i><i class="ev" style="left:41.184%"></i><i class="ev" style="left:43.773%"></i></div><p class="said">“Shrank &quot;STILL OPEN.&quot; to one 56px line (with &quot;open.&quot; in safelight) so the three films become tall 152px cards with 40px titles, a start–end time and a full-height safelight &quot;+ Add&quot; column, and the programme bar now reads as the fallback (&quot;Or open the programme&quot;).”</p></div><div class="pr"><div class="pr-head"><b>Codex</b><span class="mono">43 s</span><span class="label">got a fork</span></div><div class="mini" aria-hidden="true"><span class="bar" style="width:26.380%"></span><i class="ev placed" style="left:8.160%"></i><i class="ev placed" style="left:8.528%"></i><i class="ev" style="left:8.896%"></i><i class="ev w placed" style="left:12.926%"></i><i class="ev placed" style="left:16.963%"></i><i class="ev" style="left:20.994%"></i><i class="ev placed" style="left:22.515%"></i><i class="ev w" style="left:24.031%"></i><i class="ev placed" style="left:24.724%"></i><i class="ev" style="left:25.411%"></i><i class="ev" style="left:26.319%"></i></div><p class="said">“I made the three suggested films the focus with large tappable cards, kept the Intercut wordmark and Night tokens, and framed Wednesday as still open.”</p></div><div class="pr"><div class="pr-head"><b>Cursor</b><span class="mono">163 s</span><span class="label">got a fork</span></div><div class="mini" aria-hidden="true"><span class="bar" style="width:100.000%"></span><i class="ev" style="left:9.847%"></i><i class="ev" style="left:10.104%"></i><i class="ev" style="left:12.791%"></i><i class="ev" style="left:13.098%"></i><i class="ev w" style="left:46.442%"></i><i class="ev" style="left:48.859%"></i><i class="ev" style="left:49.110%"></i><i class="ev w" style="left:89.215%"></i><i class="ev" style="left:91.736%"></i><i class="ev" style="left:92.012%"></i><i class="ev" style="left:98.718%"></i></div><p class="said">“Shrunk STILL OPEN. into a compact invite strip so the numbered film picks (01–03) own the screen as the way into an empty Wednesday.”</p></div><p class="label">0 – 163 s · thick mark: write_board · thin: other tool calls · faint: Codex’s calls with no logged time, in order</p></div>
+    <p class="small run-foot">Run through each agent’s command-line tool on Easel 0.2.1, not the desktop apps. <a class="ulink" href="run/prompt.txt">The full prompt</a> · <a class="ulink" href="run/run.json">the tool-call log</a></p>
+  </div>
+</section>
+
+<!-- 3 · Where it opens -->
+<section class="sec" aria-labelledby="h-where">
+  <div class="wrap">
+    <div class="head">
+      <h2 class="h2" id="h-where">It opens beside the app you already use.</h2>
+      <p class="lead">No new app to learn. The canvas is a local page; your agent reaches it through Easel’s MCP server.</p>
+    </div>
+    <div class="seg" role="tablist" aria-label="Your AI app"><button class="seg-btn" type="button" role="tab" id="tab-claude" aria-controls="app-claude" aria-selected="true" tabindex="0">Claude desktop app</button><button class="seg-btn" type="button" role="tab" id="tab-codex" aria-controls="app-codex" aria-selected="false" tabindex="-1">Codex app</button><button class="seg-btn" type="button" role="tab" id="tab-cursor" aria-controls="app-cursor" aria-selected="false" tabindex="-1">Cursor</button></div>
+    <div class="apps">
+  <div class="app" id="app-claude" role="tabpanel" aria-labelledby="tab-claude" data-app="claude">
+    <figure class="win"><div class="shot r1610"><img src="../assets/site/overview-1600.webp" width="1600" height="1000" decoding="async" alt="Easel’s canvas with the bundled demo’s boards: a brand sheet, phone screens and campaign pieces"></div><figcaption class="cap">Easel’s canvas on its own, in a browser tab.</figcaption></figure>
+    <div class="app-text">
+      <h3 class="h3">Claude desktop app</h3>
+      <p class="body">In the Code tab, ask Claude to open the design canvas. It opens in the app’s Browser pane, next to the conversation.</p>
+      <ol class="steps"><li>Install the plugin for Claude Code.</li><li>Say <i>“open the design canvas”</i>, or run <code>/easel:open</code>.</li></ol>
+      <div class="ev-note">Seen on 17 Nov 2026: the canvas in the Browser pane of the Claude desktop app.</div>
+    </div>
+    <div class="app-cmds"><div class="cmd"><span class="p" aria-hidden="true">$</span><code>claude plugin marketplace add nemodleo/easel --sparse .claude-plugin plugin &amp;&amp; claude plugin install easel@easel</code><button class="copy" type="button" data-copy="claude plugin marketplace add nemodleo/easel --sparse .claude-plugin plugin &amp;&amp; claude plugin install easel@easel" aria-label="Copy the Claude desktop app line">Copy</button></div></div>
+  </div>
+  <div class="app" id="app-codex" role="tabpanel" aria-labelledby="tab-codex" data-app="codex" hidden>
+    <figure class="win"><div class="shot r1610"><img src="../assets/site/overview-1600.webp" width="1600" height="1000" decoding="async" alt="Easel’s canvas with the bundled demo’s boards: a brand sheet, phone screens and campaign pieces"></div><figcaption class="cap">Easel’s canvas on its own, in a browser tab.</figcaption></figure>
+    <div class="app-text">
+      <h3 class="h3">Codex app</h3>
+      <p class="body">The plugin gives Codex Easel’s tools and skill. Keep the canvas open beside the Codex app and ask for a screen.</p>
+      <ol class="steps"><li>Install the plugin for Codex.</li><li>Ask for a screen. It lands on the canvas as an HTML file.</li></ol>
+      <div class="ev-note">From the 19 Nov 2026 run (Codex CLI):<pre>claim_board empty-day.html
+  → empty-day-codex.html · fork
+write_board empty-day-codex.html ×2</pre></div>
+    </div>
+    <div class="app-cmds"><div class="cmd"><span class="p" aria-hidden="true">$</span><code>codex plugin marketplace add nemodleo/easel --sparse .agents/plugins --sparse plugin &amp;&amp; codex plugin add easel@easel</code><button class="copy" type="button" data-copy="codex plugin marketplace add nemodleo/easel --sparse .agents/plugins --sparse plugin &amp;&amp; codex plugin add easel@easel" aria-label="Copy the Codex app line">Copy</button></div></div>
+  </div>
+  <div class="app" id="app-cursor" role="tabpanel" aria-labelledby="tab-cursor" data-app="cursor" hidden>
+    <figure class="win"><div class="shot r1610"><img src="../assets/site/overview-1600.webp" width="1600" height="1000" decoding="async" alt="Easel’s canvas with the bundled demo’s boards: a brand sheet, phone screens and campaign pieces"></div><figcaption class="cap">Easel’s canvas on its own, in a browser tab.</figcaption></figure>
+    <div class="app-text">
+      <h3 class="h3">Cursor</h3>
+      <p class="body">The skill teaches Cursor’s agent the canvas; <code>connect</code> adds the tools. Keep the canvas in a tab beside it.</p>
+      <ol class="steps"><li>Add the skill with the first line below.</li><li>Run the second in your project to add the tools.</li></ol>
+      <div class="ev-note">From the 19 Nov 2026 run (Cursor’s agent CLI):<pre>claim_board empty-day.html
+  → empty-day-cursor.html · fork
+write_board empty-day-cursor.html ×2</pre></div>
+    </div>
+    <div class="app-cmds"><div class="cmd"><span class="p" aria-hidden="true">$</span><code>npx skills add nemodleo/easel --skill easel -a cursor</code><button class="copy" type="button" data-copy="npx skills add nemodleo/easel --skill easel -a cursor" aria-label="Copy the Cursor line">Copy</button></div><div class="cmd light"><span class="p" aria-hidden="true">$</span><code>npx easel-canvas connect</code><button class="copy" type="button" data-copy="npx easel-canvas connect" aria-label="Copy the Cursor connect line">Copy</button></div></div>
+  </div>
+    </div>
+  </div>
+</section>
+
+<!-- 4 · Install -->
+<section class="sec panel" id="install" aria-labelledby="h-install">
+  <div class="wrap">
+    <div class="head">
+      <h2 class="h2" id="h-install">Install it into your agent.</h2>
+      <p class="lead">One line each. Then, in your project, ask for what you want: “open the design canvas”, “make three variants of the sign-up screen”.</p>
+    </div>
+    <div class="install">
+    <div class="irow"><div class="iname"><b>Claude Code</b><p class="small">MCP tools, the <code>easel</code> skill, <code>/easel:open</code> and <code>/easel:variants</code></p></div><div class="cmd"><span class="p" aria-hidden="true">$</span><code>claude plugin marketplace add nemodleo/easel --sparse .claude-plugin plugin &amp;&amp; claude plugin install easel@easel</code><button class="copy" type="button" data-copy="claude plugin marketplace add nemodleo/easel --sparse .claude-plugin plugin &amp;&amp; claude plugin install easel@easel" aria-label="Copy the Claude Code line">Copy</button></div></div>
+    <div class="irow"><div class="iname"><b>Codex</b><p class="small">MCP tools and the <code>easel</code> skill</p></div><div class="cmd"><span class="p" aria-hidden="true">$</span><code>codex plugin marketplace add nemodleo/easel --sparse .agents/plugins --sparse plugin &amp;&amp; codex plugin add easel@easel</code><button class="copy" type="button" data-copy="codex plugin marketplace add nemodleo/easel --sparse .agents/plugins --sparse plugin &amp;&amp; codex plugin add easel@easel" aria-label="Copy the Codex line">Copy</button></div></div>
+    <div class="irow"><div class="iname"><b>Cursor</b><p class="small">The <code>easel</code> skill; add the tools with <code>npx easel-canvas connect</code></p></div><div class="cmd"><span class="p" aria-hidden="true">$</span><code>npx skills add nemodleo/easel --skill easel -a cursor</code><button class="copy" type="button" data-copy="npx skills add nemodleo/easel --skill easel -a cursor" aria-label="Copy the Cursor line">Copy</button></div></div>
+    <div class="irow"><div class="iname"><b>No agent yet</b><p class="small">The bundled demo, 12 boards</p></div><div class="cmd light"><span class="p" aria-hidden="true">$</span><code>npx easel-canvas@latest --demo</code><button class="copy" type="button" data-copy="npx easel-canvas@latest --demo" aria-label="Copy the demo line">Copy</button></div></div>
+    </div>
+    <p class="small more">Gemini CLI and any other MCP client: <a class="ulink" href="https://github.com/nemodleo/easel#connect-your-ai-agent">connect your AI agent</a> in the README.</p>
+  </div>
+</section>
+
+<!-- 5 · On the canvas -->
+<section class="sec panel" aria-labelledby="h-canvas">
+  <div class="wrap">
+    <div class="head">
+      <h2 class="h2" id="h-canvas">It is your canvas too.</h2>
+      <p class="lead">The agents write the boards. You can change any of them by hand, and nothing anyone does is lost.</p>
+    </div>
+    <div class="grid3">
+      <figure><div class="shot"><img src="../assets/site/select-960.webp" width="960" height="600" decoding="async" alt="An element selected on a phone board, with Easel’s element toolbar above it"></div><figcaption class="cap"><b>Edit it yourself.</b> Click any element to retype or restyle it. Only that part of the HTML file changes.</figcaption></figure>
+      <figure><div class="shot"><img src="../assets/site/ai-chat-960.webp" width="960" height="600" decoding="async" alt="An agent run in Easel’s AI tab, with its tool calls and Undo this run"></div><figcaption class="cap"><b>Undo a whole run.</b> Every change is tagged with who made it, and an agent’s whole run undoes in one step.</figcaption></figure>
+      <figure><div class="shot"><img src="../assets/site/agents-960.webp" width="960" height="600" decoding="async" alt="Claude Code editing a board while Codex works on a fork beside it"></div><figcaption class="cap"><b>Nothing gets overwritten.</b> One writer per board. A second agent gets a fork beside it; Use this one keeps the version you want.</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<!-- 6 · Share and embed -->
+<section class="sec" aria-labelledby="h-share">
+  <div class="wrap share">
+    <div>
+      <h2 class="h2" id="h-share">Show it to anyone.</h2>
+      <p class="lead">Share writes a view-only copy of the canvas that any static host can serve, or one .html file to attach to a PR. Add <code class="inl">?embed</code> to put it inside your own page.</p>
+      <pre class="code"><span class="c">$</span> npx easel-canvas export
+
+<span class="c">&lt;!-- in your docs or PR preview --&gt;</span>
+&lt;iframe src="easel-export/index.html?embed"
+        title="Design canvas"&gt;&lt;/iframe&gt;</pre>
+      <p class="small"><a class="ulink" href="https://github.com/nemodleo/easel#share-a-view-only-copy">Share a view-only copy</a>: every option in the README.</p>
+    </div>
+    <figure class="embed-fig">
+      <div class="embed">
+        <img src="../assets/site/share-960.webp" width="960" height="600" decoding="async" alt="Easel’s Share popover with Web folder, One .html file, PDF and PNG">
+      </div>
+      <figcaption class="cap embed-cap" data-live="This frame is the bundled demo, exported and framed with ?embed. Click it, then drag to look around.">Share in Easel: whole canvas, a page or the selected boards; a web folder, one .html file, PDF or PNG.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- 7 · Open source -->
+<section class="sec panel" aria-labelledby="h-oss">
+  <div class="wrap">
+    <div class="head row-head">
+      <h2 class="h2" id="h-oss">Open source, on your machine.</h2>
+      <a class="btn ink" href="https://github.com/nemodleo/easel">nemodleo/easel on GitHub</a>
+    </div>
+    <div class="facts">
+      <div class="fact"><b>MIT licence</b><span>Code, demo and the plugin.</span></div>
+      <div class="fact"><b>Runs on 127.0.0.1</b><span>No account, no cloud. Boards are HTML files in your repo.</span></div>
+      <div class="fact"><b>22 MCP tools</b><span>See, read your selection, comment, arrange, check tokens.</span></div>
+      <div class="fact"><b>Four agents</b><span>Claude Code, Codex, Cursor and Gemini CLI.</span></div>
+      <div class="fact"><b>English and <span lang="ko">한국어</span></b><span>The UI follows your browser’s language.</span></div>
+      <div class="fact"><b>Node 20 or later</b><span>npx easel-canvas, or pin it as a dev dependency.</span></div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-row"><b class="foot-mark">Easel</b><span class="mono">0.2.3</span><span>MIT · © 2026 Hyun Park · <a href="https://d-t-it.com">d-t-it.com</a></span>
+      <nav class="foot-links" aria-label="Elsewhere"><a href="https://github.com/nemodleo/easel">GitHub</a><a href="https://www.npmjs.com/package/easel-canvas">npm</a><a href="https://github.com/nemodleo/easel#readme">README</a><a href="https://github.com/nemodleo/easel/issues">Report an issue</a></nav></div>
+    <p class="tm">Product names belong to their owners. Easel is an independent project and is not affiliated with them.</p>
+  </div>
+</footer>
+</body>
+</html>

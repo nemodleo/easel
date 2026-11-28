@@ -30,7 +30,8 @@
     "design:css": "node tools/mkcss.mjs",
     "verify:agents": "node tools/verify-agents.mjs",
     "perf": "node tools/perf/measure.mjs",
-    "perf:phases": "node tools/perf/phases.mjs"
+    "perf:phases": "node tools/perf/phases.mjs",
+    "site": "node site/build.mjs"
   },
   "engines": {
     "node": ">=20"

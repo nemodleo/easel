@@ -1,0 +1,3 @@
+codex exit 0 43s
+claude exit 0 81s
+cursor exit 0 163s

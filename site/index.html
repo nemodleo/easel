@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Easel · Ask Claude Code, Codex and Cursor for the same screen</title>
+<meta name="description" content="Easel is a design canvas that opens beside the AI app you already use. Ask Claude Code, Codex and Cursor for the same screen, see their real HTML side by side, keep the best one.">
+<meta name="color-scheme" content="light dark">
+<link rel="canonical" href="{{ORIGIN}}">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta property="og:type" content="website">
+<meta property="og:url" content="{{ORIGIN}}">
+<meta property="og:title" content="Easel · Ask Claude Code, Codex and Cursor for the same screen">
+<meta property="og:description" content="A design canvas that opens beside the AI app you already use. Every agent you connect draws on it, in real HTML in your repo.">
+<meta property="og:image" content="{{ORIGIN}}media/social-preview.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="style.css">
+<script>document.documentElement.classList.add("js")</script>
+<script src="main.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="nav wrap">
+  <a class="mark" href="./">Easel</a><span class="ver" title="Version on npm">{{VERSION}}</span>
+  <nav class="links" aria-label="Site">
+    <a class="navlink" href="#install">Install</a>
+    <a class="navlink gh" href="{{GH}}">GitHub</a>
+    <a class="navlink" href="{{NPM}}">npm</a>
+    <a class="navlink" href="{{DOC_README}}">Docs</a>
+  </nav>
+</header>
+
+<main id="main">
+
+<!-- 1 · The three answers -->
+<section class="hero" aria-labelledby="h-hero">
+  <div class="wrap hero-grid">
+    <div class="hero-text">
+      <h1 class="h1" id="h-hero">Ask Claude Code, Codex and Cursor for the same screen. Keep the best one.</h1>
+      <p class="lead hero-lead">Easel is a design canvas that opens beside the AI app you already use. Every agent you connect draws on it, in real HTML in your repo.</p>
+      <div class="hero-cmd">{{DEMO_CMD_BLOCK}}
+        <p class="cmdnote">Try the demo on your computer first. <a class="ulink" href="#install">Install into your agent ↓</a></p>
+      </div>
+    </div>
+    <div class="hero-run">
+      <div class="prompt hero-prompt"><span class="label">Prompt</span><q>{{ASK}}</q></div>
+      <div class="answers" id="answers">
+    {{ANSWERS}}
+      </div>
+      <div class="dots" aria-hidden="true"><span class="on"></span><span></span><span></span><span class="label">swipe · real run, {{RUN_DATE}}</span></div>
+      <p class="small run-note">A real run on {{RUN_DATE}}: one prompt, sent at the same second to the Claude Code, Codex and Cursor command-line tools, all on one canvas. These are the files they wrote. <a class="ulink strong" href="#run">How it happened ↓</a></p>
+    </div>
+  </div>
+</section>
+
+<!-- 2 · How it happened -->
+<section class="sec panel" id="run" aria-labelledby="h-run">
+  <div class="wrap">
+    <div class="head">
+      <p class="kicker">How it happened</p>
+      <h2 class="h2" id="h-run">Same prompt, same second, one canvas.</h2>
+      <p class="lead">Claude Code got the board first. Codex and Cursor asked for it while it was busy, so Easel gave each a fork beside it instead of letting them overwrite it. Every mark below is a real tool call.</p>
+    </div>
+    <div class="prompt run-prompt"><span class="label">Prompt</span><q>{{ASK}}</q></div>
+    <div class="tl-wide">
+      {{TIMELINE}}
+      <div class="legend">{{LEGEND}}<span>All three started at {{RUN_T0}} UTC. Times are when each process exited.</span></div>
+      <div class="comments">{{COMMENTS}}</div>
+    </div>
+    <div class="tl-phone">{{PHONE_RUN}}<p class="label">0 – {{END}} s · thick mark: write_board · thin: other tool calls · faint: Codex’s calls with no logged time, in order</p></div>
+    <p class="small run-foot">Run through each agent’s command-line tool on Easel {{RUN_EASEL}}, not the desktop apps. <a class="ulink" href="run/prompt.txt">The full prompt</a> · <a class="ulink" href="run/run.json">the tool-call log</a></p>
+  </div>
+</section>
+
+<!-- 3 · Where it opens -->
+<section class="sec" aria-labelledby="h-where">
+  <div class="wrap">
+    <div class="head">
+      <h2 class="h2" id="h-where">It opens beside the app you already use.</h2>
+      <p class="lead">No new app to learn. The canvas is a local page; your agent reaches it through Easel’s MCP server.</p>
+    </div>
+    <div class="seg" role="tablist" aria-label="Your AI app">{{APP_TABS}}</div>
+    <div class="apps">
+  {{APP_PANELS}}
+    </div>
+  </div>
+</section>
+
+<!-- 4 · Install -->
+<section class="sec panel" id="install" aria-labelledby="h-install">
+  <div class="wrap">
+    <div class="head">
+      <h2 class="h2" id="h-install">Install it into your agent.</h2>
+      <p class="lead">One line each. Then, in your project, ask for what you want: “open the design canvas”, “make three variants of the sign-up screen”.</p>
+    </div>
+    <div class="install">
+    {{INSTALL_ROWS}}
+    <div class="irow"><div class="iname"><b>No agent yet</b><p class="small">The bundled demo, {{DEMO_BOARDS}} boards</p></div>{{DEMO_CMD_LIGHT}}</div>
+    </div>
+    <p class="small more">Gemini CLI and any other MCP client: <a class="ulink" href="{{DOC_CONNECT}}">connect your AI agent</a> in the README.</p>
+  </div>
+</section>
+
+<!-- 5 · On the canvas -->
+<section class="sec panel" aria-labelledby="h-canvas">
+  <div class="wrap">
+    <div class="head">
+      <h2 class="h2" id="h-canvas">It is your canvas too.</h2>
+      <p class="lead">The agents write the boards. You can change any of them by hand, and nothing anyone does is lost.</p>
+    </div>
+    <div class="grid3">
+      <figure><div class="shot"><img src="media/select-960.webp" width="960" height="600" loading="lazy" decoding="async" alt="An element selected on a phone board, with Easel’s element toolbar above it"></div><figcaption class="cap"><b>Edit it yourself.</b> Click any element to retype or restyle it. Only that part of the HTML file changes.</figcaption></figure>
+      <figure><div class="shot"><img src="media/ai-chat-960.webp" width="960" height="600" loading="lazy" decoding="async" alt="An agent run in Easel’s AI tab, with its tool calls and Undo this run"></div><figcaption class="cap"><b>Undo a whole run.</b> Every change is tagged with who made it, and an agent’s whole run undoes in one step.</figcaption></figure>
+      <figure><div class="shot"><img src="media/agents-960.webp" width="960" height="600" loading="lazy" decoding="async" alt="Claude Code editing a board while Codex works on a fork beside it"></div><figcaption class="cap"><b>Nothing gets overwritten.</b> One writer per board. A second agent gets a fork beside it; Use this one keeps the version you want.</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<!-- 6 · Share and embed -->
+<section class="sec" aria-labelledby="h-share">
+  <div class="wrap share">
+    <div>
+      <h2 class="h2" id="h-share">Show it to anyone.</h2>
+      <p class="lead">Share writes a view-only copy of the canvas that any static host can serve, or one .html file to attach to a PR. Add <code class="inl">?embed</code> to put it inside your own page.</p>
+      <pre class="code"><span class="c">$</span> {{EXPORT_CMD}}
+
+<span class="c">&lt;!-- in your docs or PR preview --&gt;</span>
+&lt;iframe src="easel-export/index.html?embed"
+        title="Design canvas"&gt;&lt;/iframe&gt;</pre>
+      <p class="small"><a class="ulink" href="{{DOC_SHARE}}">Share a view-only copy</a>: every option in the README.</p>
+    </div>
+    <figure class="embed-fig">
+      <div class="embed" data-embed="{{EMBED_SRC}}">
+        <img src="media/share-960.webp" width="960" height="600" loading="lazy" decoding="async" alt="Easel’s Share popover with Web folder, One .html file, PDF and PNG">
+      </div>
+      <figcaption class="cap embed-cap" data-live="This frame is the bundled demo, exported and framed with ?embed. Click it, then drag to look around.">Share in Easel: whole canvas, a page or the selected boards; a web folder, one .html file, PDF or PNG.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- 7 · Open source -->
+<section class="sec panel" aria-labelledby="h-oss">
+  <div class="wrap">
+    <div class="head row-head">
+      <h2 class="h2" id="h-oss">Open source, on your machine.</h2>
+      <a class="btn ink" href="{{GH}}">{{REPO}} on GitHub</a>
+    </div>
+    <div class="facts">
+      <div class="fact"><b>{{LICENCE}} licence</b><span>Code, demo and the plugin.</span></div>
+      <div class="fact"><b>Runs on 127.0.0.1</b><span>No account, no cloud. Boards are HTML files in your repo.</span></div>
+      <div class="fact"><b>{{TOOLS}} MCP tools</b><span>See, read your selection, comment, arrange, check tokens.</span></div>
+      <div class="fact"><b>{{AGENT_COUNT}} agents</b><span>{{AGENT_LIST}}.</span></div>
+      <div class="fact"><b>English and <span lang="ko">한국어</span></b><span>The UI follows your browser’s language.</span></div>
+      <div class="fact"><b>Node {{NODE}} or later</b><span>npx easel-canvas, or pin it as a dev dependency.</span></div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-row"><b class="foot-mark">Easel</b><span class="mono">{{VERSION}}</span><span>{{LICENCE}} · © {{HOLDER}} · <a href="https://d-t-it.com">d-t-it.com</a></span>
+      <nav class="foot-links" aria-label="Elsewhere"><a href="{{GH}}">GitHub</a><a href="{{NPM}}">npm</a><a href="{{DOC_README}}">README</a><a href="{{ISSUES}}">Report an issue</a></nav></div>
+    <p class="tm">Product names belong to their owners. Easel is an independent project and is not affiliated with them.</p>
+  </div>
+</footer>
+</body>
+</html>

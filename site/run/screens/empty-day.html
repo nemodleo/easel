@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="board-size" content="390x844">
+<title>State: empty day</title>
+<style>
+/* ===== Intercut base: the same block opens every board ===== */
+@font-face{font-family:"Anton";src:url("../assets/fonts/anton-latin-400.woff2") format("woff2");font-display:block}
+@font-face{font-family:"JetBrains Mono";src:url("../assets/fonts/jetbrains-mono-latin-400.woff2") format("woff2");font-display:block}
+:root{
+  /* colour tokens: tokens.json, theme Night */
+  --field:#0A0A0A; --ink:#FFFFFF; --muted:#9C9C9C; --rule:#333333; --safelight:#FF3D14; --on-safelight:#0A0A0A; --signal:#FF3D14;
+  /* faces: swap them here, then retune the two numbers below */
+  --display:"Anton","HelveticaNeue-CondensedBlack",Impact,sans-serif;
+  --mono:"JetBrains Mono",Menlo,monospace;
+  --cap:.86;           /* cap height ÷ font size: a display line box is exactly its caps */
+  --cap-nudge:.0065em; /* moves the caps down onto the box, so cap top = box top */
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--field);color:var(--ink)}
+body{font-family:var(--mono);font-size:16px;line-height:24px;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+/* display: Anton caps in a box exactly cap-high, so stacked lines butt and the waist sits at 50% */
+.display{display:block;font-family:var(--display);font-weight:400;text-transform:uppercase;line-height:var(--cap);translate:0 var(--cap-nudge);white-space:nowrap}
+/* small print: JetBrains Mono caps */
+.mono{font-family:var(--mono);font-size:12px;line-height:16px;letter-spacing:.04em;text-transform:uppercase}
+/* the splice: one live text node cut at the cap waist by an SVG filter (the filters sit in .defs at the end of body) */
+.splice{filter:url(#splice)}
+.cut-red{color:var(--safelight)} /* the wordmark under 56px: the cut becomes colour */
+.slit{flood-color:var(--safelight)}
+.defs{position:absolute;width:0;height:0;overflow:hidden}
+/* ===== end of base ===== */
+/* ===== State: an empty day. Wednesday is open; the three films are the way in ===== */
+.screen{width:390px;height:844px;position:relative;overflow:clip}
+.status{height:44px;display:flex;justify-content:space-between;align-items:center;padding:0 24px}
+.status .time{font-family:var(--display);font-size:20px;line-height:20px}
+.topbar{height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 0 0 16px;border-bottom:1px solid var(--rule)}
+.wordmark{display:flex;align-items:center;height:55px}
+.wordmark .display{font-size:28px}
+.topbar .when{margin-left:auto;padding-right:16px;text-align:right;color:var(--muted)}
+.days{display:flex;height:48px;border-bottom:1px solid var(--rule);width:max-content;translate:-192px 0}
+.day-cell{width:48px;height:47px;border-right:1px solid var(--rule);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.day-cell .display{font-size:20px}
+.day-cell .mono{color:var(--muted)}
+.day-cell.past{color:var(--muted)}
+.day-cell.today{background:var(--safelight);color:var(--on-safelight)}
+.day-cell.today .mono{color:var(--on-safelight)}
+.day-cell.open{box-shadow:inset 0 0 0 4px var(--ink)}
+/* the line shrinks to one row so the films get the screen */
+.open-head{padding:16px 16px 16px;height:88px}
+.open-head .label{display:block;color:var(--muted)}
+.open-head .line{display:flex;gap:12px;margin-top:8px}
+.open-head .display{font-size:56px}
+.open-head .display + .display{color:var(--safelight)}
+.picks-head{display:flex;justify-content:space-between;height:36px;padding:12px 16px 8px;color:var(--muted);border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.picks-head .now{color:var(--ink)}
+/* a film card: when on top, the title big at the foot, add down the whole right edge */
+.film{height:152px;display:grid;grid-template-columns:1fr 64px;border-bottom:1px solid var(--rule)}
+.film .body{display:flex;flex-direction:column;justify-content:space-between;padding:16px}
+.film .top{display:flex;justify-content:space-between}
+.film .top .n{color:var(--muted)}
+.film .title{font-size:40px;white-space:normal}
+.film .meta{display:block;margin-top:8px;color:var(--muted)}
+.film .add{height:151px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border-left:1px solid var(--rule)}
+.film .add .display{font-size:40px;color:var(--safelight)}
+.film .add .mono{color:var(--muted)}
+.programme-bar{position:absolute;left:0;right:0;bottom:56px;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:var(--ink);color:var(--field)}
+.programme-bar .display{font-size:28px}
+.tabs{position:absolute;left:0;right:0;bottom:0;height:56px;display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--rule);background:var(--field)}
+.tab{display:flex;align-items:center;justify-content:center;color:var(--muted);position:relative}
+.tab.on{color:var(--ink)}
+.tab.on::before{content:"";position:absolute;left:0;right:0;top:-1px;height:4px;background:var(--safelight)}
+</style>
+</head>
+<body>
+<main class="screen">
+  <div class="status"><span class="time">18:55</span><span class="mono">5G · 82%</span></div>
+
+  <header class="topbar">
+    <a class="wordmark" href="home.html" aria-label="Intercut, my cut"><span class="display">Inter</span><span class="display cut-red">Cut</span></a>
+    <span class="when mono">Day 7 of 11<br>Wed 10.03</span>
+  </header>
+
+  <nav class="days" aria-label="Festival days">
+    <a class="day-cell past" href="home.html"><span class="display">04</span><span class="mono">Th</span></a>
+    <a class="day-cell past" href="home.html"><span class="display">05</span><span class="mono">Fr</span></a>
+    <a class="day-cell today" href="home.html"><span class="display">06</span><span class="mono">Sa</span></a>
+    <a class="day-cell" href="programme.html"><span class="display">07</span><span class="mono">Su</span></a>
+    <a class="day-cell" href="programme.html"><span class="display">08</span><span class="mono">Mo</span></a>
+    <a class="day-cell" href="programme.html"><span class="display">09</span><span class="mono">Tu</span></a>
+    <a class="day-cell open" href="empty-day.html"><span class="display">10</span><span class="mono">We</span></a>
+    <a class="day-cell" href="programme.html"><span class="display">11</span><span class="mono">Th</span></a>
+    <a class="day-cell" href="programme.html"><span class="display">12</span><span class="mono">Fr</span></a>
+    <a class="day-cell" href="programme.html"><span class="display">13</span><span class="mono">Sa</span></a>
+    <a class="day-cell" href="programme.html"><span class="display">14</span><span class="mono">Su</span></a>
+  </nav>
+
+  <header class="open-head">
+    <span class="label mono">Your cut · Wed 10.03 · nothing cut yet</span>
+    <h1 class="line"><span class="display">Still</span><span class="display">open.</span></h1>
+  </header>
+
+  <section class="picks" aria-label="Three films for Wednesday">
+    <h2 class="picks-head mono"><span class="now">Start here</span><span>Afternoon to late</span></h2>
+
+    <article class="film">
+      <a class="body" href="film.html">
+        <span class="top mono"><span>16:00–17:40</span><span class="n">01 / 03</span></span>
+        <span><span class="display title">Velvet Ration</span><span class="meta mono">C5 · 100 min · Competition</span></span>
+      </a>
+      <a class="add" href="home.html" aria-label="Add Velvet Ration to your cut"><span class="display">+</span><span class="mono">Add</span></a>
+    </article>
+
+    <article class="film">
+      <a class="body" href="film.html">
+        <span class="top mono"><span>19:45–21:23</span><span class="n">02 / 03</span></span>
+        <span><span class="display title">Hollow Bay</span><span class="meta mono">C1 · 98 min · First films</span></span>
+      </a>
+      <a class="add" href="home.html" aria-label="Add Hollow Bay to your cut"><span class="display">+</span><span class="mono">Add</span></a>
+    </article>
+
+    <article class="film">
+      <a class="body" href="film.html">
+        <span class="top mono"><span>22:45–00:13</span><span class="n">03 / 03</span></span>
+        <span><span class="display title">Wide Awake Tuesday</span><span class="meta mono">C6 · 88 min · Midnight</span></span>
+      </a>
+      <a class="add" href="home.html" aria-label="Add Wide Awake Tuesday to your cut"><span class="display">+</span><span class="mono">Add</span></a>
+    </article>
+  </section>
+
+  <a class="programme-bar" href="programme.html"><span class="display">Or open the programme</span><span class="mono">29 that day</span></a>
+
+  <nav class="tabs mono" aria-label="Sections">
+    <a class="tab" href="programme.html">Programme</a>
+    <a class="tab on" href="home.html">My cut</a>
+    <a class="tab" href="ticket.html">Tickets</a>
+  </nav>
+</main>
+
+</body>
+</html>
