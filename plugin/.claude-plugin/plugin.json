@@ -1,7 +1,7 @@
 {
   "name": "easel",
   "displayName": "Easel",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "Design screens as plain HTML on a live canvas: the Easel MCP tools, a skill that knows the loop (claim, write, check tokens, screenshot, comment), /easel:open and /easel:variants",
   "author": {
     "name": "Hyun Park",
