@@ -1,0 +1,13 @@
+{
+  "name": "easel",
+  "description": "Easel, an HTML design canvas for AI agents",
+  "owner": { "name": "Hyun Park", "url": "https://github.com/nemodleo" },
+  "plugins": [
+    {
+      "name": "easel",
+      "source": "./plugin",
+      "description": "Design screens as plain HTML on a live canvas: the Easel MCP tools, a skill that knows the loop, /easel:open and /easel:variants",
+      "category": "design"
+    }
+  ]
+}

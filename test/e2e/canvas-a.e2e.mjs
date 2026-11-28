@@ -117,3 +117,39 @@ test("440 wide: tools and shapes fold (Shapes stays), the inspector opens as a s
   await page.locator(".oc-right.is-rest").waitFor();
   assert.deepEqual(env.errors, []);
 });
+
+test("a reload keeps this tab's own view, not the one another tab saved last", async () => {
+  const { url } = env;
+  // Two tabs of one browser profile: they share localStorage, each has its own sessionStorage
+  const ctx = await env.page.context().browser().newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await ctx.newPage();
+  await page.goto(url);
+  await page.waitForSelector(".board");
+  await wait(800);
+  const transform = () => page.evaluate(() => document.querySelector(".world").style.transform);
+  const mine = await transform();
+  // A second tab on the same canvas pans far away; its view is the last one written to the shared storage
+  const other = await ctx.newPage();
+  await other.setViewportSize({ width: 800, height: 600 });
+  await other.goto(url);
+  await other.waitForSelector(".board");
+  await other.mouse.move(400, 300);
+  for (let i = 0; i < 10; i++) await other.mouse.wheel(0, 2000);
+  await wait(800);
+  const theirs = await other.evaluate(() => document.querySelector(".world").style.transform);
+  assert.notEqual(theirs, mine);
+  await other.close();
+  // A new tab still opens where the canvas was left last
+  const fresh = await ctx.newPage();
+  await fresh.setViewportSize({ width: 800, height: 600 });
+  await fresh.goto(url);
+  await fresh.waitForSelector(".board");
+  await wait(500);
+  assert.equal(await fresh.evaluate(() => document.querySelector(".world").style.transform), theirs, "a new tab opens on the last saved view");
+  await fresh.close();
+  await page.reload();
+  await page.waitForSelector(".board");
+  await wait(500);
+  assert.equal(await transform(), mine, "the reloaded tab is where it was");
+  await ctx.close();
+});

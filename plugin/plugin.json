@@ -1,0 +1,29 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "easel",
+  "version": "0.2.3",
+  "description": "Design screens as plain HTML on a live canvas: the Easel MCP tools and a skill that knows the loop (claim, write, check tokens, screenshot, comment)",
+  "author": { "name": "Hyun Park", "url": "https://github.com/nemodleo" },
+  "homepage": "https://github.com/nemodleo/easel#readme",
+  "repository": "https://github.com/nemodleo/easel",
+  "license": "MIT",
+  "keywords": ["design", "canvas", "html", "mcp", "ui", "prototyping"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Easel",
+        "shortDescription": "A design canvas for your HTML screens",
+        "longDescription": "Easel shows the screens/*.html files in your repo as boards on a live canvas. The plugin adds the Easel MCP tools and a skill for designing, comparing and reviewing screens with the person watching the canvas.",
+        "developerName": "Hyun Park",
+        "category": "Design",
+        "capabilities": ["Interactive", "Write"],
+        "websiteURL": "https://github.com/nemodleo/easel",
+        "defaultPrompt": [
+          "Open the design canvas for this project",
+          "Make three variants of the sign-up screen side by side",
+          "Fix what I selected on the canvas"
+        ]
+      }
+    }
+  }
+}

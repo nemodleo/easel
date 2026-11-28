@@ -152,6 +152,8 @@ kbd {
 .board:hover .board-file, .board.selected .board-file, .board.editing .board-file { opacity: 1; }
 .board-btns { display: flex; gap: 2px; margin-left: auto; flex: none; opacity: 0; transition: opacity 80ms; }
 .board:hover .board-btns, .board.selected .board-btns, .board.editing .board-btns { opacity: 1; }
+/* Show Play button (is_interactive): the ▶ stays visible at rest; a playing board keeps its Stop */
+.board-btns:has(> .board-play.always), .board.playing .board-btns { opacity: 1; }
 .board-btns .icon-btn { background: var(--panel); border-color: var(--line); }
 /* The interactive-board dot (the agent picker further down has a .dot of its own) */
 .lab-row > .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; }
@@ -365,6 +367,7 @@ button.danger { color: var(--warn); }
 @keyframes ph-slide { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
 @media (prefers-reduced-motion: reduce) { .ph-bar::after { animation: none; width: 100%; opacity: 0.4; } }
 .board.playing .board-frame { box-shadow: 0 0 0 4px var(--ok); }
+.export-badge { position: absolute; right: 8px; top: 8px; transform-origin: 100% 0; background: var(--panel); color: var(--text); box-shadow: var(--float); font-size: 12px; font-weight: 700; padding: 4px 8px; border-radius: 12px; pointer-events: none; }
 .playing-badge { position: absolute; right: 8px; top: 8px; transform-origin: 100% 0; background: var(--ok); color: #fff; font-size: 12px; font-weight: 700; padding: 4px 8px; border-radius: 12px; pointer-events: none; }
 .layer-tree:focus-visible { outline: 2px solid var(--select); outline-offset: 2px; border-radius: var(--r-sm); }
 .layer-tree:focus .layer.kbd-focus { box-shadow: inset 0 0 0 1px var(--select); }
@@ -523,6 +526,8 @@ button.danger { color: var(--warn); }
 .oc-rhead .share-btn { height: 32px; padding: 0 10px 0 8px; gap: 6px; border: 0; border-radius: 16px; background: transparent; font-weight: 600; }
 .oc-rhead .share-btn svg { color: var(--muted); }
 .oc-rhead .ask-ai { margin-left: auto; width: 84px; justify-content: flex-start; height: 32px; padding: 0 0 0 11px; }
+/* Korean "AI에게 묻기" is wider than "Ask AI": the button grows to its label instead of cutting it */
+.oc-rhead .ask-ai:lang(ko) { width: auto; min-width: 84px; padding-right: 12px; }
 .oc-rhead .icon-btn { width: 32px; height: 32px; border-radius: 16px; color: var(--text); }
 .oc-rhead .icon-btn.on { background: var(--pressed); color: var(--text); }
 .oc-right .chat-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
@@ -1012,11 +1017,11 @@ button.danger { color: var(--warn); }
 .board-btns.pinned { opacity: 1; }
 .lab-row:has(.board-btns.pinned) .board-file { display: none; } /* the file name gives way, so the title keeps a few letters */
 .lab-row:has(.board-btns.pinned) .board-title { flex: 1 1 auto; min-width: 3em; }
-.board:not(:hover):not(.selected):not(.editing) .board-btns.pinned > :not(.use-btn) { display: none; }
+.board:not(:hover):not(.selected):not(.editing):not(.playing) .board-btns.pinned > :not(.use-btn):not(.always) { display: none; }
 .oc .board-btns .icon-btn.use-btn { width: auto; gap: 4px; padding: 0 8px; } /* wins over the 24px .icon-btn below */
 .oc .board-btns .icon-btn.use-btn.icon-only { width: 24px; padding: 0; }
 .board-btns .use-label { font-size: 12px; font-weight: 600; }
-.oc .board-btns .use-btn.pressed { background: var(--pressed); }
+.oc .board-btns .use-btn.pressed, .oc .board-btns .board-play.pressed { background: var(--pressed); }
 .board-btns .use-btn[aria-disabled="true"] { opacity: 0.4; cursor: default; }
 .oc .board-btns .use-btn[aria-disabled="true"]:hover { background: var(--panel); }
 .menu.confirm { z-index: 260; width: 288px; min-width: 0; max-width: calc(100vw - 16px); gap: 4px; padding: 12px 16px; }

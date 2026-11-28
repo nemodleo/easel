@@ -4,10 +4,11 @@
 // The agent creates and edits HTML by writing files directly. This server only observes, points at things, and places boards.
 // With --chat (an in-app Claude Code run) it also carries the run's permission prompt, answered in the Easel chat, under the name easel-chat;
 // --permission (older) carries only that permission tool.
-// No port needed: the canvas for the folder the agent runs in is found through the registry (server/registry.mjs) on each call.
+// No port needed: the canvas for the folder the agent runs in (or the client's MCP root, when started elsewhere) is found through the registry (server/registry.mjs) on each call.
 import { readFileSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -15,7 +16,7 @@ import { z } from "zod";
 
 import { agentLabel } from "../server/agents.mjs";
 import { parseArgs, TOOL_ROOT } from "../server/args.mjs";
-import { discoverPort } from "../server/registry.mjs";
+import { discoverPort, real, within } from "../server/registry.mjs";
 
 const args = parseArgs();
 const pkg = JSON.parse(readFileSync(path.join(TOOL_ROOT, "package.json"), "utf8"));
@@ -24,7 +25,22 @@ const explicit = args.portGiven ? args.port : Number(process.env.DESIGN_CANVAS_P
 const IMAGE_LIMIT = 4 * 1024 * 1024;
 
 let port = null;
-const resolvePort = async (fresh = false) => (port = !fresh && port ? port : await discoverPort({ port: explicit }));
+const resolvePort = async (fresh = false) => (port = !fresh && port ? port : await discoverPort({ port: explicit, cwd: explicit ? undefined : await workDir() }));
+
+/**
+ * The folder to find the canvas for: this process's folder, unless the client offers MCP roots and that folder is in none
+ * of them (an agent plugin's server can be started in the plugin's own folder, as Codex does): then the first root.
+ */
+async function workDir() {
+  const here = process.cwd();
+  if (!server.server.getClientCapabilities()?.roots) return here;
+  try {
+    const roots = (await server.server.listRoots(undefined, { timeout: 2000 })).roots.filter((r) => r.uri.startsWith("file:")).map((r) => fileURLToPath(r.uri));
+    return !roots.length || roots.some((r) => within(real(here), real(r))) ? here : roots[0];
+  } catch {
+    return here;
+  }
+}
 
 /** This MCP server's id at the canvas: the boards it writes are released when its client disconnects */
 const CLIENT = `mcp-${process.pid.toString(36)}${Math.random().toString(36).slice(2, 8)}`;
@@ -230,11 +246,11 @@ tool(
 tool(
   "create_board",
   {
-    description: "Create a new board (HTML file) from a template and place it on the canvas. Templates: blank (Blank), mobile (390×844 Mobile screen), desktop (1440×900 Desktop screen), doc (Document). Edit the created file directly afterwards.",
+    description: "Create a new board (HTML file) from a template and place it on the canvas. Templates: blank (Blank), mobile (390×844 Mobile screen), tablet (834×1194 Tablet screen), desktop (1440×900 Desktop screen), watch (198×242 Watch screen), doc (800×1000 Document), email (600×1200 Email). Edit the created file directly afterwards.",
     inputSchema: {
       file: z.string().optional().describe("File name, e.g. scr-40.html; generated if omitted"),
       title: z.string().optional(),
-      template: z.enum(["blank", "mobile", "desktop", "doc"]).optional(),
+      template: z.enum(["blank", "mobile", "tablet", "desktop", "watch", "doc", "email"]).optional(),
       x: z.number().optional(),
       y: z.number().optional(),
       w: z.number().optional(),

@@ -34,7 +34,22 @@ Already have HTML screens? Run it in your project:
 npx easel-canvas                  # opens ./docs/design (or the current folder if it has screens/)
 npx easel-canvas --init           # starts a new ./docs/design with one screen
 npx easel-canvas --dir ./designs  # any folder of screens/*.html
+npx easel-canvas up               # the same in the background: prints the URL, reuses a canvas already running here
 ```
+
+## Install into your agent
+
+One line gives your agent the Easel tools and a skill that knows the canvas: when to open it, how to claim and write a board, check tokens, look at a screenshot and leave a comment, and how to lay out alternatives for you to pick from.
+
+| Agent | Install | What you get |
+| --- | --- | --- |
+| **Claude Code** | `claude plugin marketplace add nemodleo/easel --sparse .claude-plugin plugin && claude plugin install easel@easel` | MCP tools, the `easel` skill, `/easel:open` and `/easel:variants` |
+| **Codex** | `codex plugin marketplace add nemodleo/easel --sparse .agents/plugins --sparse plugin && codex plugin add easel@easel` | MCP tools and the `easel` skill |
+| **Cursor** | `npx skills add nemodleo/easel --skill easel -a cursor` | The `easel` skill; add the tools with `npx easel-canvas connect` |
+
+`--sparse` checks out only the plugin's folders instead of the whole repository with its screenshots, so the install stays fast on a slow connection.
+
+Then, in your project, ask for what you want: *"open the design canvas"*, *"make three variants of the sign-up screen side by side"*, *"fix what I selected"*. In Claude Code, `/easel:open` starts the canvas for the project (or shows the one already running) and `/easel:variants signup.html 4` lays out four alternatives in a row below the original. The agent starts the canvas with `npx easel-canvas up`, which prints the URL and never starts a second one for the same folder.
 
 ## Why Easel
 
@@ -91,7 +106,7 @@ npx easel-canvas --dir ./designs  # any folder of screens/*.html
 
 Keep the canvas running (`npx easel-canvas`). Agents write HTML files directly, and what they change shows up in the canvas's undo history (one step per in-app AI request, or per burst of edits from an outside agent); the MCP server lets them **see** (`list_boards`, `read_board`, `screenshot`, `list_errors`), **know what you mean** (`get_selection` with the selected element, visible boards and the current page), **talk** (comments and replies) and **arrange** (`place_board`, `create_board`, notes, pages, `check_tokens`, `save_snapshot`). When several agents share a canvas, `claim_board` (before editing a file with their own tools) or `write_board` (a whole board through Easel) keeps one writer per board: a second agent on a busy board is given a fork next to it and told which file it is on.
 
-Then, in your project folder:
+Then, in your project folder (not needed for an agent that has the [plugin](#install-into-your-agent), which brings the same server):
 
 ```bash
 npx easel-canvas connect
@@ -186,6 +201,8 @@ npm run design           # http://localhost:4317
 
 `npx` keeps the copy it downloaded first, so run `npx easel-canvas@latest` to get a new version (and `npm i -D easel-canvas@latest` if you pinned it). To tell you when one is out, the canvas asks the npm registry once a day which version is the latest: one request to `registry.npmjs.org`, nothing about your project. When a newer one exists, the terminal says so at start and a toast at launch shows the update command for how you installed Easel; Copy command or × puts it away until the next version. Set `EASEL_NO_UPDATE_CHECK=1` to turn the check off; it is also off in CI and when Easel runs from a git checkout.
 
+Screenshots, thumbnails and PDF/PNG export share one headless Chromium, started on the first one and closed after two minutes without any. Set `EASEL_BROWSER_IDLE_SECONDS` to change that wait (`0` closes it after every render).
+
 
 <details>
 <summary><b>Keyboard shortcuts and how-tos</b></summary>
@@ -194,10 +211,10 @@ npm run design           # http://localhost:4317
 | --- | --- |
 | Pan and zoom | Drag empty space, Space, or Hand (H); trackpad scroll; ⌘+wheel or pinch (4–400%). ⇧1 Fit all, ⇧2 selection, ⌘0 Zoom to 100%, Minimap (M) |
 | Find | Left "Boards" tab: ⌘K search and list; pages (drag to reorder; right-click to rename, delete, or set the launch page) |
-| Boards | Draw with the board tool (B), use a "New board" template (Blank · Mobile screen · Desktop screen · Document), or drop an HTML file on the canvas. Duplicate ⌘D, rename F2 (renaming the file offers to update references), Delete (confirm, trash, undo), Bring to front / Send to back ⌘] ⌘[ |
+| Boards | Draw with the board tool (B), use a "New board" template (Blank · Watch, Mobile, Tablet and Desktop screens · Document · Email), or drop an HTML file on the canvas. Duplicate ⌘D, rename F2 (renaming the file offers to update references), Delete (confirm, trash, undo), Bring to front / Send to back ⌘] ⌘[, Export PNG (right-click: downloads `<file>.png` at 2×, needs Playwright's Chromium) |
 | Multiple items | Drag on empty space to marquee-select or use Shift; move together (snap guides, Alt to disable); arrow keys 1, Shift 10, Option 100 |
-| Board options | Right "Properties": position, size, Radius, No frame, Show Play button (a dot and an always-visible ▶ on the label; not needed to play), Stretch to window, Open as launch screen, Layout guides (Columns · Rows · Grid, up to 6, ⌃G), Adjustable values |
-| View | Focus view (F, ←→), Play in place on any board (P with one board selected, or right-click; ▶ on boards with Show Play button; Esc stops), Play full screen (right-click). Playing never writes to `board.json`. With no board or several selected, P is the pen |
+| Board options | Right "Properties": position, size, Radius, No frame, Show Play button (a dot, and the label's ▶ stays visible at rest; not needed to play), Stretch to window, Open as launch screen, Layout guides (Columns · Rows · Grid, up to 6, ⌃G), Adjustable values |
+| View | Focus view (F, ←→), Play in place on any board (P with one board selected, or right-click; ▶ at the top right of the label: on every board while it is selected or hovered, always on boards with Show Play button, Stop while playing; Esc stops), Play full screen (right-click). Playing never writes to `board.json`. With no board or several selected, P is the pen |
 | Notes and shapes | Title (T), sticky note (N, 8 colors, size, bold, italic), Rectangle (R), Oval (O), Line (L), Arrow (A), Pen (P when no board is selected), image (Assets or paste) |
 | Select elements | No mode to enter: click anything on a board (drag the board to move it). Shift-click or Shift-drag for several, Esc lets go (then of the board), ↑ parent, ↓ or Enter first child, ←→ siblings, Option+↑↓ to reorder, ⌘A for all siblings, ⌘G Wrap in flex, Tab into the element toolbar |
 | Direct editing | The element toolbar, in the line above the dock: Text (size, weight), Fill (your tokens first, written as a CSS variable, then Custom), Radius, Spacing (padding, gap), Ask AI, Comment. Double-click text to edit it (Shift+Enter for a line break). Move with handles (Alt drops inside a box) and resize, 6 align options, Properties panel in design words with the breadcrumb (CSS names on hover, everything else under More (CSS), ⚠, contrast), Replace image, ⌘C/⌘V to paste into another board |
@@ -205,6 +222,7 @@ npm run design           # http://localhost:4317
 | Who changed what | A board changed by someone else (an agent over MCP or the in-app chat, a file edited outside Easel, another browser) gets a tag above its title, e.g. "Codex · 2m · 1 change", with a person or agent mark and the name, and the changed element is outlined. Click the tag: the change ("Get started" → "Start free"), Before / After, and Undo (only that change; asks first if one of its boards changed since). Tags fade once you open them or select the board, and clear a day later |
 | Design system | Register tokens (`tokens.json`) and themes in the left "Tokens" tab, Theme in the View menu (⋯ at the top of the right card), Token check and Accessibility lists on the right |
 | Collaboration | Comments (Reply, Resolve, author), Snapshot menu (git-commits only the design folder) |
+| Language | English or Korean (한국어): the browser's language picks it on first load (ko-* is Korean, everything else English), Language in the View menu switches it and is remembered in this browser. The exported view-only copy follows the browser's language |
 | Share | "Share" at the top of the right card: whole canvas, this page or the selected boards as a web folder or one .html file, PDF or PNG; Reveal, Copy deploy command, and the matching `npx easel-canvas export` line |
 | Who is on which board | A board someone is editing says so above its title with a mark and the name: "Claude Code is editing…", "You · editing", then "Claude Code · done 13:52"; the board list shows a dot (blue for you, ink for anyone else). An agent holds a board from its first write until its in-app run ends, or 45 s after its last write over MCP (or when it disconnects). A second agent writing a board another agent holds works on a fork beside it ("Welcome · Codex"), with an arrow back that says when and why; you are never forked. When both are done, Use this one on either keeps that version under the original's name, title, position and comments, and sends the other to trash; one Undo brings both back |
 | Pick a variant | Variants from the AI tab land in the first free row (never on notes or boards) and each gets Use this: Apply makes it the original board and sends the other variants to trash (toast with Undo), Keep all leaves them as ordinary boards |
@@ -243,7 +261,10 @@ npm run test:e2e     # Playwright end-to-end tests against test/fixtures/design
 npm run typecheck
 npm run demo         # run the repo's demo from source
 npm run design:css   # rebuild docs/design/assets/easel.css after changing app/src/style.css, so the boards in docs/design keep matching the app
+npm run verify:agents  # before a release: install Easel into each agent CLI on PATH, in throwaway config homes
 ```
+
+`npm run verify:agents` (`tools/verify-agents.mjs`) checks the agent plugin for real. For each of `claude`, `codex`, `cursor-agent` and `gemini` found on PATH, it installs Easel into a config home under a temp folder (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, or `HOME` for Cursor and Gemini; never your own `~/.claude`, `~/.codex`, `~/.cursor` or `~/.gemini`). It checks that the plugin, the skill and the MCP server are listed, prints pass, skip or fail per check, and removes the temp folder. By default it installs from this checkout; `-- --source github` (or `github@<ref>`) installs from GitHub the way the README does. `-- --live` also asks each agent to call `list_boards` on a scratch canvas, but only for an agent that is logged in inside its temp home, which means its own API key variable is already set in your environment. The script reads and stores no keys. It is not part of `npm test`.
 
 - `test/fixtures/design/` intentionally keeps Korean screen content and board titles: it mimics real user content and is needed to test Korean text input (IME) and rendering. Set `DESIGN_CANVAS_E2E_DIR=<folder>` to run the e2e tests against another design folder.
 - `examples/demo/` is Intercut No.14, the project `--demo` copies and the one in the demo video and the screenshots above. Its two fonts are bundled under the SIL Open Font License (see [License](#license)).
@@ -252,9 +273,10 @@ npm run design:css   # rebuild docs/design/assets/easel.css after changing app/s
 | --- | --- |
 | `bin/` | `server.mjs` (app server), `mcp.mjs` (MCP stdio server) |
 | `server/` | API and routes, board.json, file watching, element paths and hashes, source patching, history, chat runner, tokens |
-| `app/` | Canvas UI (Vite + React + TypeScript); all UI text lives in `app/src/strings.ts` |
+| `app/` | Canvas UI (Vite + React + TypeScript); all UI text lives in `app/src/strings.ts`, in English and Korean (the Korean object is typed against the English one, so a missing string is a type error) |
 | `test/` | `node --test` unit tests and Playwright e2e tests |
-| `tools/` | Repo maintenance scripts, not shipped: `mkcss.mjs` builds the design boards' stylesheet from the app's |
+| `tools/` | Repo maintenance scripts, not shipped: `mkcss.mjs` builds the design boards' stylesheet from the app's, `plugin-sync.mjs` keeps the plugin manifests at the package version, `verify-agents.mjs` checks real agent installs |
+| `plugin/` | The agent plugin: MCP server entry, the `easel` skill, `/easel:open` and `/easel:variants` |
 
 Background reading: the original plan is in [PLAN.md](PLAN.md) and the work log is in [tasks.md](tasks.md).
 

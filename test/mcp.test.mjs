@@ -7,10 +7,12 @@ import fs from "node:fs/promises";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { after, before, test } from "node:test";
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { ListRootsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 
 import { TOOL_ROOT } from "../server/args.mjs";
 import { createServer } from "../server/index.mjs";
@@ -115,6 +117,33 @@ test("outside every project with several canvases: the error lists them and says
     await pinned.close();
   } finally {
     await c.close();
+  }
+});
+
+test("started outside the project (as an agent plugin's server can be): the client's MCP root picks the canvas", { skip }, async () => {
+  const pluginDir = path.join(base, "plugin-cache");
+  await fs.mkdir(pluginDir, { recursive: true });
+  const withRoots = async (roots) => {
+    const client = new Client({ name: "codex-mcp-client", version: "1.0.0" }, { capabilities: { roots: {} } });
+    client.setRequestHandler(ListRootsRequestSchema, async () => ({ roots: roots.map((r) => ({ uri: pathToFileURL(r).href })) }));
+    await client.connect(new StdioClientTransport({ command: process.execPath, args: [path.join(TOOL_ROOT, "bin/mcp.mjs")], cwd: pluginDir, env: { PATH: process.env.PATH, HOME: process.env.HOME, EASEL_HOME: home }, stderr: "ignore" }));
+    return client;
+  };
+  const b = await withRoots([rootB]);
+  const a = await withRoots([path.join(rootA, "docs")]);
+  try {
+    assert.deepEqual(json(await b.callTool({ name: "list_boards", arguments: {} })).boards.map((x) => x.file), ["b.html"]);
+    assert.ok(json(await a.callTool({ name: "list_boards", arguments: {} })).boards.some((x) => x.file === "a.html"));
+  } finally {
+    await a.close();
+    await b.close();
+  }
+  // A client whose roots contain the server's own folder: the folder itself still decides (a subfolder can be more specific)
+  const inside = await mcp(rootB);
+  try {
+    assert.equal(json(await inside.callTool({ name: "list_boards", arguments: {} })).dir, "screens");
+  } finally {
+    await inside.close();
   }
 });
 

@@ -21,6 +21,9 @@ export const TEMPLATES = {
   mobile: { label: "Mobile screen", w: 390, h: 844 },
   desktop: { label: "Desktop screen", w: 1440, h: 900 },
   doc: { label: "Document", w: 800, h: 1000 },
+  tablet: { label: "Tablet screen", w: 834, h: 1194 },
+  watch: { label: "Watch screen", w: 198, h: 242 },
+  email: { label: "Email", w: 600, h: 1200 },
 };
 
 export function newBoardHtml({ title, w, h, template = "blank", brand = "" }) {
@@ -53,6 +56,52 @@ export function newBoardHtml({ title, w, h, template = "blank", brand = "" }) {
     doc: `<div style="width:${w}px;min-height:${h}px;box-sizing:border-box;padding:48px;display:flex;flex-direction:column;gap:16px;background:#FFFFFF">
   <h1 style="margin:0;font-size:34px;font-weight:700;letter-spacing:-0.02em">${t}</h1>
   <p style="margin:0;font-size:17px;line-height:1.6;color:#111111">Body text</p>
+</div>`,
+    // Two cards side by side under the heading, one action at the bottom: the shape of a tablet screen with room to spare
+    tablet: `<div style="width:${w}px;height:${h}px;box-sizing:border-box;background:#FFFFFF;display:flex;flex-direction:column;overflow:hidden">
+  <header style="height:64px;display:flex;align-items:center;padding:0 32px;border-bottom:1px solid #E8E8E6;flex:none">
+    <span style="font-size:17px;font-weight:700">${t}</span>
+  </header>
+  <main style="flex:1;padding:32px;display:flex;flex-direction:column;gap:24px">
+    <h1 style="margin:0;font-size:34px;font-weight:700;letter-spacing:-0.02em;line-height:1.15">Title</h1>
+    <p style="margin:0;font-size:17px;line-height:1.5;color:#6B6B6B">Description</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <section style="padding:24px;border-radius:16px;background:#F5F5F3;display:flex;flex-direction:column;gap:8px">
+        <h2 style="margin:0;font-size:22px;font-weight:600">Section</h2>
+        <p style="margin:0;font-size:16px;line-height:1.5;color:#6B6B6B">Supporting text</p>
+      </section>
+      <section style="padding:24px;border-radius:16px;background:#F5F5F3;display:flex;flex-direction:column;gap:8px">
+        <h2 style="margin:0;font-size:22px;font-weight:600">Section</h2>
+        <p style="margin:0;font-size:16px;line-height:1.5;color:#6B6B6B">Supporting text</p>
+      </section>
+    </div>
+  </main>
+  <footer style="padding:16px 32px 32px;flex:none;display:flex;justify-content:flex-end">
+    <a href="#" style="display:flex;align-items:center;justify-content:center;height:56px;padding:0 32px;border-radius:16px;background:#C94F0C;color:#FFFFFF;font-size:17px;font-weight:700;text-decoration:none">Next</a>
+  </footer>
+</div>`,
+    // A glance and one action: a short label, a large value, a full-width button that is still a 48px target
+    watch: `<div style="width:${w}px;height:${h}px;box-sizing:border-box;padding:12px;background:#FFFFFF;display:flex;flex-direction:column;gap:4px;overflow:hidden">
+  <span style="font-size:15px;font-weight:600;color:#6B6B6B">${t}</span>
+  <strong style="font-size:34px;font-weight:700;line-height:1.15">Title</strong>
+  <span style="font-size:15px;color:#6B6B6B">Description</span>
+  <a href="#" style="margin-top:auto;display:flex;align-items:center;justify-content:center;height:48px;border-radius:999px;background:#C94F0C;color:#FFFFFF;font-size:16px;font-weight:700;text-decoration:none">Next</a>
+</div>`,
+    // One 600px column, as an email client shows it: sender, heading, text, one button, a footer with the unsubscribe link
+    email: `<div style="width:${w}px;min-height:${h}px;box-sizing:border-box;background:#FFFFFF;display:flex;flex-direction:column">
+  <header style="padding:32px 40px 24px">
+    <strong style="font-size:17px">${name}</strong>
+  </header>
+  <main style="padding:0 40px 40px;display:flex;flex-direction:column;gap:16px">
+    <h1 style="margin:0;font-size:34px;font-weight:700;letter-spacing:-0.02em;line-height:1.15">${t}</h1>
+    <p style="margin:0;font-size:17px;line-height:1.6">Hi there,</p>
+    <p style="margin:0;font-size:17px;line-height:1.6">Body text</p>
+    <a href="#" style="align-self:flex-start;display:flex;align-items:center;height:48px;padding:0 24px;margin-top:8px;border-radius:8px;background:#C94F0C;color:#FFFFFF;font-size:17px;font-weight:700;text-decoration:none">Call to action</a>
+  </main>
+  <footer style="margin-top:auto;padding:24px 40px 32px;border-top:1px solid #E8E8E6;display:flex;flex-direction:column;gap:4px">
+    <p style="margin:0;font-size:15px;line-height:1.5;color:#6B6B6B">You are receiving this email because you signed up.</p>
+    <a href="#" style="align-self:flex-start;display:flex;align-items:center;min-height:48px;font-size:15px;color:#6B6B6B">Unsubscribe</a>
+  </footer>
 </div>`,
   };
   return `<!doctype html>
