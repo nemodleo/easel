@@ -276,6 +276,9 @@ const en = {
     boardsPanel: "Boards",
     commentsPanel: "Comments panel",
     empty: "Nothing on this page",
+    embedGate: "Use the canvas: pan, zoom, open a board, press Play. Esc gives the page back.",
+    embedHint: "Click the canvas to pan and zoom",
+    embedHintLive: "Esc or a click outside gives the page back",
   },
 
   canvas: {
@@ -1348,6 +1351,9 @@ const ko: Strings = {
     boardsPanel: "보드",
     commentsPanel: "댓글 패널",
     empty: "이 페이지에는 아무것도 없어요",
+    embedGate: "캔버스를 직접 써 볼 수 있어요. 화면 이동, 확대/축소, 보드 열기, 재생. Esc를 누르면 페이지로 돌아가요.",
+    embedHint: "클릭하면 캔버스를 움직이고 확대/축소할 수 있어요",
+    embedHintLive: "Esc를 누르거나 바깥을 클릭하면 페이지로 돌아가요",
   },
 
   canvas: {
