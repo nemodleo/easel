@@ -12,7 +12,7 @@ No export, no hand-off, no design file: screens are HTML files in your repo, and
 [![MCP](https://img.shields.io/badge/MCP-22%20tools-3E7BFA.svg)](#connect-your-ai-agent)
 [![Works with](https://img.shields.io/badge/works%20with-Claude%20Code%20·%20Codex%20·%20Cursor%20·%20Gemini-3E7BFA.svg)](#connect-your-ai-agent)
 
-<img src="docs/screenshots/demo.gif" alt="Demo: the Intercut No.14 film festival identity on one canvas, then a zoom to its phone app; retyping the spliced title on My cut in place and taking it back, changing the ticket bar's fill to a token, asking Claude Code in the AI tab to turn the home screen into the ticket while the board redraws red with the QR code and the chat lists its tool calls, check_tokens among them; undoing and redoing that whole run, then exporting a view-only copy from Share" width="100%">
+<img src="docs/screenshots/demo.webp" alt="Demo: the Intercut No.14 film festival identity on one canvas, then a zoom to its phone app; retyping the spliced title on My cut in place and taking it back, changing the ticket bar's fill to a token, asking Claude Code in the AI tab to turn the home screen into the ticket while the board redraws red with the QR code and the chat lists its tool calls, check_tokens among them; undoing and redoing that whole run, then exporting a view-only copy from Share" width="100%">
 
 <sub>A real Claude Code run on the bundled demo. The agent's working time is sped up 16× (about 93 seconds shown in 6); everything else plays at real speed.</sub>
 
@@ -50,29 +50,29 @@ npx easel-canvas --dir ./designs  # any folder of screens/*.html
 
 <table>
   <tr>
-    <td colspan="2"><img src="docs/screenshots/overview.png" alt="Easel showing the Intercut No.14 film festival identity: the brand sheet and the site's first screen, the phone app's seven screens joined by flow arrows, the desktop timetable and sticky notes on one canvas, the board list card at the left and the inspector card at the right with the Brand sheet's position, options, token check and accessibility check"></td>
+    <td colspan="2"><img src="docs/screenshots/overview.webp" alt="Easel showing the Intercut No.14 film festival identity: the brand sheet and the site's first screen, the phone app's seven screens joined by flow arrows, the desktop timetable and sticky notes on one canvas, the board list card at the left and the inspector card at the right with the Brand sheet's position, options, token check and accessibility check"></td>
   </tr>
   <tr>
     <td colspan="2"><b>See every screen at once.</b> Each HTML file in <code>screens/</code> is a board on one canvas, next to notes and arrows, with token and accessibility checks for the one you pick.</td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/screenshots/select.png" alt="The Show ticket bar selected inside the My cut phone screen, its element toolbar (Text, Fill, Radius, Spacing, Ask AI, Comment) in the line above the dock, and the inspector with the breadcrumb, Fill set to the Safelight token with its contrast, Text, Corner radius, Padding and Gap"></td>
-    <td width="50%"><img src="docs/screenshots/ai-chat.png" alt="AI chat in the inspector card after a real Claude Code run: its reply about turning My cut into the ticket with a larger scannable QR code, Changed 1 board with Undo this run and Compare, and the My cut screen redrawn red with the QR code next to the Film and Ticket screens, under a Claude Code activity tag"></td>
+    <td width="50%"><img src="docs/screenshots/select.webp" alt="The Show ticket bar selected inside the My cut phone screen, its element toolbar (Text, Fill, Radius, Spacing, Ask AI, Comment) in the line above the dock, and the inspector with the breadcrumb, Fill set to the Safelight token with its contrast, Text, Corner radius, Padding and Gap"></td>
+    <td width="50%"><img src="docs/screenshots/ai-chat.webp" alt="AI chat in the inspector card after a real Claude Code run: its reply about turning My cut into the ticket with a larger scannable QR code, Changed 1 board with Undo this run and Compare, and the My cut screen redrawn red with the QR code next to the Film and Ticket screens, under a Claude Code activity tag"></td>
   </tr>
   <tr>
     <td><b>Edit the real screen.</b> Click any element to drag, resize, align, retype or restyle it; only that part of the HTML changes. Layers, wrap in flex or grid, copy and paste across boards.</td>
     <td><b>Ask your agent.</b> Claude Code, Codex, Cursor Agent or Gemini CLI get your selection, boards and comments as context. Watch the board redraw, ask for variants side by side, and undo the whole run in one step.</td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/screenshots/agents.png" alt="Two agents on one canvas: the Social square held by Claude Code (Claude Code is editing…) and Codex working on a fork beside it, Social square · Codex (Codex is editing…), with a dashed arrow back, the note Forked — Codex started while Claude Code was editing, and Use this one on both"></td>
-    <td width="50%"><img src="docs/screenshots/share.png" alt="The Share popover under the inspector header with Selected boards (2): Web folder exported to intercut/easel-export/ with Reveal and Copy deploy command, One .html file, PDF and PNG, and the matching npx easel-canvas export --boards home.html,ticket.html command"></td>
+    <td width="50%"><img src="docs/screenshots/agents.webp" alt="Two agents on one canvas: the Social square held by Claude Code (Claude Code is editing…) and Codex working on a fork beside it, Social square · Codex (Codex is editing…), with a dashed arrow back, the note Forked — Codex started while Claude Code was editing, and Use this one on both"></td>
+    <td width="50%"><img src="docs/screenshots/share.webp" alt="The Share popover under the inspector header with Selected boards (2): Web folder exported to intercut/easel-export/ with Reveal and Copy deploy command, One .html file, PDF and PNG, and the matching npx easel-canvas export --boards home.html,ticket.html command"></td>
   </tr>
   <tr>
     <td><b>Work alongside several agents.</b> One writer per board: a second agent works on a fork beside it, every change is tagged with who made it, and Use this one keeps the version you want.</td>
     <td><b>Share a view-only copy.</b> Export the canvas, a page or the selected boards as a static site to host anywhere, or as one <code>.html</code> file to attach; PDF and PNG too.</td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/screenshots/dark-mode.png" alt="Dark mode on the film festival's phone screens with the Ticket board's context menu: Select inside, Ask AI for a review, Focus view, Ask AI, Go to board, Rename, Rename file, Duplicate, Bring to front, Send to back, Delete"></td>
+    <td width="50%"><img src="docs/screenshots/dark-mode.webp" alt="Dark mode on the film festival's phone screens with the Ticket board's context menu: Select inside, Ask AI for a review, Focus view, Ask AI, Go to board, Rename, Rename file, Duplicate, Bring to front, Send to back, Delete"></td>
     <td width="50%">
       <b>Everything a canvas should do.</b>
       <ul>
