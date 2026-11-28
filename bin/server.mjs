@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // AI-generated with Claude Code, 2026-10-09, reviewed by Hyun Park
-// Usage: easel-canvas [--dir <design folder>] [--port 4317] [--open] [--demo] [--init] | easel-canvas connect [--agents …] [--dry-run]
+// Usage: easel-canvas [--dir <design folder>] [--port 4317] [--open] [--demo] [--init] | easel-canvas up|status [--json] | easel-canvas connect [--agents …] [--dry-run]
 //        | easel-canvas export [--out <dir>] [--page …] [--boards a.html,b.html] [--single-file] [--pdf] [--png]
 import { spawn } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -23,6 +23,8 @@ Usage
   npx easel-canvas --demo          copy the demo project to ./easel-demo and open it
   npx easel-canvas --init          create ./docs/design with a starter screen, then open it
   npx easel-canvas --dir <folder>  open a specific design folder
+  npx easel-canvas up              start the canvas in the background unless one runs for this project; print its URL
+  npx easel-canvas status          print the URL of the canvas running for this project (exit 1 when there is none)
   npx easel-canvas connect         add the Easel MCP server to your agents' configs (run in the project)
   npx easel-canvas export          write a view-only copy of the canvas to ./easel-export (no canvas needed)
 
@@ -31,6 +33,10 @@ Options
   --open       open the canvas in your browser (--demo and --init do this; --no-open to skip)
   -h, --help   show this help
   -v, --version
+
+up, status
+  --json           one JSON object: running, url, port, pid, dir (up adds started, and log for a new canvas)
+  up opens the browser when it starts a canvas (--no-open to skip) and takes --dir, --port and --init as above.
 
 connect
   --agents <list>  claude,cursor,gemini,codex (default: Claude Code, plus the others found on this machine)
@@ -64,6 +70,21 @@ if (args.command === "connect") {
     process.exit(1);
   }
   process.exit(0);
+}
+
+if (args.command === "up" || args.command === "status") {
+  const { describe, findCanvas, up } = await import("../server/up.mjs");
+  let r;
+  try {
+    r = args.command === "up" ? await up({ dir: args.dir, dirGiven: args.dirGiven, port: args.portGiven ? args.port : null, init: args.init, open: !args.noOpen, prod: args.prod }) : await findCanvas({ dir: args.dir, dirGiven: args.dirGiven });
+  } catch (e) {
+    if (args.json) console.log(JSON.stringify({ running: false, dir: args.dir, error: e.message }));
+    else console.error(e.message);
+    process.exit(1);
+  }
+  if (args.json) console.log(JSON.stringify(r ?? { running: false, dir: args.dir }));
+  else console.log(describe(r, args.dir));
+  process.exit(r ? 0 : 1);
 }
 
 if (args.command === "export") {

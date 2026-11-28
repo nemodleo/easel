@@ -10,7 +10,7 @@ import { DEFAULT_PORT } from "./args.mjs";
 export const easelHome = (env = process.env) => env.EASEL_HOME || path.join(os.homedir(), ".easel");
 const serversDir = (home) => path.join(home, "servers");
 /** Resolved path (links like /var → /private/var), also for a folder that does not exist yet: its nearest existing parent */
-const real = (p) => {
+export const real = (p) => {
   const abs = path.resolve(p);
   try {
     return realpathSync(abs);

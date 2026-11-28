@@ -22,11 +22,13 @@
     "demo": "node bin/server.mjs --dir examples/demo --open",
     "build": "vite build app --config vite.config.mjs && vite build app --config vite.config.mjs --mode viewer",
     "prepack": "npm run build",
+    "version": "node tools/plugin-sync.mjs && git add plugin",
     "mcp": "node bin/mcp.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node --test test/*.test.mjs",
     "test:e2e": "node --test --test-concurrency=1 test/e2e/*.e2e.mjs",
     "design:css": "node tools/mkcss.mjs",
+    "verify:agents": "node tools/verify-agents.mjs",
     "perf": "node tools/perf/measure.mjs",
     "perf:phases": "node tools/perf/phases.mjs"
   },
