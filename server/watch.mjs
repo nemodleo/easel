@@ -1,7 +1,6 @@
 // AI-generated with Claude Code, 2026-10-09, reviewed by Hyun Park
 // Design folder watcher: when HTML changes, notify so only that board is redrawn; new files are auto-placed in board.json. PLAN.md ch. 7 M2.
 // Changes the app did not make (agents' own file tools, editors) are handed to the undo history, which records them as steps.
-import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 
@@ -9,6 +8,7 @@ import chokidar from "chokidar";
 
 import { createDeps } from "./deps.mjs";
 import { toPosix } from "./fsutil.mjs";
+import { contentHash } from "./livePatch.mjs";
 
 export function watchDesign({ dir, store, broadcast, history }) {
   const screensDir = store.screensDir;
@@ -26,7 +26,7 @@ export function watchDesign({ dir, store, broadcast, history }) {
   // On an outside rename (same content deleted then created), move the board position/title to the new name
   const hashes = new Map(); // file → content sha1
   const removed = []; // { file, hash, at }
-  const sha = (t) => crypto.createHash("sha1").update(t).digest("hex");
+  const sha = contentHash;
   store.listScreenFiles().then(async (files) => {
     for (const f of files) hashes.set(f, sha(await fs.readFile(path.join(screensDir, f), "utf8").catch(() => "")));
   });
@@ -83,14 +83,17 @@ export function watchDesign({ dir, store, broadcast, history }) {
     const file = toPosix(path.relative(screensDir, abs));
     const kind = event === "add" ? "add" : event === "unlink" ? "unlink" : "change";
     void track(path.join(screensDir, file));
+    let hash;
     if (kind === "unlink") {
       deps.remove(file);
       if (hashes.has(file)) removed.push({ file, hash: hashes.get(file), at: Date.now() });
       hashes.delete(file);
     } else {
       await deps.update(file);
-      const h = sha(await fs.readFile(abs, "utf8").catch(() => ""));
+      const text = await fs.readFile(abs, "utf8").catch(() => null);
+      const h = sha(text ?? "");
       hashes.set(file, h);
+      if (text != null) hash = h;
       if (kind === "add") {
         const i = removed.findIndex((r) => r.hash === h && Date.now() - r.at < 5000);
         if (i >= 0) {
@@ -99,7 +102,8 @@ export function watchDesign({ dir, store, broadcast, history }) {
         }
       }
     }
-    broadcast({ type: "file-changed", file, kind });
+    // hash: the content read now. A tab whose board already shows exactly this content (it patched its own edit in place) keeps it
+    broadcast({ type: "file-changed", file, kind, ...(hash ? { hash } : {}) });
     // Also redraw boards that embed this screen (flow diagrams etc.)
     for (const host of deps.dependents(file)) broadcast({ type: "file-changed", file: host, kind: "change", via: file });
     if (kind !== "change") scheduleSync();

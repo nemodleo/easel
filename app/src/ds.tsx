@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { api } from "./api";
 import { pathOf } from "./editor";
+import { markDirty } from "./livePatch";
 import { Icon } from "./icons";
 import { strings } from "./strings";
 import { snapWidths } from "./ui";
@@ -335,6 +336,7 @@ export function readTweaks(doc: Document | null | undefined): Record<string, Twe
   }
 }
 export function applyTweak(doc: Document, key: string, t: Tweak) {
+  markDirty(doc); // a preview the file does not have: this board is not kept in place on the next echo
   const v = t.type === "boolean" ? (t.value ? "1" : "0") : String(t.value) + (t.type === "number" && t.unit ? t.unit : "");
   if (t.var) doc.documentElement.style.setProperty(t.var, v);
   doc.documentElement.setAttribute(`data-tweak-${key}`, t.type === "boolean" ? (t.value ? "on" : "off") : String(t.value));

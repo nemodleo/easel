@@ -4,7 +4,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { activityRoutes } from "./activity.mjs";
-import { closeBrowser, newPage } from "./browser.mjs";
+import { closeBrowser, gotoSettled, withPage } from "./browser.mjs";
 import { boardRoutes } from "./boards.mjs";
 import { chatRoutes } from "./chat.mjs";
 import { tokenRoutes } from "./tokens.mjs";
@@ -14,6 +14,7 @@ import { exportRoutes } from "./export.mjs";
 import { forkMessage, forkRoutes, routeWrite } from "./forks.mjs";
 import { easelDir, rootOf, toPosix, writeAtomic } from "./fsutil.mjs";
 import { inspect, outline } from "./html.mjs";
+import { contentHash, livePatch } from "./livePatch.mjs";
 import { readBody, safeJoin, sendJson } from "./index.mjs";
 import { watchDesign } from "./watch.mjs";
 
@@ -51,38 +52,55 @@ async function writeComments(ctx, comments) {
 
 /* ---------- Screenshots (when playwright is available) ---------- */
 // The shared Chromium lives in browser.mjs (export uses it too); re-exported here for existing callers
-export { cachedBrowser, closeBrowser, newPage } from "./browser.mjs";
+export { cachedBrowser, closeBrowser, newPage, withPage } from "./browser.mjs";
 
 /** Thumbnail sizes (long side, device px) the client may ask for; anything else snaps to the next one up. Matches THUMB_SIZES in Canvas.tsx */
 const THUMB_PX = [600, 1200, 2400];
 export const thumbPx = (v) => THUMB_PX.find((s) => s >= Number(v)) ?? (Number(v) > 0 ? THUMB_PX[THUMB_PX.length - 1] : THUMB_PX[0]);
 
-/** Generate at most two thumbnails at a time */
-let running = 0;
-const waiting = [];
-function thumbQueue(job) {
-  return new Promise((resolve, reject) => {
-    const run = async () => {
-      running++;
-      try {
-        resolve(await job());
-      } catch (e) {
-        reject(e);
-      } finally {
-        running--;
-        waiting.shift()?.();
-      }
-    };
-    if (running < 2) void run();
-    else waiting.push(run);
-  });
+/**
+ * Thumbnail jobs, at most two at a time. The newest request goes first (the boards the user is looking at now asked last),
+ * and a job still waiting when its request closes (board scrolled away, tab closed) is dropped. A job that has started
+ * always finishes, so its thumbnail is cached for the next request.
+ */
+export function createThumbQueue(limit = 2) {
+  let running = 0;
+  const waiting = [];
+  const next = () => {
+    while (running < limit && waiting.length) {
+      const job = waiting.pop();
+      if (job.gone()) job.reject(Object.assign(new Error("Thumbnail request closed before its turn"), { dropped: true }));
+      else void job.run();
+    }
+  };
+  return {
+    /** gone(): true once nobody waits for the result */
+    push(fn, gone = () => false) {
+      return new Promise((resolve, reject) => {
+        const run = async () => {
+          running++;
+          try {
+            resolve(await fn());
+          } catch (e) {
+            reject(e);
+          } finally {
+            running--;
+            next();
+          }
+        };
+        waiting.push({ run, gone, reject });
+        next();
+      });
+    },
+    stats: () => ({ running, waiting: waiting.length }),
+  };
 }
+const thumbQueue = createThumbQueue(2);
 
 export async function screenshot(ctx, port, file, elPath) {
   const board = (await ctx.store.readBoard()).boards[file];
-  const page = await newPage({ viewport: { width: board?.w ?? 390, height: board?.h ?? 844 }, deviceScaleFactor: 2 });
-  try {
-    await page.goto(`http://127.0.0.1:${port}/screens/${encodeURI(file)}`, { waitUntil: "networkidle" });
+  return withPage({ viewport: { width: board?.w ?? 390, height: board?.h ?? 844 }, deviceScaleFactor: 2 }, async (page) => {
+    await gotoSettled(page, `http://127.0.0.1:${port}/screens/${encodeURI(file)}`);
     const outDir = path.join(await easelDir(ctx.dir), "screenshots");
     await fs.mkdir(outDir, { recursive: true });
     const name = `${file.replace(/[\\/]/g, "_").replace(/\.html$/, "")}${elPath ? "--" + elPath.replace(/\//g, "-") : ""}.png`;
@@ -100,9 +118,7 @@ export async function screenshot(ctx, port, file, elPath) {
       await page.screenshot({ path: out, fullPage: true });
     }
     return out;
-  } finally {
-    await page.close();
-  }
+  });
 }
 
 export const extraRoutes = [
@@ -128,7 +144,10 @@ export const extraRoutes = [
       await writeScreen(ctx, p, next);
       ctx.history.push(`${to.file} ${b.op}`, [{ path: p, before: html, after: next }]);
       ctx.broadcast({ type: "history-changed" });
-      sendJson(res, 200, { ok: true, changed: true, ...fork });
+      // base/hash: the file's content hash before and after; live: the DOM change that turns a board showing base into one showing
+      // hash, when that is proven (server/livePatch.mjs). Never for a fork: the caller's board is not the file written
+      const live = to.forked ? null : livePatch(html, next, b);
+      sendJson(res, 200, { ok: true, changed: true, base: contentHash(html), hash: contentHash(next), ...(live ? { live } : {}), ...fork });
     },
   ],
   // Legacy route: forwards to the chronological history
@@ -162,17 +181,18 @@ export const extraRoutes = [
       const out = path.join(dir, `${stamp}${px}.jpg`);
       // Read the port now: a job that waits in the queue runs after its request may have closed, and a closed socket has no localPort
       const port = req.socket.localPort;
+      let gone = false;
+      res.on("close", () => (gone = true));
       let buf = await fs.readFile(out).catch(() => null);
       if (!buf) {
-        buf = await thumbQueue(async () => {
+        buf = await thumbQueue.push(async () => {
           await fs.mkdir(dir, { recursive: true });
           await fs.writeFile(path.join(dir, ".gitignore"), "*\n").catch(() => {});
           const board = (await ctx.store.readBoard()).boards[f];
           const w = board?.w ?? 390;
           const h = board?.h ?? 844;
           // Long side ≈ px device pixels, so large boards stay sharp when zoomed out on a 2× display
-          const page = await newPage({ viewport: { width: w, height: h }, deviceScaleFactor: Math.min(2, px / Math.max(w, h)) });
-          try {
+          return withPage({ viewport: { width: w, height: h }, deviceScaleFactor: Math.min(2, px / Math.max(w, h)) }, async (page) => {
             await page.goto(`http://127.0.0.1:${port}/screens/${encodeURI(f)}`, { waitUntil: "load", timeout: 15000 });
             await page.waitForTimeout(150);
             const b = await page.screenshot({ type: "jpeg", quality: 80 });
@@ -180,10 +200,12 @@ export const extraRoutes = [
             for (const n of await fs.readdir(dir)) if (n.startsWith(base + ".") && !n.startsWith(stamp)) await fs.rm(path.join(dir, n), { force: true });
             await fs.writeFile(out, b);
             return b;
-          } finally {
-            await page.close();
-          }
+          });
+        }, () => gone).catch((e) => {
+          if (e.dropped) return null;
+          throw e;
         });
+        if (!buf) return; // nobody is waiting for it any more
       }
       res.writeHead(200, { "Content-Type": "image/jpeg", "Content-Length": buf.length, "Cache-Control": "max-age=31536000, immutable" });
       res.end(buf);
@@ -231,7 +253,17 @@ export const extraRoutes = [
       const { html } = await readScreen(ctx, url.searchParams.get("f"));
       const info = inspect(html, url.searchParams.get("path") ?? "");
       if (!info) return sendJson(res, 404, { error: "Element not found (the file changed, select again)" });
-      sendJson(res, 200, { hash: info.hash, tag: info.tag, text: info.text.slice(0, 200), source: url.searchParams.get("full") ? info.source : info.source.slice(0, OUTER_LIMIT) });
+      // fileHash: the whole file now, so a board patched in place can check that it still shows the file
+      sendJson(res, 200, { hash: info.hash, fileHash: contentHash(html), tag: info.tag, text: info.text.slice(0, 200), source: url.searchParams.get("full") ? info.source : info.source.slice(0, OUTER_LIMIT) });
+    },
+  ],
+  // The content hash of a board file now (a board patched in place asks after an echo of an older version of its own edits)
+  [
+    "GET",
+    "/api/file-hash",
+    async (req, res, url, ctx) => {
+      const { html } = await readScreen(ctx, url.searchParams.get("f"));
+      sendJson(res, 200, { hash: contentHash(html) });
     },
   ],
   [
@@ -352,6 +384,11 @@ export const extraRoutes = [
       await readScreen(ctx, b.file);
       const port = Number(req.socket.localPort);
       const out = await screenshot(ctx, port, b.file, b.path || "");
+      // inline: the PNG itself, for the board menu's Export PNG to download (the copy in .easel/screenshots stays as for MCP)
+      if (b.inline) {
+        res.writeHead(200, { "Content-Type": "image/png", "Cache-Control": "no-store" });
+        return res.end(await fs.readFile(out));
+      }
       sendJson(res, 200, { path: out, relPath: toPosix(path.relative(rootOf(ctx.dir), out)) });
     },
   ],

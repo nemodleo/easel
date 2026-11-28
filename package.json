@@ -28,7 +28,9 @@
     "test": "node --test test/*.test.mjs",
     "test:e2e": "node --test --test-concurrency=1 test/e2e/*.e2e.mjs",
     "design:css": "node tools/mkcss.mjs",
-    "verify:agents": "node tools/verify-agents.mjs"
+    "verify:agents": "node tools/verify-agents.mjs",
+    "perf": "node tools/perf/measure.mjs",
+    "perf:phases": "node tools/perf/phases.mjs"
   },
   "engines": {
     "node": ">=20"

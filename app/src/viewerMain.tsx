@@ -2,7 +2,7 @@
 // Entry of the exported viewer (vite --mode viewer): reads window.EASEL_EXPORT, written next to it by server/export.mjs.
 import { createRoot } from "react-dom/client";
 
-import { strings } from "./strings";
+import { lang, strings } from "./strings";
 import type { ExportData } from "./types";
 import { Viewer } from "./Viewer";
 import "./style.css";
@@ -13,6 +13,8 @@ declare global {
   }
 }
 
+// The viewer follows the browser's language as the canvas does (strings.ts pickLang)
+document.documentElement.lang = lang;
 const data = window.EASEL_EXPORT;
 createRoot(document.getElementById("root")!).render(
   data ? (
