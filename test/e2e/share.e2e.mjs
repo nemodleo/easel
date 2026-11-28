@@ -151,6 +151,72 @@ test("the web folder from a static host under a sub-path: boards, pages, Play, a
   }
 });
 
+test("embedded (?embed&fit&inset&dock): no list or comments, the fit inside the clear area, the wheel stays with the host until a click", async () => {
+  const srv = await staticServer(path.join(env.dir, "easel-export"));
+  const host = await env.page.context().browser().newContext({ viewport: { width: 1200, height: 900 } });
+  const page = await host.newPage();
+  page.setDefaultTimeout(15000);
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(String(e)));
+  try {
+    // A host page on the same server: a tall document with the copy in a 1000×600 frame, a card over its left 400px
+    const src = `${srv.url}index.html?embed&fit=scr-02.html&inset=20,20,20,420&dock=left`;
+    await page.route(`${srv.url}host.html`, (r) => r.fulfill({ contentType: "text/html", body: `<!doctype html><body style="margin:0;height:3000px"><iframe id="f" src="${src}" style="position:absolute;left:100px;top:100px;width:1000px;height:600px;border:0"></iframe></body>` }));
+    await page.goto(`${srv.url}host.html`);
+    const frame = page.frameLocator("#f");
+    await frame.locator('.board[data-file="scr-02.html"] iframe').waitFor();
+    await wait(400);
+    // What the option takes away and keeps: no board list, comments or navigation card; the dock with the stamp, zoom and Play, at the left
+    assert.equal(await frame.locator(".oc-left, .oc-right, .oc-nav").count(), 0);
+    assert.equal(await frame.locator(".oc-vdock .oc-stamp, .oc-vdock .oc-vzoom, .oc-vdock .play-btn").count(), 3);
+    const dock = await frame.locator(".oc-vdock").boundingBox();
+    assert.equal(Math.round(dock.x), 100 + 12);
+    assert.match(await frame.locator(".embed-hint").textContent(), /Click the canvas/);
+    // Before a click the boards are out of the tab order: Tab goes from the host page to the frame's way in, then the dock
+    assert.equal(await frame.locator(".canvas-wrap[inert]").count(), 1);
+    // The opening view frames scr-02 inside the clear area (frame x 420…980, y 20…580), against its top-left corner
+    const b = await frame.locator('.board[data-file="scr-02.html"] .board-frame').boundingBox();
+    assert.ok(b.x >= 100 + 420 && b.x + b.width <= 100 + 980 + 1 && b.y >= 100 + 20 && b.y + b.height <= 100 + 580 + 1, JSON.stringify(b));
+    assert.ok(b.x - (100 + 420) < 70, "starts at the clear area's left edge");
+    // The wheel scrolls the host page before a click, and the canvas stays put
+    await page.mouse.move(700, 400);
+    await page.mouse.wheel(0, 300);
+    await wait(300);
+    assert.equal(await page.evaluate(() => scrollY), 300);
+    assert.deepEqual(await frame.locator('.board[data-file="scr-02.html"] .board-frame').boundingBox(), { ...b, y: b.y - 300 });
+    await page.evaluate(() => scrollTo(0, 0));
+    await wait(200);
+    // A click takes it: now the wheel pans the canvas and the page stays
+    await page.mouse.click(700, 400);
+    await frame.locator(".viewer.embed-live").waitFor();
+    assert.match(await frame.locator(".embed-hint").textContent(), /Esc/);
+    assert.equal(await frame.locator(".canvas-wrap[inert]").count(), 0);
+    await page.mouse.wheel(0, 200);
+    await wait(300);
+    assert.equal(await page.evaluate(() => scrollY), 0);
+    const moved = await frame.locator('.board[data-file="scr-02.html"] .board-frame').boundingBox();
+    assert.ok(Math.abs(moved.y - (b.y - 200)) < 2, `panned: ${moved.y} vs ${b.y - 200}`);
+    // Esc gives it back, with focus on the frame's own way back in
+    await page.keyboard.press("Escape");
+    await frame.locator(".viewer.embed-live").waitFor({ state: "detached" });
+    assert.equal(await frame.locator(".embed-gate:focus").count(), 1);
+    // So does a click outside the frame
+    await page.mouse.click(700, 400);
+    await frame.locator(".viewer.embed-live").waitFor();
+    await page.mouse.click(50, 800);
+    await frame.locator(".viewer.embed-live").waitFor({ state: "detached" });
+    // Play keeps to the clear area
+    await frame.locator(".play-btn").click();
+    const pl = await frame.locator(".play").boundingBox();
+    assert.equal(Math.round(pl.x), 100 + 420);
+    await page.keyboard.press("Escape");
+    assert.deepEqual(errors, []);
+  } finally {
+    await host.close();
+    await srv.close();
+  }
+});
+
 test("the single file opens from file://: boards render from inline HTML, Play follows a link, nothing is fetched", async () => {
   const { page: editor } = env;
   if (!(await editor.$(".share-pop"))) await editor.click(".share-btn");
