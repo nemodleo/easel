@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "easel",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "Design screens as plain HTML on a live canvas: the Easel MCP tools and a skill that knows the loop (claim, write, check tokens, screenshot, comment)",
   "author": { "name": "Hyun Park", "url": "https://github.com/nemodleo" },
   "homepage": "https://github.com/nemodleo/easel#readme",
