@@ -56,7 +56,15 @@
 
     "view-menu-korean.html": {"x":3040,"y":12280,"w":1440,"h":900,"title":"View menu · Korean"},
 
-    "view-menu-language.html": {"x":1520,"y":12280,"w":1440,"h":900,"title":"View menu · Language"}
+    "view-menu-language.html": {"x":1520,"y":12280,"w":1440,"h":900,"title":"View menu · Language"},
+
+    "site-page.html": {"x":0,"y":15320,"w":1440,"h":5948,"title":"Site · page 1440"},
+
+    "site-phone.html": {"x":1520,"y":15320,"w":390,"h":844,"title":"Site · phone, first screen"},
+
+    "site-phone-2.html": {"x":1990,"y":15320,"w":390,"h":844,"title":"Site · phone, how it happened"},
+
+    "site-decisions.html": {"x":2460,"y":15320,"w":1440,"h":1240,"title":"Site · decisions"}
   },
   "order": [
     "canvas-light.html",
@@ -85,7 +93,11 @@
     "export-png-rendering.html",
     "export-png-no-browser.html",
     "view-menu-language.html",
-    "view-menu-korean.html"
+    "view-menu-korean.html",
+    "site-page.html",
+    "site-phone.html",
+    "site-phone-2.html",
+    "site-decisions.html"
   ],
   "notes": {
     "a0": {"kind":"sticky","x":4240,"y":0,"w":760,"text":"Built 2026-11-15 · direction A, Open canvas\nRule: the work reaches all four edges of the window. Tools sit on top of it: two cards, one dock.\nThree decisions came with it:\na. The context line. One slot 8px above the dock holds the hint or the element toolbar, never both; nothing floats next to a selection.\nb. A card is as tall as what it has to say. At rest the inspector is its 48px header; a card grows in height only and the boards never move.\nc. Boards run under the cards. Fit all and zoom to selection keep to the clear area between them.\nEvery board on this canvas except the live link proposal is drawn from the running app.","color":"blue"},
@@ -136,7 +148,11 @@
 
     "s1": {"kind":"sticky","x":3440,"y":1000,"w":760,"text":"Select and edit (the board left of AI chat)\n1. No Edit mode. A click on an element of any board selects it; double-click edits its text; Esc deselects.\n2. The element toolbar sits in the context line, 8px above the dock, where the hint is at other times: Text, Fill, Radius, Spacing, Ask AI, Comment. Nothing floats next to the selection.\n3. Fill shows the token swatches first, then Custom: a colour swatch and a hex field. With no tokens, only Custom.\n4. The inspector shows the file, the element's name and a breadcrumb (board › … › two parents › element), then Properties in design words. The CSS name shows on hover. More (CSS) stays folded.\n5. The board says \"You · editing\" while something on it is selected.","color":"yellow"},
 
-    "u1": {"kind":"sticky","x":3040,"y":2940,"w":560,"text":"Update notice (built 2026-11-15, from proposal c)\nOnce a day the canvas asks the npm registry for the latest easel-canvas. When it is newer: a line in the terminal at start, and this toast at launch with the command for how Easel was installed (npx, npm i -D, or global).\nIt comes back at each launch until Copy command or ×, then not again until the next version. Ink dot, never the orange.\nSilent offline, in CI, from a git checkout, or with EASEL_NO_UPDATE_CHECK=1.","color":"yellow"}
+    "u1": {"kind":"sticky","x":3040,"y":2940,"w":560,"text":"Update notice (built 2026-11-15, from proposal c)\nOnce a day the canvas asks the npm registry for the latest easel-canvas. When it is newer: a line in the terminal at start, and this toast at launch with the command for how Easel was installed (npx, npm i -D, or global).\nIt comes back at each launch until Copy command or ×, then not again until the next version. Ink dot, never the orange.\nSilent offline, in CI, from a git checkout, or with EASEL_NO_UPDATE_CHECK=1.","color":"yellow"},
+
+    "s0": {"kind":"title","x":0,"y":14920,"maxW":3800,"text":"Built 2026-11-28 · easel.d-t-it.com (site/)"},
+
+    "s0s": {"kind":"sticky","x":4000,"y":15320,"w":760,"color":"blue","text":"Built from the approved proposal: direction A, Three answers, with direction B's app switch in section 3.\nThese boards are drawn from the built site (npm run site, then node site/boards.mjs): its own markup and stylesheet with the script left out, so the three answers and the embedded canvas show as stills.\nStill missing: three window captures for section 3 (site/media/app-claude.webp, app-codex.webp, app-cursor.webp, 16:10)."}
   },
   "shapes": {}
 }
